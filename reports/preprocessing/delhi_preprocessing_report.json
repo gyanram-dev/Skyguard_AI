@@ -1,0 +1,74 @@
+{
+  "report": {
+    "dataset": "delhi",
+    "raw_rows": 289728,
+    "processed_rows": 289728,
+    "row_count_match": true,
+    "columns_standardized": {
+      "Date_Time_IST": "timestamp",
+      "Air_Temp": "temperature_c",
+      "Atm_Pres": "pressure_hpa",
+      "Rel_Hum": "relative_humidity_pct"
+    },
+    "quality_columns_added": [
+      "temperature_missing",
+      "humidity_missing",
+      "pressure_missing",
+      "any_core_missing",
+      "missing_core_count"
+    ],
+    "missing_counts": {
+      "temperature_missing": 807,
+      "humidity_missing": 807,
+      "pressure_missing": 811,
+      "any_core_missing": 813,
+      "all_three_missing": 806,
+      "exactly_one_missing": 7,
+      "zero_missing": 288915
+    },
+    "temperature_c_stats": {
+      "min": -37.88561,
+      "max": 46.78595,
+      "mean": 25.248479348185143,
+      "std": 7.805877506229068,
+      "negative_temperatures_preserved_count": 4
+    },
+    "pressure_hpa_stats": {
+      "min": 834.9246,
+      "max": 1086.672,
+      "mean": 935.5615141680829,
+      "std": 39.65507368642207,
+      "low_pressure_below_950_count": 170313,
+      "high_pressure_above_1030_count": 1284
+    },
+    "relative_humidity_pct_stats": {
+      "min": 9.675164,
+      "max": 100.0,
+      "mean": 66.8117322830393,
+      "std": 23.842942785861524
+    },
+    "timestamps_unique": true,
+    "timestamps_monotonic_increasing": true,
+    "start_timestamp": "2022-04-01 00:00:00",
+    "end_timestamp": "2024-12-31 23:55:00"
+  },
+  "validation": {
+    "all_passed": true,
+    "checks": {
+      "check_1_raw_row_count": true,
+      "check_2_processed_row_count": true,
+      "check_3_no_timestamps_removed": true,
+      "check_4_timestamps_unique": true,
+      "check_5_cadence_strictly_5min": true,
+      "check_6_missing_counts_preserved": true,
+      "check_7_temperature_missing_correct": true,
+      "check_8_humidity_missing_correct": true,
+      "check_9_pressure_missing_correct": true,
+      "check_10_any_core_missing_correct": true,
+      "check_11_missing_core_count_correct": true,
+      "check_12_42h_outage_preserved": true,
+      "check_13_negative_temps_preserved": true,
+      "check_14_pressure_values_unchanged": true
+    }
+  }
+}

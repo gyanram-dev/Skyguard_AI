@@ -1,0 +1,369 @@
+{
+  "inventory": {
+    "filename": "AWS_20220401_20241231.csv",
+    "file_path": "D:\\Sky\\AWS_20220401_20241231.csv",
+    "file_size_bytes": 24751027,
+    "row_count": 289728,
+    "column_count": 10,
+    "column_names": [
+      "Date_Time_IST",
+      "Wind_Spd",
+      "Wind_Dir",
+      "Air_Temp",
+      "Rel_Hum",
+      "Atm_Pres",
+      "Global_Rad",
+      "DiffuseRad",
+      "DirectRad",
+      "Rain"
+    ],
+    "inferred_dtypes": {
+      "Date_Time_IST": "str",
+      "Wind_Spd": "float64",
+      "Wind_Dir": "float64",
+      "Air_Temp": "float64",
+      "Rel_Hum": "float64",
+      "Atm_Pres": "float64",
+      "Global_Rad": "float64",
+      "DiffuseRad": "float64",
+      "DirectRad": "float64",
+      "Rain": "float64"
+    },
+    "timestamp_column": "Date_Time_IST",
+    "min_timestamp": "2022-04-01 00:00:00",
+    "max_timestamp": "2024-12-31 23:55:00",
+    "timezone_info": "Indian Standard Time (IST, UTC+05:30) indicated in column header"
+  },
+  "sampling_intervals": {
+    "expected_interval_minutes": 5,
+    "total_intervals": 289727,
+    "most_common_interval": "0 days 00:05:00",
+    "most_common_count": 289727,
+    "second_most_common_interval": null,
+    "second_most_common_count": 0,
+    "top_intervals_distribution": {
+      "0 days 00:05:00": 289727
+    },
+    "unexpected_intervals_count": 0,
+    "shortest_interval": "0 days 00:05:00",
+    "longest_interval": "0 days 00:05:00"
+  },
+  "core_variables": {
+    "temperature": {
+      "source_column": "Air_Temp",
+      "unit": "\u00b0C",
+      "dtype": "float64",
+      "missing_count": 807,
+      "missing_percentage": 0.2785,
+      "stats": {
+        "min": -37.88561,
+        "p0_1": 4.5449212,
+        "p1": 7.0197472,
+        "p5": 10.49029,
+        "p25": 19.93998,
+        "median": 26.76617,
+        "p75": 30.65746,
+        "p95": 36.77769,
+        "p99": 40.743298,
+        "p99_9": 42.89472360000006,
+        "max": 46.78595,
+        "mean": 25.248479348185143,
+        "std": 7.805877506229068
+      },
+      "conversion_notes": "Standard Celsius. No conversion required."
+    },
+    "atmospheric_pressure": {
+      "source_column": "Atm_Pres",
+      "unit": "hPa / mbar",
+      "dtype": "float64",
+      "missing_count": 811,
+      "missing_percentage": 0.2799,
+      "stats": {
+        "min": 834.9246,
+        "p0_1": 839.4567404000001,
+        "p1": 849.227048,
+        "p5": 865.58242,
+        "p25": 907.1703,
+        "median": 936.6711,
+        "p75": 972.7814,
+        "p95": 984.81494,
+        "p99": 1008.3168400000001,
+        "p99_9": 1062.674168,
+        "max": 1086.672,
+        "mean": 935.5615141680829,
+        "std": 39.655073686422064
+      },
+      "conversion_notes": "Atmospheric pressure in hPa/mbar. Values exhibit baseline calibration offsets."
+    },
+    "relative_humidity": {
+      "source_column": "Rel_Hum",
+      "unit": "%",
+      "dtype": "float64",
+      "missing_count": 807,
+      "missing_percentage": 0.2785,
+      "stats": {
+        "min": 9.675164,
+        "p0_1": 10.689770000000001,
+        "p1": 15.589942,
+        "p5": 23.80509,
+        "p25": 49.32579,
+        "median": 70.18671,
+        "p75": 86.26447,
+        "p95": 100.0,
+        "p99": 100.0,
+        "p99_9": 100.0,
+        "max": 100.0,
+        "mean": 66.8117322830393,
+        "std": 23.842942785861528
+      },
+      "conversion_notes": "Relative humidity percentage [0-100%]."
+    }
+  },
+  "duplicates": {
+    "completely_duplicated_rows_total": 0,
+    "unique_exact_duplicate_rows": 0,
+    "duplicate_timestamps_total_rows": 0,
+    "unique_duplicate_timestamps": 0,
+    "all_duplicate_timestamps_identical": true
+  },
+  "out_of_order": {
+    "out_of_order_transitions_count": 0,
+    "out_of_order_indices": []
+  },
+  "timestamp_gaps": {
+    "total_gaps": 0,
+    "total_missing_gap_observations": 0,
+    "longest_gap_duration": null
+  },
+  "missing_data": {
+    "per_column_missingness": {
+      "Date_Time_IST": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "Wind_Spd": {
+        "missing_count": 814,
+        "missing_percentage": 0.281
+      },
+      "Wind_Dir": {
+        "missing_count": 809,
+        "missing_percentage": 0.2792
+      },
+      "Air_Temp": {
+        "missing_count": 807,
+        "missing_percentage": 0.2785
+      },
+      "Rel_Hum": {
+        "missing_count": 807,
+        "missing_percentage": 0.2785
+      },
+      "Atm_Pres": {
+        "missing_count": 811,
+        "missing_percentage": 0.2799
+      },
+      "Global_Rad": {
+        "missing_count": 804,
+        "missing_percentage": 0.2775
+      },
+      "DiffuseRad": {
+        "missing_count": 906,
+        "missing_percentage": 0.3127
+      },
+      "DirectRad": {
+        "missing_count": 906,
+        "missing_percentage": 0.3127
+      },
+      "Rain": {
+        "missing_count": 796,
+        "missing_percentage": 0.2747
+      }
+    },
+    "joint_core_missingness": {
+      "all_three_missing": 806,
+      "exactly_two_missing": 0,
+      "exactly_one_missing": 7,
+      "zero_missing": 288915
+    },
+    "missing_runs_summary": {
+      "Air_Temp": {
+        "variable": "Air_Temp",
+        "number_of_missing_runs": 31,
+        "shortest_missing_run": 1,
+        "longest_missing_run": 504,
+        "longest_run_start": "2022-04-05 17:45:00",
+        "longest_run_end": "2022-04-07 11:40:00",
+        "length_distribution": {
+          "1": 10,
+          "2": 4,
+          "3": 1,
+          "4": 4,
+          "5": 1,
+          "6": 1,
+          "11": 1,
+          "14": 1,
+          "19": 2,
+          "22": 1,
+          "23": 1,
+          "24": 1,
+          "51": 1,
+          "72": 1,
+          "504": 1
+        }
+      },
+      "Atm_Pres": {
+        "variable": "Atm_Pres",
+        "number_of_missing_runs": 33,
+        "shortest_missing_run": 1,
+        "longest_missing_run": 504,
+        "longest_run_start": "2022-04-05 17:45:00",
+        "longest_run_end": "2022-04-07 11:40:00",
+        "length_distribution": {
+          "1": 14,
+          "2": 3,
+          "3": 1,
+          "4": 4,
+          "6": 1,
+          "12": 1,
+          "14": 1,
+          "19": 2,
+          "22": 1,
+          "23": 1,
+          "24": 1,
+          "51": 1,
+          "78": 1,
+          "504": 1
+        }
+      },
+      "Rel_Hum": {
+        "variable": "Rel_Hum",
+        "number_of_missing_runs": 32,
+        "shortest_missing_run": 1,
+        "longest_missing_run": 504,
+        "longest_run_start": "2022-04-05 17:45:00",
+        "longest_run_end": "2022-04-07 11:40:00",
+        "length_distribution": {
+          "1": 12,
+          "2": 3,
+          "3": 1,
+          "4": 4,
+          "5": 1,
+          "6": 1,
+          "11": 1,
+          "14": 1,
+          "19": 2,
+          "22": 1,
+          "23": 1,
+          "24": 1,
+          "51": 1,
+          "72": 1,
+          "504": 1
+        }
+      }
+    }
+  },
+  "value_quality": {
+    "Air_Temp": {
+      "nan_count": 807,
+      "positive_infinity_count": 0,
+      "negative_infinity_count": 0,
+      "unparseable_non_numeric_count": 0,
+      "has_value_corruption": false
+    },
+    "Atm_Pres": {
+      "nan_count": 811,
+      "positive_infinity_count": 0,
+      "negative_infinity_count": 0,
+      "unparseable_non_numeric_count": 0,
+      "has_value_corruption": false
+    },
+    "Rel_Hum": {
+      "nan_count": 807,
+      "positive_infinity_count": 0,
+      "negative_infinity_count": 0,
+      "unparseable_non_numeric_count": 0,
+      "has_value_corruption": false
+    }
+  },
+  "suspicious_temperature": {
+    "candidate_suspicious_temperature_count": 4,
+    "min_negative_temperature": -37.88561,
+    "max_negative_temperature": -5.486614,
+    "consecutive_negative_run_lengths": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "max_consecutive_negative_obs": 1
+  },
+  "suspicious_temperature_details": [
+    {
+      "row_index": 1162,
+      "timestamp": "2022-04-05 00:50:00",
+      "temperature": -37.88226,
+      "previous_temperature": 25.62459,
+      "next_temperature": 25.9919,
+      "relative_humidity": 26.52285,
+      "atmospheric_pressure": null,
+      "change_from_previous": -63.50685,
+      "change_to_next": 63.87416,
+      "label": "candidate_suspicious_temperature"
+    },
+    {
+      "row_index": 1171,
+      "timestamp": "2022-04-05 01:35:00",
+      "temperature": -5.486614,
+      "previous_temperature": 22.67255,
+      "next_temperature": 21.54439,
+      "relative_humidity": 27.6421,
+      "atmospheric_pressure": null,
+      "change_from_previous": -28.159164,
+      "change_to_next": 27.031004,
+      "label": "candidate_suspicious_temperature"
+    },
+    {
+      "row_index": 1173,
+      "timestamp": "2022-04-05 01:45:00",
+      "temperature": -37.88561,
+      "previous_temperature": 21.54439,
+      "next_temperature": 5.190211,
+      "relative_humidity": 27.57237,
+      "atmospheric_pressure": null,
+      "change_from_previous": -59.43,
+      "change_to_next": 43.075821,
+      "label": "candidate_suspicious_temperature"
+    },
+    {
+      "row_index": 1262,
+      "timestamp": "2022-04-05 09:10:00",
+      "temperature": -37.86884,
+      "previous_temperature": NaN,
+      "next_temperature": NaN,
+      "relative_humidity": 26.82956,
+      "atmospheric_pressure": null,
+      "change_from_previous": NaN,
+      "change_to_next": NaN,
+      "label": "candidate_suspicious_temperature"
+    }
+  ],
+  "suspicious_pressure": {
+    "low_pressure_threshold": 950.0,
+    "high_pressure_threshold": 1030.0,
+    "observations_below_low_count": 170313,
+    "observations_above_high_count": 1284,
+    "total_candidate_pressure_observations": 171597,
+    "percentage_candidate_pressure": 59.2269,
+    "total_regimes_count": 629,
+    "min_pressure_observed": 834.9246,
+    "max_pressure_observed": 1086.672
+  },
+  "multivariate_consistency": {
+    "methodology": "Robust IQR standardized step delta inconsistency",
+    "jump_z_threshold": 8.0,
+    "quiescent_z_threshold": 2.0,
+    "candidate_temp_isolated_jumps": 38,
+    "candidate_pres_isolated_jumps": 211,
+    "candidate_rh_isolated_jumps": 75,
+    "total_multivariate_candidates": 324
+  }
+}
