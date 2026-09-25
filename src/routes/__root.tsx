@@ -104,12 +104,8 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        {/* Apply the persisted theme before first paint to avoid a light/dark flash. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(localStorage.getItem("skyguard-theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}})();`,
-          }}
-        />
+        {/* Guarantee light mode before first paint — dark is a session-only toggle, never persisted. */}
+        <script dangerouslySetInnerHTML={{ __html: `document.documentElement.classList.remove("dark");` }} />
         <HeadContent />
       </head>
       <body>

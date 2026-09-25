@@ -196,28 +196,14 @@ const statusLabels: Record<Status, string> = {
 
 type Theme = "light" | "dark";
 
-const THEME_STORAGE_KEY = "skyguard-theme";
-
 function LiveOverview() {
   const [selectedStationId, setSelectedStationId] = useState<string | null>("DEL-01");
   const [selectedAlert, setSelectedAlert] = useState<AlertItem>(alerts[0] as AlertItem);
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "light";
-    try {
-      return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
-    } catch {
-      return "light";
-    }
-  });
+  const [theme, setTheme] = useState<Theme>("light");
   const selectedStation = stations.find((station) => station.id === selectedStationId) ?? null;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      // Private-mode storage failures must not break the dashboard.
-    }
   }, [theme]);
 
   const selectStation = (station: Station) => {
@@ -232,8 +218,8 @@ function LiveOverview() {
   };
 
   return (
-    <main className="min-h-screen bg-background p-3 text-foreground lg:h-screen lg:overflow-hidden">
-      <div className="dashboard-shell mx-auto flex min-h-[876px] max-w-[1880px] overflow-hidden rounded-[1.4rem] border border-border bg-surface shadow-dashboard lg:h-full lg:min-h-0">
+    <main className="flex min-h-screen flex-col bg-background text-foreground lg:h-screen lg:overflow-hidden">
+      <div className="dashboard-shell flex min-h-[876px] flex-1 overflow-hidden bg-surface lg:h-full lg:min-h-0">
         <Sidebar />
 
         <section className="flex min-w-0 flex-1 flex-col">

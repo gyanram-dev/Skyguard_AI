@@ -349,7 +349,4 @@
 @media (prefers-reduced-motion: reduce) {
   .station-hotspot[data-selected="true"]::before { animation: none; }
 }
-
-@media (min-width: 1700px) {
-  .dashboard-shell { max-height: 1056px; }
-}
+
