@@ -1,0 +1,355 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-surface-blue-tint: var(--surface-blue-tint);
+  --color-success-deep: var(--success-deep);
+  --color-warning-deep: var(--warning-deep);
+  --color-anomaly-deep: var(--anomaly-deep);
+  --color-offline-deep: var(--offline-deep);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-anomaly: var(--anomaly);
+  --color-anomaly-soft: var(--anomaly-soft);
+  --color-anomaly-foreground: var(--anomaly-foreground);
+  --color-offline: var(--offline);
+  --color-offline-soft: var(--offline-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-highlight: var(--sidebar-highlight);
+  --shadow-dashboard: var(--shadow-dashboard);
+  --shadow-soft: var(--shadow-soft);
+  --shadow-logo: var(--shadow-logo);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #FFFFFF;
+  --foreground: #102F4A;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --card-foreground: #102F4A;
+  --popover: #FFFFFF;
+  --popover-foreground: #102F4A;
+  --primary: #20B8C8;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #1899A8;
+  --surface-blue-tint: #EEF7FA;
+  --secondary: #EEF7FA;
+  --secondary-foreground: #102F4A;
+  --muted: #F7FAFC;
+  --muted-foreground: #506678;
+  --accent: #E8F1F6;
+  --accent-foreground: #102F4A;
+  --destructive: #E65353;
+  --destructive-foreground: #FFFFFF;
+  --border: #D8E4EA;
+  --input: #D8E4EA;
+  --border-strong: #C7D9E3;
+  --ring: #20B8C8;
+  --success: #19B889;
+  --success-soft: #DDF6EB;
+  --success-foreground: #FFFFFF;
+  --success-deep: #0E7A52;
+  --warning: #F0B429;
+  --warning-soft: #FFF0C7;
+  --warning-foreground: #FFFFFF;
+  --warning-deep: #7A5200;
+  --anomaly: #E65353;
+  --anomaly-soft: #FFE1E1;
+  --anomaly-foreground: #FFFFFF;
+  --anomaly-deep: #A33A3A;
+  --offline: #8A9AA5;
+  --offline-soft: #EAEFF2;
+  --offline-foreground: #FFFFFF;
+  --offline-deep: #4C5F69;
+  --info: #12669A;
+  --info-soft: #DDF5F8;
+  --info-foreground: #FFFFFF;
+  --sky: #20B8C8;
+  --sky-soft: #DDF5F8;
+  --sidebar: #0E2A4F;
+  --sidebar-foreground: #EAF3F8;
+  --sidebar-primary: #1E6F91;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1E6F91;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #164066;
+  --sidebar-muted: #9DB1BE;
+  --sidebar-highlight: #6DE0EA;
+  --chart-blue: #12669A;
+  --chart-green: #19B889;
+  --chart-alert: #E65353;
+  --chart-context: #20B8C8;
+  --chart-grid: #E6EEF2;
+  --chart-hover: #EDF3F6;
+  --shadow-dashboard: 0 18px 45px rgb(16 47 77 / 0.10);
+  --shadow-soft: 0 5px 18px rgb(16 47 77 / 0.08);
+  --shadow-logo: 0 8px 22px rgb(24 175 199 / 0.35);
+  color-scheme: light;
+}
+
+/* Night operations mode: same navy/cyan weather-operations language as light.
+   The 3D India asset itself is untouched; only the panel around it adapts. */
+.dark {
+  --background: #081B2A;
+  --foreground: #F4F8FA;
+  --surface: #0D273B;
+  --card: #0D273B;
+  --card-foreground: #F4F8FA;
+  --popover: #102E43;
+  --popover-foreground: #F4F8FA;
+  --primary: #2AA9E8;
+  --primary-foreground: #081B2A;
+  --primary-hover: #4CCDE0;
+  --surface-blue-tint: #12354B;
+  --secondary: #12354B;
+  --secondary-foreground: #F4F8FA;
+  --muted: #12354B;
+  --muted-foreground: #B7CBD6;
+  --accent: #123F58;
+  --accent-foreground: #F4F8FA;
+  --destructive: #F26B6B;
+  --destructive-foreground: #081B2A;
+  --border: #27495D;
+  --input: #34586C;
+  --border-strong: #34586C;
+  --ring: #2BC1D3;
+  --success: #20C997;
+  --success-soft: #10414A;
+  --success-foreground: #081B2A;
+  --success-deep: #20C997;
+  --warning: #F2B84B;
+  --warning-soft: #323E3E;
+  --warning-foreground: #081B2A;
+  --warning-deep: #F2B84B;
+  --anomaly: #F26B6B;
+  --anomaly-soft: #242E40;
+  --anomaly-foreground: #081B2A;
+  --anomaly-deep: #F26B6B;
+  --offline: #94A6AF;
+  --offline-soft: #233B4E;
+  --offline-foreground: #081B2A;
+  --offline-deep: #94A6AF;
+  --info: #2BC1D3;
+  --info-soft: #124053;
+  --info-foreground: #081B2A;
+  --sky: #2BC1D3;
+  --sky-soft: #124053;
+  --sidebar: #0A2235;
+  --sidebar-foreground: #EAF3F7;
+  --sidebar-primary: #2BC1D3;
+  --sidebar-primary-foreground: #081B2A;
+  --sidebar-accent: #123F58;
+  --sidebar-accent-foreground: #63C6E4;
+  --sidebar-border: #27495D;
+  --sidebar-muted: #9CB5C1;
+  --sidebar-highlight: #63C6E4;
+  --chart-blue: #2AA9E8;
+  --chart-green: #20C997;
+  --chart-alert: #F26B6B;
+  --chart-context: #2BC1D3;
+  --chart-grid: #223F53;
+  --chart-hover: #16303E;
+  --shadow-dashboard: 0 18px 45px rgb(2 8 15 / 0.6);
+  --shadow-soft: 0 5px 18px rgb(2 8 15 / 0.5);
+  --shadow-logo: 0 8px 22px rgb(43 193 211 / 0.3);
+  color-scheme: dark;
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  html { font-family: var(--font-sans); }
+  body {
+    margin: 0;
+    min-width: 1180px;
+    background-color: var(--background);
+    color: var(--foreground);
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  button { letter-spacing: 0; }
+  .panel, .metric-card, .map-card {
+    transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+}
+
+@utility panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility metric-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 0.65rem 0.8rem;
+  box-shadow: var(--shadow-soft);
+}
+
+@utility map-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(130% 80% at 50% 0%, var(--info-soft), transparent 60%),
+    radial-gradient(130% 90% at 50% 115%, var(--success-soft), transparent 60%),
+    var(--muted);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+@utility status-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+@utility status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.55rem;
+  font-weight: 800;
+}
+
+@utility status-healthy { background: var(--success-soft); color: var(--success-deep); }
+@utility status-review { background: var(--warning-soft); color: var(--warning-deep); }
+@utility status-anomaly { background: var(--anomaly-soft); color: var(--anomaly-deep); }
+@utility status-offline { background: var(--offline-soft); color: var(--offline-deep); }
+
+@utility section-kicker {
+  color: var(--info);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@utility map-stage {
+  container-type: size;
+  background-image: radial-gradient(circle at 50% 92%, rgb(24 175 199 / 0.14), transparent 43%);
+}
+
+@utility map-world {
+  /* Maximal contain fill: 0.5rem safe margin per side so artwork never
+     touches the panel boundary. Height-bound in wide panels, so the full
+     3:2 canvas (and every hotspot positioned in % of it) always fits. */
+  width: min(calc(100cqw - 1rem), calc((100cqh - 1rem) * 1.5));
+  aspect-ratio: 3 / 2;
+  flex: none;
+}
+
+.station-hotspot {
+  width: 2rem;
+  height: 2rem;
+  transform: translate(-50%, -50%);
+}
+
+.station-hotspot[data-status="healthy"] { --pin: var(--success); }
+.station-hotspot[data-status="review"] { --pin: var(--warning); }
+.station-hotspot[data-status="anomaly"] { --pin: var(--anomaly); }
+.station-hotspot[data-status="offline"] { --pin: var(--offline); }
+
+.station-hotspot::after {
+  content: "";
+  position: absolute;
+  inset: 0.55rem;
+  border: 2px solid #FFFFFF;
+  border-radius: 999px;
+  background: var(--pin, var(--success));
+  box-shadow: 0 1px 4px rgb(16 47 77 / 0.35);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.station-hotspot:hover::after,
+.station-hotspot[data-selected="true"]::after {
+  transform: scale(1.3);
+  box-shadow:
+    0 0 0 5px color-mix(in oklch, var(--pin) 22%, transparent),
+    0 1px 4px rgb(16 47 77 / 0.35);
+}
+
+.station-hotspot[data-selected="true"]::before {
+  content: "";
+  position: absolute;
+  inset: -0.5rem;
+  border: 2px solid var(--pin, var(--primary));
+  border-radius: 999px;
+  animation: station-pulse 1.9s ease-out infinite;
+}
+
+@keyframes station-pulse {
+  0% { transform: scale(0.65); opacity: 0.8; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .station-hotspot[data-selected="true"]::before { animation: none; }
+}
+
+@media (min-width: 1700px) {
+  .dashboard-shell { max-height: 1056px; }
+}
