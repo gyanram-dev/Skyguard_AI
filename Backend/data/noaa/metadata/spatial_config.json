@@ -1,0 +1,29 @@
+{
+  "k_maximum": 3,
+  "radius_km": 600.0,
+  "temporal_tolerance": "\u00b130 minutes (nearest real observation; no interpolation)",
+  "timestamp_basis": "UTC (Delhi AWS IST converted IST-5:30)",
+  "variables": {
+    "temp": "temperature_c",
+    "rh": "relative_humidity_pct",
+    "pres": "altimeter_setting_hpa"
+  },
+  "pressure_basis": "altimeter_setting_hpa",
+  "pressure_basis_note": "Altimeter (QNH, hPa) is the only pressure field with universal coverage; station-level and sea-level pressures are never mixed into it.",
+  "reference_formula": "neighbor_median = median of available neighbor observations (>= 1)",
+  "dispersion_formula": "MAD = median(|neighbor_i - median(neighbors)|), needs >= 2",
+  "score_formula": "spatial_robust_score = |target - neighbor_median| / MAD; NaN when < 2 neighbors or MAD == 0; higher = stronger inconsistency, NOT a probability",
+  "minimum_neighbor_rule": "reference needs >= 1; score needs >= 2 with MAD > 0",
+  "confidence_rule": {
+    "UNAVAILABLE": "no target value or 0 available neighbors",
+    "LOW_CONTEXT": "1 available neighbor, or degenerate (MAD == 0) dispersion",
+    "MEDIUM_CONTEXT": ">= 2 available neighbors but fewer than expected",
+    "HIGH_CONTEXT": "all expected neighbors available with a valid score"
+  },
+  "delhi_context_stations": [
+    "INI0000VIDD",
+    "INI0000VIJP",
+    "INI0000VILK",
+    "INI0000VABP"
+  ]
+}

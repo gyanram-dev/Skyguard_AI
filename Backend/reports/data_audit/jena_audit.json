@@ -1,0 +1,278 @@
+{
+  "inventory": {
+    "filename": "jena_climate_2009_2016.csv",
+    "file_path": "D:\\Sky\\jena_climate_2009_2016.csv",
+    "file_size_bytes": 43164220,
+    "row_count": 420551,
+    "column_count": 15,
+    "column_names": [
+      "Date Time",
+      "p (mbar)",
+      "T (degC)",
+      "Tpot (K)",
+      "Tdew (degC)",
+      "rh (%)",
+      "VPmax (mbar)",
+      "VPact (mbar)",
+      "VPdef (mbar)",
+      "sh (g/kg)",
+      "H2OC (mmol/mol)",
+      "rho (g/m**3)",
+      "wv (m/s)",
+      "max. wv (m/s)",
+      "wd (deg)"
+    ],
+    "inferred_dtypes": {
+      "Date Time": "str",
+      "p (mbar)": "float64",
+      "T (degC)": "float64",
+      "Tpot (K)": "float64",
+      "Tdew (degC)": "float64",
+      "rh (%)": "float64",
+      "VPmax (mbar)": "float64",
+      "VPact (mbar)": "float64",
+      "VPdef (mbar)": "float64",
+      "sh (g/kg)": "float64",
+      "H2OC (mmol/mol)": "float64",
+      "rho (g/m**3)": "float64",
+      "wv (m/s)": "float64",
+      "max. wv (m/s)": "float64",
+      "wd (deg)": "float64"
+    },
+    "timestamp_column": "Date Time",
+    "min_timestamp": "2009-01-01 00:10:00",
+    "max_timestamp": "2017-01-01 00:00:00",
+    "timezone_info": "No explicit offset in headers/strings (Jena, Germany / CET-CEST)"
+  },
+  "sampling_intervals": {
+    "expected_interval_minutes": 10,
+    "total_intervals": 420550,
+    "most_common_interval": "0 days 00:10:00",
+    "most_common_count": 420218,
+    "second_most_common_interval": "0 days 00:00:00",
+    "second_most_common_count": 327,
+    "top_intervals_distribution": {
+      "0 days 00:10:00": 420218,
+      "0 days 00:00:00": 327,
+      "0 days 00:20:00": 2,
+      "0 days 00:30:00": 1,
+      "0 days 16:00:00": 1,
+      "3 days 02:20:00": 1
+    },
+    "unexpected_intervals_count": 332,
+    "shortest_interval": "0 days 00:00:00",
+    "longest_interval": "3 days 02:20:00"
+  },
+  "core_variables": {
+    "temperature": {
+      "source_column": "T (degC)",
+      "unit": "degC",
+      "dtype": "float64",
+      "missing_count": 0,
+      "missing_percentage": 0.0,
+      "stats": {
+        "min": -23.01,
+        "p0_1": -17.1,
+        "p1": -10.09,
+        "p5": -3.86,
+        "p25": 3.36,
+        "median": 9.42,
+        "p75": 15.47,
+        "p95": 23.15,
+        "p99": 28.44,
+        "p99_9": 33.39,
+        "max": 37.28,
+        "mean": 9.450147354304233,
+        "std": 8.423365210385153
+      },
+      "conversion_notes": "Standard Celsius. No conversion required."
+    },
+    "atmospheric_pressure": {
+      "source_column": "p (mbar)",
+      "unit": "mbar",
+      "dtype": "float64",
+      "missing_count": 0,
+      "missing_percentage": 0.0,
+      "stats": {
+        "min": 913.6,
+        "p0_1": 954.04,
+        "p1": 966.89,
+        "p5": 974.95,
+        "p25": 984.2,
+        "median": 989.58,
+        "p75": 994.72,
+        "p95": 1002.49,
+        "p99": 1007.74,
+        "p99_9": 1012.09,
+        "max": 1015.35,
+        "mean": 989.2127760961216,
+        "std": 8.358480696599633
+      },
+      "conversion_notes": "1 mbar = 1 hPa. Equivalent barometric metric."
+    },
+    "relative_humidity": {
+      "source_column": "rh (%)",
+      "unit": "%",
+      "dtype": "float64",
+      "missing_count": 0,
+      "missing_percentage": 0.0,
+      "stats": {
+        "min": 12.95,
+        "p0_1": 27.5155,
+        "p1": 35.13,
+        "p5": 44.105000000000004,
+        "p25": 65.21,
+        "median": 79.3,
+        "p75": 89.4,
+        "p95": 97.2,
+        "p99": 99.4,
+        "p99_9": 100.0,
+        "max": 100.0,
+        "mean": 76.0082594025457,
+        "std": 16.47617537158426
+      },
+      "conversion_notes": "Relative humidity percentage [0-100%]."
+    }
+  },
+  "duplicates": {
+    "completely_duplicated_rows_total": 654,
+    "unique_exact_duplicate_rows": 327,
+    "duplicate_timestamps_total_rows": 654,
+    "unique_duplicate_timestamps": 327,
+    "all_duplicate_timestamps_identical": true
+  },
+  "out_of_order": {
+    "out_of_order_transitions_count": 2,
+    "out_of_order_indices": [
+      78766,
+      274565
+    ]
+  },
+  "timestamp_gaps": {
+    "total_gaps": 5,
+    "total_missing_gap_observations": 544,
+    "longest_gap_duration": "3 days 02:20:00"
+  },
+  "missing_data": {
+    "per_column_missingness": {
+      "Date Time": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "p (mbar)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "T (degC)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "Tpot (K)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "Tdew (degC)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "rh (%)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "VPmax (mbar)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "VPact (mbar)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "VPdef (mbar)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "sh (g/kg)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "H2OC (mmol/mol)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "rho (g/m**3)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "wv (m/s)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "max. wv (m/s)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      },
+      "wd (deg)": {
+        "missing_count": 0,
+        "missing_percentage": 0.0
+      }
+    },
+    "joint_core_missingness": {
+      "all_three_missing": 0,
+      "exactly_two_missing": 0,
+      "exactly_one_missing": 0,
+      "zero_missing": 420551
+    },
+    "missing_runs_summary": {
+      "T (degC)": {
+        "variable": "T (degC)",
+        "number_of_missing_runs": 0,
+        "shortest_missing_run": 0,
+        "longest_missing_run": 0,
+        "longest_run_start": null,
+        "longest_run_end": null,
+        "length_distribution": {}
+      },
+      "p (mbar)": {
+        "variable": "p (mbar)",
+        "number_of_missing_runs": 0,
+        "shortest_missing_run": 0,
+        "longest_missing_run": 0,
+        "longest_run_start": null,
+        "longest_run_end": null,
+        "length_distribution": {}
+      },
+      "rh (%)": {
+        "variable": "rh (%)",
+        "number_of_missing_runs": 0,
+        "shortest_missing_run": 0,
+        "longest_missing_run": 0,
+        "longest_run_start": null,
+        "longest_run_end": null,
+        "length_distribution": {}
+      }
+    }
+  },
+  "value_quality": {
+    "T (degC)": {
+      "nan_count": 0,
+      "positive_infinity_count": 0,
+      "negative_infinity_count": 0,
+      "unparseable_non_numeric_count": 0,
+      "has_value_corruption": false
+    },
+    "p (mbar)": {
+      "nan_count": 0,
+      "positive_infinity_count": 0,
+      "negative_infinity_count": 0,
+      "unparseable_non_numeric_count": 0,
+      "has_value_corruption": false
+    },
+    "rh (%)": {
+      "nan_count": 0,
+      "positive_infinity_count": 0,
+      "negative_infinity_count": 0,
+      "unparseable_non_numeric_count": 0,
+      "has_value_corruption": false
+    }
+  }
+}

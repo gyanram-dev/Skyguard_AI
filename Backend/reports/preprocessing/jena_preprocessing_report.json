@@ -1,0 +1,58 @@
+{
+  "report": {
+    "dataset": "jena",
+    "raw_rows": 420551,
+    "processed_rows": 420224,
+    "duplicates_detected": 327,
+    "duplicates_removed": 327,
+    "expected_row_count": 420224,
+    "row_count_match": true,
+    "columns_standardized": {
+      "Date Time": "timestamp",
+      "T (degC)": "temperature_c",
+      "p (mbar)": "pressure_hpa",
+      "rh (%)": "relative_humidity_pct"
+    },
+    "temperature_c_stats": {
+      "min": -23.01,
+      "max": 37.28,
+      "mean": 9.442420756548888,
+      "std": 8.42113475460734,
+      "missing_count": 0
+    },
+    "pressure_hpa_stats": {
+      "min": 913.6,
+      "max": 1015.35,
+      "mean": 989.2141567592522,
+      "std": 8.360887744875493,
+      "missing_count": 0
+    },
+    "relative_humidity_pct_stats": {
+      "min": 12.95,
+      "max": 100.0,
+      "mean": 76.0287377922251,
+      "std": 16.460467162051682,
+      "missing_count": 0
+    },
+    "timestamps_unique": true,
+    "timestamps_monotonic_increasing": true,
+    "start_timestamp": "2009-01-01 00:10:00",
+    "end_timestamp": "2017-01-01 00:00:00"
+  },
+  "validation": {
+    "all_passed": true,
+    "checks": {
+      "check_1_raw_row_count": true,
+      "check_2_processed_row_count": true,
+      "check_3_duplicates_removed_count": true,
+      "check_4_timestamps_unique": true,
+      "check_5_timestamps_sorted_ascending": true,
+      "check_6_genuine_timestamp_gaps_remain": true,
+      "check_7_no_interpolation_occurred": true,
+      "check_8_no_missing_values_created": true,
+      "check_9_temperature_not_clipped": true,
+      "check_10_pressure_not_clipped": true,
+      "check_11_humidity_not_clipped": true
+    }
+  }
+}

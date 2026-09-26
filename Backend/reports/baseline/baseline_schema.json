@@ -1,0 +1,116 @@
+[
+  {
+    "column": "timestamp",
+    "category": "metadata",
+    "description": "Passthrough identifier from Phase 3 features",
+    "causal": true
+  },
+  {
+    "column": "source_dataset",
+    "category": "metadata",
+    "description": "Passthrough identifier from Phase 3 features",
+    "causal": true
+  },
+  {
+    "column": "temperature_c",
+    "category": "observation_passthrough",
+    "description": "Raw physical value, never modified (temperature_c)",
+    "causal": true
+  },
+  {
+    "column": "pressure_hpa",
+    "category": "observation_passthrough",
+    "description": "Raw physical value, never modified (pressure_hpa)",
+    "causal": true
+  },
+  {
+    "column": "relative_humidity_pct",
+    "category": "observation_passthrough",
+    "description": "Raw physical value, never modified (relative_humidity_pct)",
+    "causal": true
+  },
+  {
+    "column": "temperature_zscore_baseline",
+    "category": "zscore_view",
+    "description": "Causal 2h z-score; NaN when history/variance insufficient",
+    "causal": true
+  },
+  {
+    "column": "pressure_zscore_baseline",
+    "category": "zscore_view",
+    "description": "Causal 2h z-score; NaN when history/variance insufficient",
+    "causal": true
+  },
+  {
+    "column": "humidity_zscore_baseline",
+    "category": "zscore_view",
+    "description": "Causal 2h z-score; NaN when history/variance insufficient",
+    "causal": true
+  },
+  {
+    "column": "temperature_zscore_flag",
+    "category": "zscore_view",
+    "description": "1 if |z| > 3.0, 0 if within, NaN if z unavailable",
+    "causal": true
+  },
+  {
+    "column": "pressure_zscore_flag",
+    "category": "zscore_view",
+    "description": "1 if |z| > 3.0, 0 if within, NaN if z unavailable",
+    "causal": true
+  },
+  {
+    "column": "humidity_zscore_flag",
+    "category": "zscore_view",
+    "description": "1 if |z| > 3.0, 0 if within, NaN if z unavailable",
+    "causal": true
+  },
+  {
+    "column": "temperature_iqr_flag",
+    "category": "iqr_view",
+    "description": "1 if outside causal 2h Tukey bounds, 0 if inside, NaN if history missing",
+    "causal": true
+  },
+  {
+    "column": "pressure_iqr_flag",
+    "category": "iqr_view",
+    "description": "1 if outside causal 2h Tukey bounds, 0 if inside, NaN if history missing",
+    "causal": true
+  },
+  {
+    "column": "humidity_iqr_flag",
+    "category": "iqr_view",
+    "description": "1 if outside causal 2h Tukey bounds, 0 if inside, NaN if history missing",
+    "causal": true
+  },
+  {
+    "column": "statistical_flags_available",
+    "category": "combined",
+    "description": "Variables with >= 1 computable baseline view (0-3)",
+    "causal": true
+  },
+  {
+    "column": "statistical_anomaly_count",
+    "category": "combined",
+    "description": "Variables with any baseline flag == 1",
+    "causal": true
+  },
+  {
+    "column": "statistical_baseline_flag",
+    "category": "combined",
+    "description": "1 if any variable flagged, 0 if all clear, NaN if nothing computable",
+    "causal": true
+  },
+  {
+    "column": "statistical_baseline_reason",
+    "category": "combined",
+    "description": "Firing components or insufficient_history/missing_input/data_quality_excluded",
+    "causal": true
+  },
+  {
+    "column": "baseline_status",
+    "category": "combined",
+    "description": "COMPUTED, INSUFFICIENT_HISTORY, or DATA_QUALITY_EXCLUDED",
+    "causal": true
+  }
+]

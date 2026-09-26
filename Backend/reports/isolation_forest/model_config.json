@@ -1,0 +1,74 @@
+{
+  "jena": {
+    "model_params": {
+      "n_estimators": 200,
+      "max_samples": "auto",
+      "contamination": "auto",
+      "max_features": 1.0,
+      "bootstrap": false,
+      "random_state": 26073,
+      "n_jobs": -1
+    },
+    "random_seed": 26073,
+    "training_source": "data/processed/jena_clean.csv",
+    "training_data": "clean pre-benchmark observations",
+    "benchmark_train_used_for_fit": false,
+    "synthetic_training_contamination": 0,
+    "threshold_method": "99% percentile of eligible training raw scores",
+    "threshold_raw": 0.026259994424697897,
+    "threshold_quantile": 0.99,
+    "train_range": [
+      "2009-01-01 00:10:00",
+      "2013-10-17 22:50:00"
+    ],
+    "n_train_rows": 252134,
+    "n_train_eligible": 252132,
+    "n_train_fitted": 252026,
+    "train_above_threshold": {
+      "method": "99% percentile of eligible training raw scores",
+      "quantile": 0.99,
+      "n_train_scores": 252026,
+      "n_above_threshold": 2521,
+      "fraction_above_threshold": 0.010002936204994723
+    },
+    "eligibility_rule": "Phase 2.5 ml_eligible==1 AND feature-complete (94 allowlisted, no imputation)",
+    "sklearn_version": "1.9.1",
+    "score_convention": "HIGHER if_raw_score = MORE anomalous (-decision_function); if_anomaly_score = ECDF vs frozen train distribution in [0,1], NOT a probability"
+  },
+  "delhi": {
+    "model_params": {
+      "n_estimators": 200,
+      "max_samples": "auto",
+      "contamination": "auto",
+      "max_features": 1.0,
+      "bootstrap": false,
+      "random_state": 26073,
+      "n_jobs": -1
+    },
+    "random_seed": 26073,
+    "training_source": "data/processed/delhi_clean.csv",
+    "training_data": "clean pre-benchmark observations",
+    "benchmark_train_used_for_fit": false,
+    "synthetic_training_contamination": 0,
+    "threshold_method": "99% percentile of eligible training raw scores",
+    "threshold_raw": 0.035639253732814624,
+    "threshold_quantile": 0.99,
+    "train_range": [
+      "2022-04-01 00:00:00",
+      "2023-11-25 14:15:00"
+    ],
+    "n_train_rows": 173836,
+    "n_train_eligible": 173206,
+    "n_train_fitted": 172824,
+    "train_above_threshold": {
+      "method": "99% percentile of eligible training raw scores",
+      "quantile": 0.99,
+      "n_train_scores": 172824,
+      "n_above_threshold": 1729,
+      "fraction_above_threshold": 0.010004397537379068
+    },
+    "eligibility_rule": "Phase 2.5 ml_eligible==1 AND feature-complete (94 allowlisted, no imputation)",
+    "sklearn_version": "1.9.1",
+    "score_convention": "HIGHER if_raw_score = MORE anomalous (-decision_function); if_anomaly_score = ECDF vs frozen train distribution in [0,1], NOT a probability"
+  }
+}
