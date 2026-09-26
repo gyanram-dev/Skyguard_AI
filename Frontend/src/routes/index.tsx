@@ -126,6 +126,18 @@ function errorMessage(error: unknown): string {
   return "Request failed.";
 }
 
+/**
+ * Backend string fields occasionally serialize a missing value as the literal
+ * string "nan" (pandas NaN through str()). Treat those as missing so the UI
+ * never renders "nan" text and falls back to honest empty states instead.
+ */
+function cleanText(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const trimmed = value.trim();
+  if (trimmed === "" || trimmed.toLowerCase() === "nan") return null;
+  return value;
+}
+
 function formatTemp(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return `${value.toFixed(1)}°C`;
@@ -658,7 +670,7 @@ function MapLab({
                   <p className="flex justify-between">
                     <span>Root cause</span>
                     <strong className="text-foreground">
-                      {detail.root_cause.class ?? "Not available"}
+                      {cleanText(detail.root_cause.class) ?? "Not available"}
                     </strong>
                   </p>
                   <p className="flex justify-between">
@@ -794,8 +806,9 @@ function InvestigationBody({
       index,
     };
   });
-  const outcome = detail?.root_cause.class ?? alert.root_cause ?? alert.event;
-  const outcomeMessage = detail?.explanation.text ?? alert.summary ?? "No explanation available.";
+  const outcome = cleanText(detail?.root_cause.class) ?? cleanText(alert.root_cause) ?? alert.event;
+  const outcomeMessage =
+    cleanText(detail?.explanation.text) ?? cleanText(alert.summary) ?? "No explanation available.";
   const reviewLabel =
     status === "offline"
       ? "Data availability event"
