@@ -1,0 +1,118 @@
+{
+  "jena": {
+    "dataset": "jena",
+    "training_source": "data/processed/jena_clean.csv",
+    "training_period": [
+      "2009-01-01 00:10:00",
+      "2013-10-17 22:50:00"
+    ],
+    "n_clean_train_rows": 252134,
+    "detector_components": [
+      "statistical(z,iqr)",
+      "isolation_forest",
+      "lstm_autoencoder"
+    ],
+    "score_transformations": {
+      "z": "max|z| over T/P/RH -> ECDF vs clean-train",
+      "iqr": "combined binary flag -> ECDF vs clean-train (two-level)",
+      "if": "IsolationForest -decision_function -> ECDF vs clean-train",
+      "lstm": "final-timestep MSE -> ECDF vs clean-train",
+      "stat": "mean of available calibrated z/iqr"
+    },
+    "aggregation_methods": [
+      "ens_mean (equal-weight mean)",
+      "ens_median (median)",
+      "diag_mean/diag_median (4-input diagnostic)"
+    ],
+    "availability_policy": "FULL=3 components, PARTIAL=2, INSUFFICIENT<2 -> NaN",
+    "threshold_method": "99% percentile of clean-training ensemble scores",
+    "thresholds": {
+      "ens_mean": 0.9539736366100269,
+      "ens_median": 0.9777408434882399
+    },
+    "threshold_basis": {
+      "ens_mean": {
+        "method": "99% percentile of eligible training raw scores",
+        "quantile": 0.99,
+        "n_train_scores": 252062,
+        "n_above_threshold": 2521,
+        "fraction_above_threshold": 0.01000150756559894
+      },
+      "ens_median": {
+        "method": "99% percentile of eligible training raw scores",
+        "quantile": 0.99,
+        "n_train_scores": 252062,
+        "n_above_threshold": 2521,
+        "fraction_above_threshold": 0.01000150756559894
+      }
+    },
+    "benchmark_labels_used_for_calibration": false,
+    "benchmark_labels_used_for_threshold": false,
+    "benchmark_train_used_for_calibration": false,
+    "synthetic_training_contamination": 0,
+    "random_seeds": "inherited frozen components (IF 26073, LSTM 26073); no stochastic fitting in Phase 10",
+    "software_versions": {
+      "pandas": "3.0.6",
+      "numpy": "2.5.1",
+      "sklearn": "1.9.1"
+    }
+  },
+  "delhi": {
+    "dataset": "delhi",
+    "training_source": "data/processed/delhi_clean.csv",
+    "training_period": [
+      "2022-04-01 00:00:00",
+      "2023-11-25 14:15:00"
+    ],
+    "n_clean_train_rows": 173836,
+    "detector_components": [
+      "statistical(z,iqr)",
+      "isolation_forest",
+      "lstm_autoencoder"
+    ],
+    "score_transformations": {
+      "z": "max|z| over T/P/RH -> ECDF vs clean-train",
+      "iqr": "combined binary flag -> ECDF vs clean-train (two-level)",
+      "if": "IsolationForest -decision_function -> ECDF vs clean-train",
+      "lstm": "final-timestep MSE -> ECDF vs clean-train",
+      "stat": "mean of available calibrated z/iqr"
+    },
+    "aggregation_methods": [
+      "ens_mean (equal-weight mean)",
+      "ens_median (median)",
+      "diag_mean/diag_median (4-input diagnostic)"
+    ],
+    "availability_policy": "FULL=3 components, PARTIAL=2, INSUFFICIENT<2 -> NaN",
+    "threshold_method": "99% percentile of clean-training ensemble scores",
+    "thresholds": {
+      "ens_mean": 0.950953030885759,
+      "ens_median": 0.978295475557844
+    },
+    "threshold_basis": {
+      "ens_mean": {
+        "method": "99% percentile of eligible training raw scores",
+        "quantile": 0.99,
+        "n_train_scores": 173004,
+        "n_above_threshold": 1731,
+        "fraction_above_threshold": 0.010005549004647292
+      },
+      "ens_median": {
+        "method": "99% percentile of eligible training raw scores",
+        "quantile": 0.99,
+        "n_train_scores": 173004,
+        "n_above_threshold": 1731,
+        "fraction_above_threshold": 0.010005549004647292
+      }
+    },
+    "benchmark_labels_used_for_calibration": false,
+    "benchmark_labels_used_for_threshold": false,
+    "benchmark_train_used_for_calibration": false,
+    "synthetic_training_contamination": 0,
+    "random_seeds": "inherited frozen components (IF 26073, LSTM 26073); no stochastic fitting in Phase 10",
+    "software_versions": {
+      "pandas": "3.0.6",
+      "numpy": "2.5.1",
+      "sklearn": "1.9.1"
+    }
+  }
+}

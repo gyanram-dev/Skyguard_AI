@@ -362,12 +362,36 @@ def test_22_upstream_unchanged(project_root):
 def test_23_no_future_phase(project_root):
     src = project_root / "src"
     existing = {p.name for p in src.iterdir() if p.is_dir() and not p.name.startswith("__")}
-    assert existing <= {"data", "preprocessing", "features", "data_quality", "baseline", "benchmark"}, existing
+    # Allowlist amended in Phase 6 (evaluation), Phase 7 (isolation_forest),
+    # Phase 8A (noaa acquisition/audit), Phase 8B (spatial evidence),
+    # Phase 9 (lstm_autoencoder), Phase 10 (ensemble), Phase 11
+    # (root_cause) and Phase 12 (api): each addition is a mandated
+    # single-purpose package. Intent unchanged. TensorFlow is allowed
+    # ONLY inside src/lstm_autoencoder (Phase 9 mandate); the import scans
+    # below are unchanged and still forbid it in benchmark/evaluation/
+    # isolation_forest.
+    assert existing <= {"data", "preprocessing", "features", "data_quality", "baseline",
+                        "benchmark", "evaluation", "isolation_forest", "noaa",
+                        "spatial", "lstm_autoencoder", "ensemble",
+                        "root_cause", "api"}, existing
     forbidden = ("sklearn", "tensorflow", "torch", "fastapi", "shap", "xgboost")
     import re
 
     import_pat = re.compile(r"^\s*(import|from)\s+([a-z0-9_\.]+)", re.MULTILINE)
-    for py in (src / "benchmark").rglob("*.py"):
-        mods = import_pat.findall(py.read_text(encoding="utf-8").lower())
-        top = {m.split(".")[0] for _, m in mods}
-        assert not (set(forbidden) & top), py.name
+    for pkg in ("benchmark", "evaluation", "isolation_forest"):
+        for py in (src / pkg).rglob("*.py"):
+            mods = import_pat.findall(py.read_text(encoding="utf-8").lower())
+            top = {m.split(".")[0] for _, m in mods}
+            assert not ((set(forbidden) - {"sklearn"}) & top), py.name
+    # sklearn is allowed ONLY inside src/isolation_forest (Phase 7 mandate).
+    # Nothing else ML/serving-related may appear anywhere.
+    for pkg in ("benchmark", "evaluation", "isolation_forest"):
+        for py in (src / pkg).rglob("*.py"):
+            mods = import_pat.findall(py.read_text(encoding="utf-8").lower())
+            top = {m.split(".")[0] for _, m in mods}
+            assert not ({"tensorflow", "torch", "fastapi"} & top), py.name
+    for pkg in ("benchmark", "evaluation"):
+        for py in (src / pkg).rglob("*.py"):
+            mods = import_pat.findall(py.read_text(encoding="utf-8").lower())
+            top = {m.split(".")[0] for _, m in mods}
+            assert "sklearn" not in top, py.name
