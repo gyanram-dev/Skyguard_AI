@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppEvaluationRouteImport } from './routes/_app.evaluation'
 import { Route as AppJudgeProbeRouteImport } from './routes/_app.judge-probe'
 import { Route as AppNetworkHealthRouteImport } from './routes/_app.network-health'
 import { Route as AppAlertsIndexRouteImport } from './routes/_app/alerts/index'
@@ -27,6 +28,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEvaluationRoute = AppEvaluationRouteImport.update({
+  id: '/evaluation',
+  path: '/evaluation',
   getParentRoute: () => AppRoute,
 } as any)
 const AppJudgeProbeRoute = AppJudgeProbeRouteImport.update({
@@ -73,6 +79,7 @@ const AppStationsStationIdRoute = AppStationsStationIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/evaluation': typeof AppEvaluationRoute
   '/judge-probe': typeof AppJudgeProbeRoute
   '/network-health': typeof AppNetworkHealthRoute
   '/alerts/$alertId': typeof AppAlertsAlertIdRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/stations/': typeof AppStationsIndexRoute
 }
 export interface FileRoutesByTo {
+  '/evaluation': typeof AppEvaluationRoute
   '/judge-probe': typeof AppJudgeProbeRoute
   '/network-health': typeof AppNetworkHealthRoute
   '/': typeof AppIndexRoute
@@ -96,6 +104,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/evaluation': typeof AppEvaluationRoute
   '/_app/judge-probe': typeof AppJudgeProbeRoute
   '/_app/network-health': typeof AppNetworkHealthRoute
   '/_app/': typeof AppIndexRoute
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/evaluation'
     | '/judge-probe'
     | '/network-health'
     | '/alerts/$alertId'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/stations/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/evaluation'
     | '/judge-probe'
     | '/network-health'
     | '/'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/_app/evaluation'
     | '/_app/judge-probe'
     | '/_app/network-health'
     | '/_app/'
@@ -161,6 +173,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/evaluation': {
+      id: '/_app/evaluation'
+      path: '/evaluation'
+      fullPath: '/evaluation'
+      preLoaderRoute: typeof AppEvaluationRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/judge-probe': {
@@ -223,6 +242,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppEvaluationRoute: typeof AppEvaluationRoute
   AppJudgeProbeRoute: typeof AppJudgeProbeRoute
   AppNetworkHealthRoute: typeof AppNetworkHealthRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -235,6 +255,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppEvaluationRoute: AppEvaluationRoute,
   AppJudgeProbeRoute: AppJudgeProbeRoute,
   AppNetworkHealthRoute: AppNetworkHealthRoute,
   AppIndexRoute: AppIndexRoute,

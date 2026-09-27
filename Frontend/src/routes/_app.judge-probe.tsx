@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { FlaskConical } from "lucide-react";
 
@@ -440,7 +440,10 @@ function ProbeResultView({ result }: { result: ProbeResponse }) {
 
       <p className="text-[10px] leading-snug text-muted-foreground">
         {result.context.context_note} Data mode: {result.data_mode} (interactive historical replay,
-        not a live sensor feed).
+        not a live sensor feed).{" "}
+        <Link to="/evaluation" className="font-bold text-info hover:underline">
+          View evaluation evidence →
+        </Link>
       </p>
     </div>
   );

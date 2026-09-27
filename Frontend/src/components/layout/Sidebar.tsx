@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
+  Award,
   BarChart3,
   Bell,
   FlaskConical,
@@ -19,6 +20,7 @@ const navItems = [
   { label: "Investigations", icon: Search, to: "/investigations" },
   { label: "Network Health", icon: HeartPulse, to: "/network-health" },
   { label: "Judge Probe", icon: FlaskConical, to: "/judge-probe" },
+  { label: "Evaluation", icon: Award, to: "/evaluation" },
 ] as const;
 
 const idleClass = cn(buttonVariants({ variant: "sidebar" }), "w-full justify-start");

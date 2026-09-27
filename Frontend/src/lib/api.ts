@@ -400,3 +400,81 @@ export function probeObservation(payload: ProbePayload): Promise<ProbeResponse> 
     timeoutMs: PROBE_TIMEOUT_MS,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Evaluation evidence types mirroring Backend/src/api/schemas.py (Phase 17).
+// Frozen benchmark values served verbatim; missing stays null (N/A).
+// ---------------------------------------------------------------------------
+
+export interface DetectionEntry {
+  dataset: string;
+  split: string;
+  method: string;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  fpr: number | null;
+  fnr: number | null;
+  events: number | null;
+  events_detected: number | null;
+  event_recall: number | null;
+  latency_median_min: number | null;
+}
+
+export interface ModelComparisonEntry {
+  dataset: string;
+  split: string;
+  reference_method: string;
+  method: string;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  event_recall: number | null;
+  fpr: number | null;
+}
+
+export interface GeneralizationEntry {
+  dataset: string;
+  method: string;
+  id_precision: number | null;
+  id_recall: number | null;
+  id_f1: number | null;
+  id_event_recall: number | null;
+  ood_precision: number | null;
+  ood_recall: number | null;
+  ood_f1: number | null;
+  ood_event_recall: number | null;
+}
+
+export interface RootCauseClassStats {
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  support: number | null;
+}
+
+export interface RootCauseEntry {
+  dataset: string;
+  split: string;
+  n_diagnosed: number;
+  accuracy_incl_unknown: number | null;
+  accuracy_excl_unknown: number | null;
+  unknown_rate: number | null;
+  macro_f1: number | null;
+  per_class: Record<string, RootCauseClassStats>;
+}
+
+export interface EvaluationSummary {
+  data_mode: string;
+  provenance: Record<string, string>;
+  detection: DetectionEntry[];
+  model_comparison: ModelComparisonEntry[];
+  generalization: GeneralizationEntry[];
+  root_cause: RootCauseEntry[];
+  runtime: Record<string, unknown>;
+  notes: string[];
+}
+
+export function getEvaluationSummary(): Promise<EvaluationSummary> {
+  return request<EvaluationSummary>("/api/v1/evaluation/summary");
+}

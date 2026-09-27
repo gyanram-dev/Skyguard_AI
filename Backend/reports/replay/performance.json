@@ -1,0 +1,18 @@
+{
+  "measured_at": "2026-09-27",
+  "phase": "Phase 16 real-time historical replay",
+  "method": "Live measurement against the local FastAPI backend (uvicorn) with frozen artifacts. 300-row DEL-01 OOD replay plus a dedicated 20-row timing sample, both at requested speed 3600x over ws://localhost:8000/api/v1/live.",
+  "environment": "Windows 11, Python 3.14, TensorFlow CPU-only, single local machine (backend and measuring client on the same host).",
+  "connection_latency_s_warm": 2.1,
+  "per_reading_s": {
+    "median": 0.094,
+    "p95": 0.096,
+    "note": "Client-observed inter-arrival gap on 20 normal rows at requested 3600x; includes one TF predict call plus socket overhead per row. Anomalous rows cost more (SHAP)."
+  },
+  "throughput_rows_per_s": 10.7,
+  "sample_300_rows_s": 39,
+  "cold_model_load_s": 10,
+  "requested_speed": 3600,
+  "effective_speed": 2680,
+  "speed_note": "Requested 3600x could not be fully sustained (per-row inference, especially LSTM/SHAP on anomalous rows); the engine reported the achieved 2680x effective speed instead of pretending."
+}

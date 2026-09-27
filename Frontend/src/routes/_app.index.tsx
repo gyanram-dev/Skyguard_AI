@@ -877,7 +877,10 @@ function RecentAlerts({
               {healthyCount} stations are reporting normally
             </p>
             <p className="mt-0.5 text-[9px] text-muted-foreground">
-              Last network check: {formatDateTime(networkUpdated)}.
+              Last network check: {formatDateTime(networkUpdated)}.{" "}
+              <Link to="/evaluation" className="font-bold text-info hover:underline">
+                View evaluation evidence →
+              </Link>
             </p>
           </>
         ) : (

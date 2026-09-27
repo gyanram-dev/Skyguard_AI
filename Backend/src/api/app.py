@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from src.api import schemas as S
 from src.api.dependencies import API_VERSION, DataStore
 from src.api.services import health_service as HS
+from src.api.services import evaluation_service as ES
 from src.api.services import investigation_service as IV
 from src.api.services import network_service as NS
 from src.api.services import observation_service as OS
@@ -253,6 +254,17 @@ def probe_observation(payload: S.ProbeRequest) -> dict:
     except PS.ProbeError as exc:
         return JSONResponse(status_code=exc.status_code,
                             content={"detail": exc.detail, "code": exc.code})
+
+
+@app.get("/api/v1/evaluation/summary", response_model=S.EvaluationSummary)
+def evaluation_summary() -> dict:
+    """Frozen benchmark + runtime evidence (read-only, never recomputed)."""
+    store = get_store()
+    try:
+        return ES.load_evidence(store.root)
+    except RuntimeError as exc:
+        return JSONResponse(status_code=503,
+                            content={"detail": str(exc), "code": "artifacts_unavailable"})
 
 
 @app.websocket("/api/v1/live")

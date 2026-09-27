@@ -239,3 +239,65 @@ class ProbeResponse(BaseModel):
     evidence: ProbeEvidence
     root_cause: ProbeRootCause
     explanation: ProbeExplanation
+
+
+class DetectionEntry(BaseModel):
+    dataset: str
+    split: str
+    method: str = "ens_median"
+    precision: float | None = None
+    recall: float | None = None
+    f1: float | None = None
+    fpr: float | None = None
+    fnr: float | None = None
+    events: int | None = None
+    events_detected: int | None = None
+    event_recall: float | None = None
+    latency_median_min: float | None = None
+
+
+class ModelComparisonEntry(BaseModel):
+    dataset: str
+    split: str
+    reference_method: str
+    method: str
+    precision: float | None = None
+    recall: float | None = None
+    f1: float | None = None
+    event_recall: float | None = None
+    fpr: float | None = None
+
+
+class GeneralizationEntry(BaseModel):
+    dataset: str
+    method: str = "ens_median"
+    id_precision: float | None = None
+    id_recall: float | None = None
+    id_f1: float | None = None
+    id_event_recall: float | None = None
+    ood_precision: float | None = None
+    ood_recall: float | None = None
+    ood_f1: float | None = None
+    ood_event_recall: float | None = None
+
+
+class RootCauseEntry(BaseModel):
+    dataset: str
+    split: str
+    n_diagnosed: int
+    accuracy_incl_unknown: float | None = None
+    accuracy_excl_unknown: float | None = None
+    unknown_rate: float | None = None
+    macro_f1: float | None = None
+    per_class: dict = Field(default_factory=dict)
+
+
+class EvaluationSummary(BaseModel):
+    data_mode: str = "benchmark_evaluation"
+    provenance: dict = Field(default_factory=dict)
+    detection: list[DetectionEntry] = Field(default_factory=list)
+    model_comparison: list[ModelComparisonEntry] = Field(default_factory=list)
+    generalization: list[GeneralizationEntry] = Field(default_factory=list)
+    root_cause: list[RootCauseEntry] = Field(default_factory=list)
+    runtime: dict = Field(default_factory=dict)
+    notes: list[str] = Field(default_factory=list)

@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   getAlert,
   getAlerts,
+  getEvaluationSummary,
   getHealth,
   getNetworkSummary,
   getStation,
@@ -104,5 +105,16 @@ export function useProbeObservation() {
   return useMutation({
     mutationFn: (payload: ProbePayload) => probeObservation(payload),
     retry: false,
+  });
+}
+
+/** Frozen benchmark + runtime evidence (read-only presentation layer). */
+export function useEvaluation() {
+  return useQuery({
+    queryKey: ["evaluation-summary"],
+    queryFn: getEvaluationSummary,
+    staleTime: STALE_MS,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 }
