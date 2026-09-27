@@ -9,6 +9,10 @@ import { StatusBadge, DetailStat } from "@/components/common";
 import { HistoryChart, SensorSpark, toChartPoints } from "@/components/charts";
 import { EvidenceList, OutcomeBanner } from "@/components/evidence";
 import { KpiRow } from "@/components/kpi";
+import { ReplayControls } from "@/components/replay/ReplayControls";
+import { LiveEventFeed } from "@/components/replay/LiveEventFeed";
+import { useLiveReplay } from "@/hooks/useLiveReplay";
+import type { LiveAlert, LiveReading } from "@/lib/live";
 import {
   normalizeStatus,
   type AlertDetailResponse,
@@ -18,6 +22,8 @@ import {
 import type { DisplayStatus } from "@/lib/api";
 import {
   errorMessage,
+  cleanText,
+  formatConfidence,
   formatDateTime,
   formatHumidity,
   formatPressure,
@@ -62,6 +68,16 @@ export const Route = createFileRoute("/_app/")({
 function LiveOverview() {
   const [selectedStationId, setSelectedStationId] = useState<string | null>("DEL-01");
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const [livePreview, setLivePreview] = useState<{
+    summary: AlertSummary;
+    reading: LiveReading;
+  } | null>(null);
+
+  const live = useLiveReplay();
+  const liveActive =
+    live.replay.status === "running" ||
+    live.replay.status === "paused" ||
+    live.replay.status === "preparing";
 
   const networkQuery = useNetworkSummary();
   const stationsQuery = useStations();
@@ -72,13 +88,80 @@ function LiveOverview() {
     [stationsQuery.data],
   );
 
-  const selectedStation = useMemo(
-    () => mergedStations.find((station) => station.id === selectedStationId) ?? null,
-    [mergedStations, selectedStationId],
-  );
-
   const alerts = useMemo(() => alertsQuery.data?.alerts ?? [], [alertsQuery.data]);
   const recentAlerts = useMemo(() => alerts.slice(0, 50), [alerts]);
+
+  const liveSummaries = useMemo<AlertSummary[]>(
+    () =>
+      live.liveAlerts.map((alert) => ({
+        alert_id: alert.alert_id,
+        station_id: alert.station_id,
+        timestamp: alert.timestamp,
+        status: alert.status,
+        event: alert.event,
+        anomaly_score: alert.score,
+        root_cause: alert.root_cause,
+        root_cause_confidence: alert.confidence,
+        summary: alert.summary,
+      })),
+    [live.liveAlerts],
+  );
+  const liveIds = useMemo(
+    () => new Set(liveSummaries.map((alert) => alert.alert_id)),
+    [liveSummaries],
+  );
+
+  // Replay covers the detector-backed pipeline datasets only (DEL-01, JENA-01);
+  // the server rejects anything else with a structured error shown in the UI.
+  const replayStations = useMemo(() => {
+    const delhi = mergedStations.find((station) => station.id === "DEL-01");
+    return [
+      { id: "DEL-01", city: delhi?.city ?? "New Delhi" },
+      { id: "JENA-01", city: "Jena (backend)" },
+    ];
+  }, [mergedStations]);
+
+  const liveStations = useMemo<(MergedStation & { live?: LiveReading })[]>(
+    () =>
+      mergedStations.map((station) => {
+        const reading = liveActive ? live.latestByStation[station.id] : undefined;
+        if (!reading) return station;
+        const anomalous = reading.anomaly.detected;
+        const known = !!reading.root_cause.class && reading.root_cause.class !== "UNKNOWN";
+        return {
+          ...station,
+          status: anomalous
+            ? known
+              ? ("anomaly" as const)
+              : ("review" as const)
+            : reading.data_quality.ml_eligible
+              ? station.status
+              : ("offline" as const),
+          temperature: formatTemp(reading.observations.temperature_c),
+          live: reading,
+        };
+      }),
+    [mergedStations, live.latestByStation, liveActive],
+  );
+
+  const selectedStation = useMemo(
+    () => liveStations.find((station) => station.id === selectedStationId) ?? null,
+    [liveStations, selectedStationId],
+  );
+
+  const selectedLive =
+    liveActive && selectedStationId ? (live.latestByStation[selectedStationId] ?? null) : null;
+
+  const liveSeries = useMemo(() => {
+    const rows = live.recentReadings.filter((row) => row.station_id === selectedStationId);
+    const pick = (get: (row: LiveReading) => number | null) =>
+      rows.map((row, index) => ({ index, value: get(row) }));
+    return {
+      temperature: pick((row) => row.observations.temperature_c),
+      pressure: pick((row) => row.observations.pressure_hpa),
+      humidity: pick((row) => row.observations.relative_humidity_pct),
+    };
+  }, [live.recentReadings, selectedStationId]);
 
   useEffect(() => {
     if (selectedAlertId === null && alerts.length > 0) {
@@ -100,11 +183,23 @@ function LiveOverview() {
 
   const selectStation = (stationId: string) => {
     setSelectedStationId(stationId);
+    setLivePreview(null);
     const match = alerts.find((alert) => alert.station_id === stationId);
     if (match) setSelectedAlertId(match.alert_id);
   };
 
-  const selectAlert = (alert: AlertSummary) => {
+  const selectAlert = (alert: AlertSummary, isLive: boolean) => {
+    if (isLive) {
+      const liveAlert = live.liveAlerts.find((item) => item.alert_id === alert.alert_id);
+      const reading = live.recentReadings.find(
+        (row) => row.station_id === alert.station_id && row.sequence === liveAlert?.sequence,
+      );
+      if (liveAlert && reading) {
+        setLivePreview({ summary: alert, reading });
+        return;
+      }
+    }
+    setLivePreview(null);
     setSelectedAlertId(alert.alert_id);
     if (stationMapMeta.some((meta) => meta.id === alert.station_id)) {
       setSelectedStationId(alert.station_id);
@@ -118,26 +213,37 @@ function LiveOverview() {
         loading={networkQuery.isPending}
         error={networkQuery.isError ? errorMessage(networkQuery.error) : null}
       />
+      <section
+        className="panel grid shrink-0 grid-cols-1 gap-3 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+        aria-label="Live historical replay"
+      >
+        <ReplayControls live={live} stations={replayStations} />
+        <LiveEventFeed readings={live.recentReadings} limit={6} />
+      </section>
       <div className="grid min-h-[500px] shrink-0 grid-cols-1 gap-3 xl:h-[520px] xl:min-h-0 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] 2xl:h-[600px]">
         <MapLab
-          stations={mergedStations}
+          stations={liveStations}
           selectedStation={selectedStation}
           detail={stationDetailQuery.data}
           detailLoading={stationDetailQuery.isPending && detailStationId !== null}
           detailError={stationDetailQuery.isError}
           stationsLoading={stationsQuery.isPending}
           stationsError={stationsQuery.isError ? errorMessage(stationsQuery.error) : null}
+          liveActive={liveActive}
           onSelectStation={selectStation}
         />
         <InvestigationPanel
-          alert={selectedAlert}
+          alert={livePreview ? null : selectedAlert}
           alertsLoading={alertsQuery.isPending}
           alertsError={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
+          livePreview={livePreview}
         />
       </div>
       <RecentAlerts
         alerts={recentAlerts}
-        selectedAlertId={selectedAlertId}
+        liveAlerts={liveSummaries}
+        liveIds={liveIds}
+        selectedAlertId={livePreview ? livePreview.summary.alert_id : selectedAlertId}
         onSelectAlert={selectAlert}
         loading={alertsQuery.isPending}
         error={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
@@ -149,6 +255,9 @@ function LiveOverview() {
         stationId={detailStationId}
         stationLabel={selectedStation ? `${selectedStation.id} · ${selectedStation.city}` : null}
         dataAvailable={selectedStation?.api?.data_available === true}
+        liveReading={selectedLive}
+        liveSeries={liveSeries}
+        liveActive={liveActive}
       />
     </>
   );
@@ -162,18 +271,21 @@ function MapLab({
   detailError,
   stationsLoading,
   stationsError,
+  liveActive,
   onSelectStation,
 }: {
-  stations: MergedStation[];
-  selectedStation: MergedStation | null;
+  stations: (MergedStation & { live?: LiveReading })[];
+  selectedStation: (MergedStation & { live?: LiveReading }) | null;
   detail: StationDetailResponse | undefined;
   detailLoading: boolean;
   detailError: boolean;
   stationsLoading: boolean;
   stationsError: string | null;
+  liveActive: boolean;
   onSelectStation: (stationId: string) => void;
 }) {
   const available = selectedStation?.api?.data_available === true;
+  const liveReading = liveActive ? (selectedStation?.live ?? null) : null;
   return (
     <section
       className="map-card relative min-h-[440px] overflow-hidden xl:min-h-0"
@@ -240,6 +352,12 @@ function MapLab({
             <StatusBadge status={selectedStation.status} />
           </div>
           <p className="mt-1 text-[10px] text-muted-foreground">{selectedStation.city} station</p>
+          {liveReading && (
+            <p className="mt-1 text-[9px] font-bold text-success-deep" role="status">
+              Streamed {formatTime(liveReading.timestamp)} · score{" "}
+              {formatScore(liveReading.anomaly.score)}
+            </p>
+          )}
           {available ? (
             <>
               <div className="mt-2 flex items-end justify-between">
@@ -300,12 +418,26 @@ function InvestigationPanel({
   alert,
   alertsLoading,
   alertsError,
+  livePreview,
 }: {
   alert: AlertSummary | null;
   alertsLoading: boolean;
   alertsError: string | null;
+  livePreview: { summary: AlertSummary; reading: LiveReading } | null;
 }) {
   const detailQuery = useAlert(alert?.alert_id ?? null);
+
+  if (livePreview) {
+    return (
+      <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
+        <LiveInvestigationBody
+          key={livePreview.summary.alert_id}
+          summary={livePreview.summary}
+          reading={livePreview.reading}
+        />
+      </aside>
+    );
+  }
 
   if (alertsError) {
     return (
@@ -349,6 +481,100 @@ function InvestigationPanel({
         status={status}
       />
     </aside>
+  );
+}
+
+function LiveInvestigationBody({
+  summary,
+  reading,
+}: {
+  summary: AlertSummary;
+  reading: LiveReading;
+}) {
+  const navigate = useNavigate();
+  const status = normalizeStatus(summary.status, true);
+  const evidence = [
+    {
+      title: "Statistical evidence",
+      detail: `max|z|=${reading.evidence.statistical.raw?.toFixed(2) ?? "—"} (calibrated ${reading.evidence.statistical.calibrated?.toFixed(3) ?? "—"}).`,
+      source: "statistical",
+    },
+    {
+      title: "Isolation Forest evidence",
+      detail: `raw score=${reading.evidence.isolation_forest.raw?.toFixed(3) ?? "—"} (calibrated ${reading.evidence.isolation_forest.calibrated?.toFixed(3) ?? "—"}).`,
+      source: "isolation_forest",
+    },
+    {
+      title: "LSTM reconstruction evidence",
+      detail: `target MSE=${reading.evidence.lstm.raw?.toFixed(3) ?? "—"} (calibrated ${reading.evidence.lstm.calibrated?.toFixed(3) ?? "—"}).`,
+      source: "lstm",
+    },
+    {
+      title: "Ensemble decision",
+      detail: `score=${reading.anomaly.score?.toFixed(3) ?? "—"}; availability=${reading.anomaly.availability}.`,
+      source: "ensemble",
+    },
+  ];
+  return (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="section-kicker">{summary.station_id} / Investigation · Streamed</p>
+          <h2 className="mt-0.5 text-sm font-extrabold">{summary.event}</h2>
+        </div>
+        <StatusBadge status={status} />
+      </div>
+      <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+        <DetailStat
+          label="Streamed temperature"
+          value={formatTemp(reading.observations.temperature_c)}
+          emphasis
+          tone="bg-anomaly-soft"
+        />
+        <DetailStat
+          label="Streamed humidity"
+          value={formatHumidity(reading.observations.relative_humidity_pct)}
+          tone="bg-surface-blue-tint"
+        />
+        <DetailStat
+          label="Streamed pressure"
+          value={formatPressure(reading.observations.pressure_hpa)}
+          tone="bg-surface-blue-tint"
+          valueTone="text-info"
+        />
+      </div>
+      <div className="mt-2.5">
+        <EvidenceList evidence={evidence} loading={false} />
+      </div>
+      <div className="mt-2.5">
+        <OutcomeBanner
+          status={status}
+          outcome={cleanText(summary.root_cause) ?? summary.event}
+          message={
+            cleanText(reading.explanation.text) ??
+            "Streamed replay event assessed by the frozen pipeline."
+          }
+          rootCauseConfidence={reading.root_cause.confidence}
+          ensembleMethod="ens_median"
+        />
+      </div>
+      <div className="mt-2.5 grid grid-cols-1 gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            navigate({ to: "/stations/$stationId", params: { stationId: summary.station_id } })
+          }
+        >
+          <Eye />
+          View station
+        </Button>
+      </div>
+      <p className="mt-2 text-center text-[8px] text-muted-foreground">
+        Streamed event from accelerated historical replay — stored alert pages cover recorded
+        alerts.
+      </p>
+    </>
   );
 }
 
@@ -517,6 +743,8 @@ function InvestigationBody({
 
 function RecentAlerts({
   alerts,
+  liveAlerts,
+  liveIds,
   selectedAlertId,
   onSelectAlert,
   loading,
@@ -526,8 +754,10 @@ function RecentAlerts({
   networkLoading,
 }: {
   alerts: AlertSummary[];
+  liveAlerts: AlertSummary[];
+  liveIds: Set<string>;
   selectedAlertId: string | null;
-  onSelectAlert: (alert: AlertSummary) => void;
+  onSelectAlert: (alert: AlertSummary, isLive: boolean) => void;
   loading: boolean;
   error: string | null;
   healthyCount: number | null;
@@ -536,9 +766,13 @@ function RecentAlerts({
 }) {
   const navigate = useNavigate();
   const openAlert = (alert: AlertSummary) => {
-    onSelectAlert(alert);
-    navigate({ to: "/alerts/$alertId", params: { alertId: alert.alert_id } });
+    const isLive = liveIds.has(alert.alert_id);
+    onSelectAlert(alert, isLive);
+    if (!isLive) {
+      navigate({ to: "/alerts/$alertId", params: { alertId: alert.alert_id } });
+    }
   };
+  const rows = [...liveAlerts, ...alerts];
   return (
     <section className="panel shrink-0 p-4" aria-label="Recent alerts">
       <div className="flex items-center justify-between gap-2">
@@ -563,12 +797,12 @@ function RecentAlerts({
           Alerts unavailable: {error}
         </p>
       )}
-      {!loading && !error && alerts.length === 0 && (
+      {!loading && !error && rows.length === 0 && (
         <p className="mt-3 text-[10px] text-muted-foreground" role="status">
           No alerts in the current window.
         </p>
       )}
-      {!loading && !error && alerts.length > 0 && (
+      {!loading && !error && rows.length > 0 && (
         <>
           <div
             className="mt-3 grid grid-cols-[88px_minmax(0,1fr)_104px_128px_60px] gap-2 px-2.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-muted-foreground"
@@ -581,9 +815,10 @@ function RecentAlerts({
             <span className="text-right">Time</span>
           </div>
           <div className="mt-1.5 space-y-1.5">
-            {alerts.map((alert) => {
+            {rows.map((alert) => {
               const selected = selectedAlertId === alert.alert_id;
               const status = normalizeStatus(alert.status, true);
+              const isLive = liveIds.has(alert.alert_id);
               return (
                 <div
                   key={alert.alert_id}
@@ -604,7 +839,14 @@ function RecentAlerts({
                       : "border-border bg-card hover:border-primary/30 hover:bg-info-soft/50",
                   )}
                 >
-                  <strong className="text-[11px] font-extrabold">{alert.station_id}</strong>
+                  <strong className="text-[11px] font-extrabold">
+                    {alert.station_id}
+                    {isLive && (
+                      <span className="ml-1 rounded bg-success-soft px-1 text-[8px] font-extrabold text-success-deep">
+                        LIVE
+                      </span>
+                    )}
+                  </strong>
                   <span className="truncate text-[11px] font-semibold text-muted-foreground">
                     {alert.event}
                   </span>
@@ -671,14 +913,38 @@ function BottomInsights({
   stationId,
   stationLabel,
   dataAvailable,
+  liveReading,
+  liveSeries,
+  liveActive,
 }: {
   stationId: string | null;
   stationLabel: string | null;
   dataAvailable: boolean;
+  liveReading: LiveReading | null;
+  liveSeries: Record<HistoryVariable, Array<{ index: number; value: number | null }>>;
+  liveActive: boolean;
 }) {
   const temperature = useSensorSeries(dataAvailable ? stationId : null, "temperature");
   const pressure = useSensorSeries(dataAvailable ? stationId : null, "pressure");
   const humidity = useSensorSeries(dataAvailable ? stationId : null, "humidity");
+
+  const liveByKey: Record<
+    string,
+    { latest: number | null; values: Array<{ index: number; value: number | null }> }
+  > = {
+    Temperature: {
+      latest: liveReading?.observations.temperature_c ?? null,
+      values: liveSeries.temperature,
+    },
+    Pressure: {
+      latest: liveReading?.observations.pressure_hpa ?? null,
+      values: liveSeries.pressure,
+    },
+    Humidity: {
+      latest: liveReading?.observations.relative_humidity_pct ?? null,
+      values: liveSeries.humidity,
+    },
+  };
 
   const sensorCards = [
     {
@@ -718,17 +984,30 @@ function BottomInsights({
       <div className="grid grid-cols-3 gap-2.5">
         {sensorCards.map((sensor) => {
           const unavailable = !dataAvailable || stationId === null;
+          const live = liveActive && liveReading ? liveByKey[sensor.title] : null;
+          const liveValues = live && live.values.length > 0 ? live.values : null;
+          const values = liveValues ?? sensor.series.values;
+          const nonNull = values.filter(
+            (entry): entry is { index: number; value: number } => entry.value !== null,
+          );
+          const liveLatest = live?.latest ?? null;
+          const first = nonNull.length > 0 ? (nonNull[0]?.value ?? null) : null;
+          const last = nonNull.length > 0 ? (nonNull[nonNull.length - 1]?.value ?? null) : null;
+          const liveDelta =
+            liveLatest !== null && first !== null && nonNull.length > 1 ? liveLatest - first : null;
           const displayValue = unavailable
             ? "—"
-            : sensor.series.loading
-              ? "…"
-              : sensor.series.latest !== null
-                ? sensor.formatValue(sensor.series.latest)
-                : "—";
+            : liveLatest !== null
+              ? sensor.formatValue(liveLatest)
+              : sensor.series.loading
+                ? "…"
+                : sensor.series.latest !== null
+                  ? sensor.formatValue(sensor.series.latest)
+                  : "—";
           const displayDelta =
-            unavailable || sensor.series.delta === null
+            unavailable || (liveLatest !== null ? liveDelta === null : sensor.series.delta === null)
               ? "—"
-              : sensor.formatDelta(sensor.series.delta);
+              : sensor.formatDelta((liveLatest !== null ? liveDelta : sensor.series.delta) ?? 0);
           return (
             <article
               key={sensor.title}
@@ -750,10 +1029,10 @@ function BottomInsights({
                 </span>
               </div>
               <div className="mt-1 min-h-0 flex-1">
-                {!unavailable && sensor.series.values.length > 0 ? (
+                {!unavailable && values.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <SensorSpark
-                      values={sensor.series.values}
+                      values={values}
                       color={sensor.color}
                       gradientId={`fill-${sensor.title}`}
                     />
@@ -762,7 +1041,7 @@ function BottomInsights({
                   <p className="flex h-full items-center justify-center text-[9px] text-muted-foreground">
                     {unavailable
                       ? "Station unavailable."
-                      : sensor.series.loading
+                      : sensor.series.loading && liveLatest === null
                         ? "Loading history…"
                         : "No history available."}
                   </p>

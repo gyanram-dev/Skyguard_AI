@@ -8,7 +8,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -253,3 +253,17 @@ def probe_observation(payload: S.ProbeRequest) -> dict:
     except PS.ProbeError as exc:
         return JSONResponse(status_code=exc.status_code,
                             content={"detail": exc.detail, "code": exc.code})
+
+
+@app.websocket("/api/v1/live")
+async def live_replay(websocket: WebSocket) -> None:
+    """Accelerated historical replay over WebSocket (no live sensors)."""
+    from src.api.replay.engine import ReplaySession
+
+    try:
+        store = get_store()
+    except HTTPException:
+        await websocket.close(code=1011)
+        return
+    await websocket.accept()
+    await ReplaySession(store, websocket).handle()
