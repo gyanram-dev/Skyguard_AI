@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_app/alerts/")({
 function AlertsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AlertFilter>("all");
-  const alertsQuery = useAlerts(200);
+  const alertsQuery = useAlerts(1000);
 
   const alerts = useMemo(() => alertsQuery.data?.alerts ?? [], [alertsQuery.data]);
   const filtered = useMemo(

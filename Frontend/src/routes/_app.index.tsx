@@ -65,7 +65,7 @@ function LiveOverview() {
 
   const networkQuery = useNetworkSummary();
   const stationsQuery = useStations();
-  const alertsQuery = useAlerts(50);
+  const alertsQuery = useAlerts(1000);
 
   const mergedStations = useMemo(
     () => mergeStations(stationsQuery.data?.stations ?? []),
@@ -78,6 +78,7 @@ function LiveOverview() {
   );
 
   const alerts = useMemo(() => alertsQuery.data?.alerts ?? [], [alertsQuery.data]);
+  const recentAlerts = useMemo(() => alerts.slice(0, 50), [alerts]);
 
   useEffect(() => {
     if (selectedAlertId === null && alerts.length > 0) {
@@ -135,7 +136,7 @@ function LiveOverview() {
         />
       </div>
       <RecentAlerts
-        alerts={alerts}
+        alerts={recentAlerts}
         selectedAlertId={selectedAlertId}
         onSelectAlert={selectAlert}
         loading={alertsQuery.isPending}

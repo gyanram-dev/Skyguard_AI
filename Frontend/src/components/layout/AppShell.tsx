@@ -9,7 +9,7 @@ import { useAlerts, useHealth } from "@/hooks/useSkyguard";
 export function AppShell() {
   const [theme, setTheme] = useState<Theme>("light");
   const healthQuery = useHealth();
-  const alertsQuery = useAlerts(50);
+  const alertsQuery = useAlerts(1000);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");

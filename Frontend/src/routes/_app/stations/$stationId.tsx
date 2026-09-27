@@ -89,7 +89,7 @@ function StationDetailPage() {
   const { stationId } = Route.useParams();
   const navigate = useNavigate();
   const stationsQuery = useStations();
-  const alertsQuery = useAlerts(200);
+  const alertsQuery = useAlerts(1000);
 
   const summaryRow = useMemo(
     () => (stationsQuery.data?.stations ?? []).find((row) => row.station_id === stationId),
