@@ -1,64 +1,53 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Activity,
-  ArrowUpRight,
   AlertTriangle,
-  BarChart3,
+  ArrowUpRight,
   Bell,
   CloudSun,
   Droplets,
-  FlaskConical,
-  Gauge,
-  HeartPulse,
   Eye,
-  MapPin,
-  RadioTower,
-  Search,
-  ShieldCheck,
-  Sun,
-  Moon,
+  Gauge,
   Thermometer,
-  WifiOff,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Area, AreaChart, ResponsiveContainer } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  ApiError,
-  DATA_MODE_HISTORICAL_REPLAY,
   normalizeStatus,
-  type AlertDetailResponse,
   type AlertSummary,
   type DisplayStatus,
   type HistoryVariable,
-  type NetworkSummary,
   type StationDetailResponse,
   type StationSummary,
 } from "@/lib/api";
 import {
+  cleanText,
+  errorMessage,
+  formatDateTime,
+  formatHumidity,
+  formatPressure,
+  formatScore,
+  formatTemp,
+  formatTime,
+} from "@/lib/format";
+import {
   useAlert,
   useAlerts,
-  useHealth,
   useNetworkSummary,
   useStation,
   useStationHistory,
   useStations,
 } from "@/hooks/useSkyguard";
+import { DetailStat, StatusBadge, statusLabels } from "@/components/shared";
+import { HistoryChart } from "@/components/HistoryChart";
+import { EvidenceList } from "@/components/EvidenceList";
+import { NetworkKpis } from "@/components/NetworkKpis";
 
 const indiaAsset = { url: "/assets/india.png" };
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_app/")({
   head: () => ({
     meta: [
       { title: "Live Overview | SkyGuard AI" },
@@ -76,7 +65,7 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: LiveOverview,
+  component: OverviewPage,
 });
 
 // ---------------------------------------------------------------------------
@@ -111,90 +100,13 @@ type MergedStation = StationMapMeta & {
   api: StationSummary | undefined;
 };
 
-const statusLabels: Record<DisplayStatus, string> = {
-  healthy: "Healthy",
-  review: "Needs review",
-  anomaly: "Anomaly",
-  offline: "Offline",
-};
-
-type Theme = "light" | "dark";
-
-function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "Request failed.";
-}
-
-/**
- * Backend string fields occasionally serialize a missing value as the literal
- * string "nan" (pandas NaN through str()). Treat those as missing so the UI
- * never renders "nan" text and falls back to honest empty states instead.
- */
-function cleanText(value: string | null | undefined): string | null {
-  if (value === null || value === undefined) return null;
-  const trimmed = value.trim();
-  if (trimmed === "" || trimmed.toLowerCase() === "nan") return null;
-  return value;
-}
-
-function formatTemp(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "—";
-  return `${value.toFixed(1)}°C`;
-}
-
-function formatHumidity(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "Not available";
-  return `${value.toFixed(1)}% RH`;
-}
-
-function formatPressure(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "Not available";
-  return `${value.toFixed(1)} hPa`;
-}
-
-function formatScore(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "—";
-  return value.toFixed(3);
-}
-
-function formatTime(iso: string | null | undefined): string {
-  if (iso === null || iso === undefined || iso === "") return "—";
-  const date = new Date(iso);
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
-  const match = iso.match(/(\d{2}):(\d{2})/);
-  if (match) return `${match[1]}:${match[2]}`;
-  return iso;
-}
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (iso === null || iso === undefined || iso === "") return "Not available";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
-function LiveOverview() {
+function OverviewPage() {
   const [selectedStationId, setSelectedStationId] = useState<string | null>("DEL-01");
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<Theme>("light");
 
-  const healthQuery = useHealth();
   const networkQuery = useNetworkSummary();
   const stationsQuery = useStations();
-  const alertsQuery = useAlerts(50);
+  const alertsQuery = useAlerts();
 
   const stationsById = useMemo(() => {
     const map = new Map<string, StationSummary>();
@@ -238,14 +150,9 @@ function LiveOverview() {
   );
 
   // Station detail is only requested for stations that actually have backend
-  // data; offline/unmapped stations (AMD-06, HYD-07) render an unavailable
-  // state instead of erroring against a 404.
+  // data; offline/unmapped stations render an unavailable state instead.
   const detailStationId = selectedStation?.api?.data_available === true ? selectedStation.id : null;
   const stationDetailQuery = useStation(detailStationId);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
 
   const selectStation = (stationId: string) => {
     setSelectedStationId(stationId);
@@ -260,298 +167,42 @@ function LiveOverview() {
     }
   };
 
-  const dataMode =
-    healthQuery.data?.data_mode ??
-    stationsQuery.data?.data_mode ??
-    networkQuery.data?.data_mode ??
-    alertsQuery.data?.data_mode ??
-    null;
-  const backendFailed =
-    healthQuery.isError && stationsQuery.isError && networkQuery.isError && alertsQuery.isError;
-
   return (
-    <main className="flex min-h-screen flex-col bg-background text-foreground lg:h-screen lg:overflow-hidden">
-      <div className="dashboard-shell flex min-h-[876px] flex-1 overflow-hidden bg-surface lg:h-full lg:min-h-0">
-        <Sidebar alertCount={alertsQuery.data ? String(alerts.length) : null} />
-
-        <section className="flex min-w-0 flex-1 flex-col">
-          <Header
-            theme={theme}
-            onThemeChange={setTheme}
-            online={!backendFailed}
-            dataMode={dataMode}
-          />
-          <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 pt-0 lg:overflow-y-auto">
-            <KpiRow
-              summary={networkQuery.data}
-              loading={networkQuery.isPending}
-              error={networkQuery.isError ? errorMessage(networkQuery.error) : null}
-            />
-            <div className="grid min-h-[500px] shrink-0 grid-cols-1 gap-3 xl:h-[520px] xl:min-h-0 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] 2xl:h-[600px]">
-              <MapLab
-                stations={mergedStations}
-                selectedStation={selectedStation}
-                detail={stationDetailQuery.data}
-                detailLoading={stationDetailQuery.isPending && detailStationId !== null}
-                detailError={stationDetailQuery.isError}
-                stationsLoading={stationsQuery.isPending}
-                stationsError={stationsQuery.isError ? errorMessage(stationsQuery.error) : null}
-                onSelectStation={selectStation}
-              />
-              <InvestigationPanel
-                alert={selectedAlert}
-                alertsLoading={alertsQuery.isPending}
-                alertsError={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
-                isOnMap={
-                  selectedAlert
-                    ? stationMapMeta.some((meta) => meta.id === selectedAlert.station_id)
-                    : false
-                }
-                onViewStation={selectStation}
-              />
-            </div>
-            <RecentAlerts
-              alerts={alerts}
-              selectedAlertId={selectedAlertId}
-              onSelectAlert={selectAlert}
-              loading={alertsQuery.isPending}
-              error={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
-              healthyCount={networkQuery.data?.healthy ?? null}
-              networkUpdated={networkQuery.data?.last_updated ?? null}
-              networkLoading={networkQuery.isPending}
-            />
-            <BottomInsights
-              stationId={detailStationId}
-              stationLabel={
-                selectedStation ? `${selectedStation.id} · ${selectedStation.city}` : null
-              }
-              dataAvailable={selectedStation?.api?.data_available === true}
-            />
-          </div>
-        </section>
+    <>
+      <NetworkKpis
+        summary={networkQuery.data}
+        loading={networkQuery.isPending}
+        error={networkQuery.isError ? errorMessage(networkQuery.error) : null}
+      />
+      <div className="grid min-h-[500px] shrink-0 grid-cols-1 gap-3 xl:h-[520px] xl:min-h-0 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] 2xl:h-[600px]">
+        <MapLab
+          stations={mergedStations}
+          selectedStation={selectedStation}
+          detail={stationDetailQuery.data}
+          detailLoading={stationDetailQuery.isPending && detailStationId !== null}
+          detailError={stationDetailQuery.isError}
+          stationsLoading={stationsQuery.isPending}
+          stationsError={stationsQuery.isError ? errorMessage(stationsQuery.error) : null}
+          onSelectStation={selectStation}
+        />
+        <InvestigationPreview alert={selectedAlert} alertsLoading={alertsQuery.isPending} />
       </div>
-    </main>
-  );
-}
-
-const navItems = [
-  { label: "Overview", icon: BarChart3, active: true },
-  { label: "Stations", icon: MapPin },
-  { label: "Alerts", icon: Bell },
-  { label: "Investigations", icon: Search },
-  { label: "Network Health", icon: HeartPulse },
-  { label: "Judge Probe", icon: FlaskConical },
-];
-
-function Sidebar({ alertCount }: { alertCount: string | null }) {
-  return (
-    <aside className="hidden w-[176px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 text-sidebar-foreground lg:flex">
-      <div className="flex items-center gap-2 px-2">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-logo">
-          <ShieldCheck className="size-6" strokeWidth={2.4} />
-        </div>
-        <div>
-          <p className="text-base font-extrabold leading-none text-sidebar-foreground">
-            SkyGuard <span className="text-sidebar-highlight">AI</span>
-          </p>
-          <p className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-sidebar-muted">
-            Climate intelligence
-          </p>
-        </div>
-      </div>
-      <p className="mt-3 px-2 text-[10px] font-medium text-sidebar-muted">
-        Trusted Data. Safer Tomorrow.
-      </p>
-
-      <nav className="mt-8 space-y-1.5" aria-label="Primary navigation">
-        {navItems.map((item) => (
-          <Button
-            key={item.label}
-            variant={item.active ? "sidebarActive" : "sidebar"}
-            className="w-full justify-start"
-            title={item.label}
-          >
-            <item.icon />
-            <span>{item.label}</span>
-            {item.label === "Alerts" && alertCount !== null && (
-              <span className="ml-auto rounded-full bg-anomaly px-1.5 py-0.5 text-[9px] text-anomaly-foreground">
-                {alertCount}
-              </span>
-            )}
-          </Button>
-        ))}
-      </nav>
-    </aside>
-  );
-}
-
-function Header({
-  theme,
-  onThemeChange,
-  online,
-  dataMode,
-}: {
-  theme: Theme;
-  onThemeChange: (theme: Theme) => void;
-  online: boolean;
-  dataMode: string | null;
-}) {
-  const replay = dataMode === DATA_MODE_HISTORICAL_REPLAY;
-  return (
-    <header className="flex h-[72px] shrink-0 items-center justify-between px-5">
-      <div>
-        <h1 className="text-[25px] font-extrabold leading-tight text-foreground">Live Overview</h1>
-        <p className="text-xs font-medium text-muted-foreground">
-          National weather station monitoring and anomaly intelligence
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        {online ? (
-          <span className="status-pill bg-success-soft text-success-deep">
-            <span className="status-dot bg-success" />
-            System Online
-          </span>
-        ) : (
-          <span className="status-pill bg-offline-soft text-offline-deep">
-            <span className="status-dot bg-offline" />
-            Backend Unreachable
-          </span>
-        )}
-        {replay ? (
-          <span
-            className="status-pill bg-info-soft text-info"
-            title="API data_mode: historical_replay — observations are replayed history, not a live sensor feed."
-          >
-            <Activity className="size-3.5" />
-            Historical Replay
-          </span>
-        ) : (
-          <span className="status-pill bg-info-soft text-info">
-            <Activity className="size-3.5" />
-            {dataMode ?? "Connecting…"}
-          </span>
-        )}
-        <div
-          role="group"
-          aria-label="Color theme"
-          className="ml-1 flex items-center rounded-full border border-border bg-card p-1 shadow-soft"
-        >
-          <button
-            type="button"
-            onClick={() => onThemeChange("light")}
-            aria-pressed={theme === "light"}
-            aria-label="Light mode"
-            title="Light mode"
-            className={cn(
-              "flex size-7 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              theme === "light"
-                ? "bg-info-soft text-info"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Sun className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onThemeChange("dark")}
-            aria-pressed={theme === "dark"}
-            aria-label="Dark mode"
-            title="Dark mode"
-            className={cn(
-              "flex size-7 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              theme === "dark"
-                ? "bg-info-soft text-info"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Moon className="size-4" />
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function KpiRow({
-  summary,
-  loading,
-  error,
-}: {
-  summary: NetworkSummary | undefined;
-  loading: boolean;
-  error: string | null;
-}) {
-  const value = (n: number | undefined) => {
-    if (loading) return "…";
-    if (error || n === undefined) return "—";
-    return String(n);
-  };
-  const kpis: Array<{
-    label: string;
-    value: string;
-    icon: ComponentType<{ className?: string }>;
-    tone: string;
-  }> = [
-    {
-      label: "Stations Monitored",
-      value: value(summary?.stations_monitored),
-      icon: RadioTower,
-      tone: "bg-sky-soft text-sky",
-    },
-    {
-      label: "Healthy",
-      value: value(summary?.healthy),
-      icon: ShieldCheck,
-      tone: "bg-success-soft text-success",
-    },
-    {
-      label: "Needs Review",
-      value: value(summary?.needs_review),
-      icon: AlertTriangle,
-      tone: "bg-warning-soft text-warning",
-    },
-    {
-      label: "Offline",
-      value: value(summary?.offline),
-      icon: WifiOff,
-      tone: "bg-offline-soft text-offline",
-    },
-    {
-      label: "Network Health",
-      value: loading
-        ? "…"
-        : error || summary === undefined
-          ? "—"
-          : `${summary.network_health_pct}%`,
-      icon: HeartPulse,
-      tone: "bg-info-soft text-info",
-    },
-  ];
-
-  return (
-    <section aria-label="Network summary">
-      <div className="grid shrink-0 grid-cols-5 gap-2.5">
-        {kpis.map((kpi) => (
-          <article key={kpi.label} className="metric-card">
-            <span className={cn("flex size-9 items-center justify-center rounded-xl", kpi.tone)}>
-              <kpi.icon className="size-[18px]" />
-            </span>
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground">{kpi.label}</p>
-              <p className="text-lg font-extrabold leading-tight">{kpi.value}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-      {error && (
-        <p
-          className="mt-1.5 rounded-xl border border-offline/30 bg-offline-soft px-3 py-1.5 text-[10px] font-semibold text-offline-deep"
-          role="alert"
-        >
-          Network summary unavailable: {error}
-        </p>
-      )}
-    </section>
+      <RecentPreview
+        alerts={alerts.slice(0, 5)}
+        selectedAlertId={selectedAlertId}
+        onSelectAlert={selectAlert}
+        loading={alertsQuery.isPending}
+        error={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
+        healthyCount={networkQuery.data?.healthy ?? null}
+        networkUpdated={networkQuery.data?.last_updated ?? null}
+        networkLoading={networkQuery.isPending}
+      />
+      <BottomInsights
+        stationId={detailStationId}
+        stationLabel={selectedStation ? `${selectedStation.id} · ${selectedStation.city}` : null}
+        dataAvailable={selectedStation?.api?.data_available === true}
+      />
+    </>
   );
 }
 
@@ -668,12 +319,6 @@ function MapLab({
                     <strong className="text-foreground">{detail.data_quality.status}</strong>
                   </p>
                   <p className="flex justify-between">
-                    <span>Root cause</span>
-                    <strong className="text-foreground">
-                      {cleanText(detail.root_cause.class) ?? "Not available"}
-                    </strong>
-                  </p>
-                  <p className="flex justify-between">
                     <span>Updated</span>
                     <strong className="text-foreground">
                       {formatDateTime(detail.station.last_updated)}
@@ -681,6 +326,13 @@ function MapLab({
                   </p>
                 </div>
               )}
+              <Link
+                to="/stations/$stationId"
+                params={{ stationId: selectedStation.id }}
+                className="mt-2 block text-right text-[9px] font-bold text-info hover:underline"
+              >
+                Station details →
+              </Link>
             </>
           ) : (
             <div className="mt-2">
@@ -696,46 +348,15 @@ function MapLab({
   );
 }
 
-function StatusBadge({ status }: { status: DisplayStatus }) {
-  return (
-    <span className={cn("status-badge", `status-${status}`)}>
-      <span className="status-dot" />
-      {statusLabels[status]}
-    </span>
-  );
-}
-
-function InvestigationPanel({
+function InvestigationPreview({
   alert,
   alertsLoading,
-  alertsError,
-  isOnMap,
-  onViewStation,
 }: {
   alert: AlertSummary | null;
   alertsLoading: boolean;
-  alertsError: string | null;
-  isOnMap: boolean;
-  onViewStation: (stationId: string) => void;
 }) {
-  const [actionNotice, setActionNotice] = useState("");
   const detailQuery = useAlert(alert?.alert_id ?? null);
-
-  useEffect(() => {
-    setActionNotice("");
-  }, [alert?.alert_id]);
-
-  if (alertsError) {
-    return (
-      <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
-        <p className="section-kicker">Investigation</p>
-        <h2 className="mt-0.5 text-sm font-extrabold">Alerts unavailable</h2>
-        <p className="mt-2 text-[10px] text-muted-foreground" role="alert">
-          {alertsError}
-        </p>
-      </aside>
-    );
-  }
+  const detail = detailQuery.data;
 
   if (alertsLoading || alert === null) {
     return (
@@ -753,62 +374,17 @@ function InvestigationPanel({
     );
   }
 
-  const detail = detailQuery.data;
   const status = normalizeStatus(alert.status, true);
-
-  return (
-    <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
-      <InvestigationBody
-        key={alert.alert_id}
-        alert={alert}
-        detail={detail}
-        detailLoading={detailQuery.isPending}
-        detailError={detailQuery.isError ? errorMessage(detailQuery.error) : null}
-        status={status}
-        actionNotice={actionNotice}
-        setActionNotice={setActionNotice}
-        isOnMap={isOnMap}
-        onViewStation={onViewStation}
-      />
-    </aside>
-  );
-}
-
-function InvestigationBody({
-  alert,
-  detail,
-  detailLoading,
-  detailError,
-  status,
-  actionNotice,
-  setActionNotice,
-  isOnMap,
-  onViewStation,
-}: {
-  alert: AlertSummary;
-  detail: AlertDetailResponse | undefined;
-  detailLoading: boolean;
-  detailError: string | null;
-  status: DisplayStatus;
-  actionNotice: string;
-  setActionNotice: (notice: string) => void;
-  isOnMap: boolean;
-  onViewStation: (stationId: string) => void;
-}) {
   const observations = detail?.observations;
   const historyVariable = detail?.history.variable ?? "temperature";
   const historyHours = detail?.history.hours ?? 24;
-  const historySeries = (detail?.history.series ?? []).map((point, index) => {
+  const historySeries = (detail?.history.series ?? []).map((point) => {
     const raw = point[historyVariable];
     return {
       time: formatTime(point.timestamp),
       recorded: typeof raw === "number" ? raw : null,
-      index,
     };
   });
-  const outcome = cleanText(detail?.root_cause.class) ?? cleanText(alert.root_cause) ?? alert.event;
-  const outcomeMessage =
-    cleanText(detail?.explanation.text) ?? cleanText(alert.summary) ?? "No explanation available.";
   const reviewLabel =
     status === "offline"
       ? "Data availability event"
@@ -817,7 +393,7 @@ function InvestigationBody({
         : "Review needed";
 
   return (
-    <>
+    <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="section-kicker">{alert.station_id} / Investigation</p>
@@ -837,17 +413,17 @@ function InvestigationBody({
           {reviewLabel}
         </span>
       </div>
-      {detailLoading && (
+      {detailQuery.isPending && (
         <p className="mt-2 text-[10px] text-muted-foreground" role="status">
           Loading investigation detail…
         </p>
       )}
-      {detailError && (
+      {detailQuery.isError && (
         <p
           className="mt-2 rounded-xl border border-offline/30 bg-offline-soft px-2.5 py-2 text-[9px] font-semibold text-offline-deep"
           role="alert"
         >
-          Could not load full investigation detail: {detailError}
+          Could not load full investigation detail: {errorMessage(detailQuery.error)}
         </p>
       )}
       <div className="mt-2.5 grid grid-cols-3 gap-1.5">
@@ -856,7 +432,7 @@ function InvestigationBody({
           value={
             observations
               ? formatTemp(observations.temperature_c)
-              : detailLoading
+              : detailQuery.isPending
                 ? "…"
                 : "Not available"
           }
@@ -868,7 +444,7 @@ function InvestigationBody({
           value={
             observations
               ? formatHumidity(observations.relative_humidity_pct)
-              : detailLoading
+              : detailQuery.isPending
                 ? "…"
                 : "Not available"
           }
@@ -879,7 +455,7 @@ function InvestigationBody({
           value={
             observations
               ? formatPressure(observations.pressure_hpa)
-              : detailLoading
+              : detailQuery.isPending
                 ? "…"
                 : "Not available"
           }
@@ -891,27 +467,12 @@ function InvestigationBody({
         <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">
           Why this needs review
         </p>
-        <div className="mt-1.5 space-y-1.5">
-          {detail && detail.evidence.length > 0 ? (
-            detail.evidence.map((item, index) => (
-              <div key={`${item.source}-${index}`} className="flex gap-2">
-                <span
-                  className={cn(
-                    "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full text-[8px] font-extrabold",
-                    index === 0 ? "bg-warning-soft text-warning-deep" : "bg-info-soft text-info",
-                  )}
-                >
-                  {index + 1}
-                </span>
-                <p className="text-[9px] leading-snug">
-                  <strong className="block text-foreground">{item.title}</strong>
-                  <span className="text-muted-foreground">{item.detail}</span>
-                </p>
-              </div>
-            ))
+        <div className="mt-1.5">
+          {detail ? (
+            <EvidenceList evidence={detail.evidence} />
           ) : (
             <p className="text-[9px] text-muted-foreground">
-              {detailLoading ? "Loading evidence…" : "No evidence items available for this alert."}
+              {detailQuery.isPending ? "Loading evidence…" : "No evidence items available."}
             </p>
           )}
         </div>
@@ -928,32 +489,12 @@ function InvestigationBody({
             </span>
           </div>
         </div>
-        <div className="mt-1 h-[72px]">
-          {historySeries.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={historySeries} margin={{ top: 4, right: 3, bottom: 0, left: 3 }}>
-                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-                <XAxis
-                  dataKey="time"
-                  tick={{ fontSize: 7, fill: "var(--muted-foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
-                <Line
-                  type="monotone"
-                  dataKey="recorded"
-                  stroke="var(--chart-alert)"
-                  dot={false}
-                  strokeWidth={2.5}
-                  connectNulls={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+        <div className="mt-1">
+          {detail ? (
+            <HistoryChart data={historySeries} />
           ) : (
-            <p className="flex h-full items-center justify-center text-[9px] text-muted-foreground">
-              {detailLoading ? "Loading history…" : "No history available."}
+            <p className="flex h-[72px] items-center justify-center text-[9px] text-muted-foreground">
+              {detailQuery.isPending ? "Loading history…" : "No history available."}
             </p>
           )}
         </div>
@@ -980,59 +521,38 @@ function InvestigationBody({
                   : "text-warning-deep",
             )}
           >
-            {outcome}
+            {cleanText(detail?.root_cause.class) ?? cleanText(alert.root_cause) ?? alert.event}
           </strong>
-          <span className="text-muted-foreground">{outcomeMessage}</span>
-          {detail && (
-            <span className="mt-1 block text-muted-foreground">
-              Root-cause confidence:{" "}
-              {detail.root_cause.confidence !== null && detail.root_cause.confidence !== undefined
-                ? `${(detail.root_cause.confidence * 100).toFixed(0)}%`
-                : "Not available"}{" "}
-              · Ensemble: {detail.ensemble_method}
-            </span>
-          )}
-          {!detail && alert.anomaly_score !== null && alert.anomaly_score !== undefined && (
-            <span className="mt-1 block text-muted-foreground">
-              Anomaly score: {formatScore(alert.anomaly_score)}
-            </span>
-          )}
+          <span className="text-muted-foreground">
+            {cleanText(detail?.explanation.text) ??
+              cleanText(alert.summary) ??
+              "No explanation available."}
+          </span>
         </p>
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-2">
-        <Button
-          size="sm"
-          onClick={() => setActionNotice("Investigation detail loaded from historical replay.")}
+        <Link
+          to="/investigations/$alertId"
+          params={{ alertId: alert.alert_id }}
+          className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
         >
           <ArrowUpRight />
           Open investigation
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            onViewStation(alert.station_id);
-            setActionNotice(
-              isOnMap
-                ? `${alert.station_id} is highlighted on the map.`
-                : `${alert.station_id} is backend-only and not on the India map.`,
-            );
-          }}
+        </Link>
+        <Link
+          to="/stations/$stationId"
+          params={{ stationId: alert.station_id }}
+          className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-strong bg-background px-3 text-xs font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
         >
           <Eye />
           View station
-        </Button>
+        </Link>
       </div>
-      {actionNotice && (
-        <p className="mt-2 text-center text-[8px] font-semibold text-info" role="status">
-          {actionNotice}
-        </p>
-      )}
-    </>
+    </aside>
   );
 }
 
-function RecentAlerts({
+function RecentPreview({
   alerts,
   selectedAlertId,
   onSelectAlert,
@@ -1051,6 +571,7 @@ function RecentAlerts({
   networkUpdated: string | null;
   networkLoading: boolean;
 }) {
+  const navigate = useNavigate();
   return (
     <section className="panel shrink-0 p-4" aria-label="Recent alerts">
       <div className="flex items-center justify-between gap-2">
@@ -1058,9 +579,14 @@ function RecentAlerts({
           <p className="section-kicker">Attention queue</p>
           <h2 className="mt-1 text-lg font-extrabold">Recent Alerts</h2>
         </div>
-        <span className="flex size-8 items-center justify-center rounded-xl bg-anomaly-soft text-anomaly">
-          <Bell className="size-4" />
-        </span>
+        <div className="flex items-center gap-2">
+          <Link to="/alerts" className="text-[10px] font-bold text-info hover:underline">
+            View all →
+          </Link>
+          <span className="flex size-8 items-center justify-center rounded-xl bg-anomaly-soft text-anomaly">
+            <Bell className="size-4" />
+          </span>
+        </div>
       </div>
       {loading && (
         <p className="mt-3 text-[10px] text-muted-foreground" role="status">
@@ -1100,7 +626,13 @@ function RecentAlerts({
                 <button
                   key={alert.alert_id}
                   type="button"
-                  onClick={() => onSelectAlert(alert)}
+                  onClick={() => {
+                    onSelectAlert(alert);
+                    navigate({
+                      to: "/alerts/$alertId",
+                      params: { alertId: alert.alert_id },
+                    });
+                  }}
                   aria-pressed={selected}
                   title={alert.summary}
                   className={cn(
@@ -1149,36 +681,6 @@ function RecentAlerts({
         )}
       </div>
     </section>
-  );
-}
-
-function DetailStat({
-  label,
-  value,
-  emphasis = false,
-  tone,
-  valueTone,
-}: {
-  label: string;
-  value: string;
-  emphasis?: boolean;
-  tone?: string;
-  valueTone?: string;
-}) {
-  return (
-    <div
-      className={cn("min-w-0 rounded-xl p-2", tone ?? (emphasis ? "bg-anomaly-soft" : "bg-muted"))}
-    >
-      <p className="text-[7px] font-semibold leading-tight text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          "mt-1 break-words text-[11px] font-extrabold leading-tight",
-          valueTone ?? (emphasis && "text-anomaly"),
-        )}
-      >
-        {value}
-      </p>
-    </div>
   );
 }
 
