@@ -1,57 +1,41 @@
-import { useState, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { Outlet } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
-import { Header } from "@/components/layout/Header";
-import { Sidebar, SidebarNav } from "@/components/layout/Sidebar";
-import { ThemeProvider } from "@/components/layout/ThemeContext";
+import { Header, type Theme } from "@/components/layout/Header";
+import { MobileNav, Sidebar } from "@/components/layout/Sidebar";
+import { useAlerts, useHealth } from "@/hooks/useSkyguard";
 
-/** Shared application shell: sidebar + route-aware header + page content. */
-export function AppShell({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}) {
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+/** Shared application shell: sidebar + header + theme, rendered once. */
+export function AppShell() {
+  const [theme, setTheme] = useState<Theme>("light");
+  const healthQuery = useHealth();
+  const alertsQuery = useAlerts(50);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  const dataMode = healthQuery.data?.data_mode ?? alertsQuery.data?.data_mode ?? null;
+  const backendFailed = healthQuery.isError && alertsQuery.isError;
 
   return (
-    <ThemeProvider>
-      <main className="flex min-h-screen flex-col bg-background text-foreground lg:h-screen lg:overflow-hidden">
-        <div className="dashboard-shell flex min-h-[876px] flex-1 overflow-hidden bg-surface lg:h-full lg:min-h-0">
-          <Sidebar />
+    <main className="flex min-h-screen flex-col bg-background text-foreground lg:h-screen lg:overflow-hidden">
+      <div className="dashboard-shell flex min-h-[876px] flex-1 overflow-hidden bg-surface lg:h-full lg:min-h-0">
+        <Sidebar alertCount={alertsQuery.data ? String(alertsQuery.data.alerts.length) : null} />
 
-          <section className="flex min-w-0 flex-1 flex-col">
-            <Header title={title} subtitle={subtitle} onMenuClick={() => setMobileNavOpen(true)} />
-            <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 pt-0 lg:overflow-y-auto">
-              {children}
-            </div>
-          </section>
-        </div>
-
-        {mobileNavOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-label="Navigation">
-            <div
-              className="absolute inset-0 bg-foreground/40"
-              onClick={() => setMobileNavOpen(false)}
-              aria-hidden="true"
-            />
-            <div className="absolute inset-y-0 left-0 flex w-[240px] flex-col bg-sidebar px-3 py-5 text-sidebar-foreground shadow-soft">
-              <button
-                type="button"
-                onClick={() => setMobileNavOpen(false)}
-                aria-label="Close navigation"
-                className="mb-4 flex size-9 cursor-pointer items-center justify-center self-end rounded-xl border border-sidebar-border text-sidebar-foreground"
-              >
-                <X className="size-4" />
-              </button>
-              <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
-            </div>
+        <section className="flex min-w-0 flex-1 flex-col">
+          <Header
+            theme={theme}
+            onThemeChange={setTheme}
+            online={!backendFailed}
+            dataMode={dataMode}
+          />
+          <MobileNav />
+          <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 pt-0 lg:overflow-y-auto">
+            <Outlet />
           </div>
-        )}
-      </main>
-    </ThemeProvider>
+        </section>
+      </div>
+    </main>
   );
 }

@@ -71,8 +71,7 @@ export function useStationHistory(stationId: string | null, variable: HistoryVar
   });
 }
 
-/** Full queue (single shared cache key) used by the sidebar badge, alert center, and investigations. */
-export function useAlerts(limit = 1000) {
+export function useAlerts(limit = 50) {
   return useQuery({
     queryKey: ["alerts", limit],
     queryFn: () => getAlerts(limit),

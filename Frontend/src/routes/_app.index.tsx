@@ -1,29 +1,22 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  ArrowUpRight,
-  Bell,
-  CloudSun,
-  Droplets,
-  Eye,
-  Gauge,
-  Thermometer,
-} from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer } from "recharts";
+import { ArrowUpRight, Bell, CloudSun, Droplets, Eye, Gauge, Thermometer } from "lucide-react";
+import { ResponsiveContainer } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { StatusBadge, DetailStat } from "@/components/common";
+import { HistoryChart, SensorSpark, toChartPoints } from "@/components/charts";
+import { EvidenceList, OutcomeBanner } from "@/components/evidence";
+import { KpiRow } from "@/components/kpi";
 import {
   normalizeStatus,
+  type AlertDetailResponse,
   type AlertSummary,
-  type DisplayStatus,
-  type HistoryVariable,
   type StationDetailResponse,
-  type StationSummary,
 } from "@/lib/api";
+import type { DisplayStatus } from "@/lib/api";
 import {
-  cleanText,
   errorMessage,
   formatDateTime,
   formatHumidity,
@@ -32,6 +25,7 @@ import {
   formatTemp,
   formatTime,
 } from "@/lib/format";
+import { mergeStations, stationMapMeta, type MergedStation } from "@/lib/mapMeta";
 import {
   useAlert,
   useAlerts,
@@ -40,10 +34,7 @@ import {
   useStationHistory,
   useStations,
 } from "@/hooks/useSkyguard";
-import { DetailStat, StatusBadge, statusLabels } from "@/components/shared";
-import { HistoryChart } from "@/components/HistoryChart";
-import { EvidenceList } from "@/components/EvidenceList";
-import { NetworkKpis } from "@/components/NetworkKpis";
+import type { HistoryVariable } from "@/lib/api";
 
 const indiaAsset = { url: "/assets/india.png" };
 
@@ -65,69 +56,20 @@ export const Route = createFileRoute("/_app/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: OverviewPage,
+  component: LiveOverview,
 });
 
-// ---------------------------------------------------------------------------
-// Visual configuration only. Positions, ids and display names for the India
-// map are local UI config — every status/reading comes from the API.
-// JENA-01 is backend-only and intentionally has no map entry.
-// ---------------------------------------------------------------------------
-
-type StationMapMeta = {
-  id: string;
-  city: string;
-  x: number;
-  y: number;
-};
-
-const stationMapMeta: StationMapMeta[] = [
-  { id: "DEL-01", city: "New Delhi", x: 42.3, y: 18.2 },
-  { id: "JAI-02", city: "Jaipur", x: 34.1, y: 30.3 },
-  { id: "LUCK-04", city: "Lucknow", x: 61.2, y: 34.4 },
-  { id: "AMD-06", city: "Ahmedabad", x: 27.2, y: 43.7 },
-  { id: "BHO-08", city: "Bhopal", x: 45.2, y: 45.3 },
-  { id: "MUM-03", city: "Mumbai", x: 30.2, y: 56.1 },
-  { id: "HYD-07", city: "Hyderabad", x: 44.2, y: 66.2 },
-  { id: "BLR-05", city: "Bengaluru", x: 44.8, y: 81.3 },
-  { id: "CHE-03", city: "Chennai", x: 62.1, y: 81.2 },
-  { id: "KOL-02", city: "Kolkata", x: 77.7, y: 47.4 },
-];
-
-type MergedStation = StationMapMeta & {
-  status: DisplayStatus;
-  temperature: string;
-  api: StationSummary | undefined;
-};
-
-function OverviewPage() {
+function LiveOverview() {
   const [selectedStationId, setSelectedStationId] = useState<string | null>("DEL-01");
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
 
   const networkQuery = useNetworkSummary();
   const stationsQuery = useStations();
-  const alertsQuery = useAlerts();
+  const alertsQuery = useAlerts(50);
 
-  const stationsById = useMemo(() => {
-    const map = new Map<string, StationSummary>();
-    for (const station of stationsQuery.data?.stations ?? []) {
-      map.set(station.station_id, station);
-    }
-    return map;
-  }, [stationsQuery.data]);
-
-  const mergedStations: MergedStation[] = useMemo(
-    () =>
-      stationMapMeta.map((meta) => {
-        const api = stationsById.get(meta.id);
-        return {
-          ...meta,
-          status: normalizeStatus(api?.status, api?.data_available ?? false),
-          temperature: formatTemp(api?.temperature),
-          api,
-        };
-      }),
-    [stationsById],
+  const mergedStations = useMemo(
+    () => mergeStations(stationsQuery.data?.stations ?? []),
+    [stationsQuery.data],
   );
 
   const selectedStation = useMemo(
@@ -150,7 +92,8 @@ function OverviewPage() {
   );
 
   // Station detail is only requested for stations that actually have backend
-  // data; offline/unmapped stations render an unavailable state instead.
+  // data; offline/unmapped stations (AMD-06, HYD-07) render an unavailable
+  // state instead of erroring against a 404.
   const detailStationId = selectedStation?.api?.data_available === true ? selectedStation.id : null;
   const stationDetailQuery = useStation(detailStationId);
 
@@ -169,7 +112,7 @@ function OverviewPage() {
 
   return (
     <>
-      <NetworkKpis
+      <KpiRow
         summary={networkQuery.data}
         loading={networkQuery.isPending}
         error={networkQuery.isError ? errorMessage(networkQuery.error) : null}
@@ -185,10 +128,14 @@ function OverviewPage() {
           stationsError={stationsQuery.isError ? errorMessage(stationsQuery.error) : null}
           onSelectStation={selectStation}
         />
-        <InvestigationPreview alert={selectedAlert} alertsLoading={alertsQuery.isPending} />
+        <InvestigationPanel
+          alert={selectedAlert}
+          alertsLoading={alertsQuery.isPending}
+          alertsError={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
+        />
       </div>
-      <RecentPreview
-        alerts={alerts.slice(0, 5)}
+      <RecentAlerts
+        alerts={alerts}
         selectedAlertId={selectedAlertId}
         onSelectAlert={selectAlert}
         loading={alertsQuery.isPending}
@@ -271,7 +218,7 @@ function MapLab({
               key={station.id}
               variant="mapPin"
               size="icon"
-              aria-label={`Select ${station.city} station, ${statusLabels[station.status]}`}
+              aria-label={`Select ${station.city} station`}
               title={`${station.city} · ${station.id}`}
               onClick={() => onSelectStation(station.id)}
               data-status={station.status}
@@ -329,9 +276,9 @@ function MapLab({
               <Link
                 to="/stations/$stationId"
                 params={{ stationId: selectedStation.id }}
-                className="mt-2 block text-right text-[9px] font-bold text-info hover:underline"
+                className="mt-2 block text-center text-[10px] font-extrabold text-info hover:underline"
               >
-                Station details →
+                Open station detail →
               </Link>
             </>
           ) : (
@@ -348,15 +295,28 @@ function MapLab({
   );
 }
 
-function InvestigationPreview({
+function InvestigationPanel({
   alert,
   alertsLoading,
+  alertsError,
 }: {
   alert: AlertSummary | null;
   alertsLoading: boolean;
+  alertsError: string | null;
 }) {
   const detailQuery = useAlert(alert?.alert_id ?? null);
-  const detail = detailQuery.data;
+
+  if (alertsError) {
+    return (
+      <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
+        <p className="section-kicker">Investigation</p>
+        <h2 className="mt-0.5 text-sm font-extrabold">Alerts unavailable</h2>
+        <p className="mt-2 text-[10px] text-muted-foreground" role="alert">
+          {alertsError}
+        </p>
+      </aside>
+    );
+  }
 
   if (alertsLoading || alert === null) {
     return (
@@ -374,17 +334,44 @@ function InvestigationPreview({
     );
   }
 
+  const detail = detailQuery.data;
   const status = normalizeStatus(alert.status, true);
+
+  return (
+    <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
+      <InvestigationBody
+        key={alert.alert_id}
+        alert={alert}
+        detail={detail}
+        detailLoading={detailQuery.isPending}
+        detailError={detailQuery.isError ? errorMessage(detailQuery.error) : null}
+        status={status}
+      />
+    </aside>
+  );
+}
+
+function InvestigationBody({
+  alert,
+  detail,
+  detailLoading,
+  detailError,
+  status,
+}: {
+  alert: AlertSummary;
+  detail: AlertDetailResponse | undefined;
+  detailLoading: boolean;
+  detailError: string | null;
+  status: DisplayStatus;
+}) {
+  const navigate = useNavigate();
   const observations = detail?.observations;
   const historyVariable = detail?.history.variable ?? "temperature";
   const historyHours = detail?.history.hours ?? 24;
-  const historySeries = (detail?.history.series ?? []).map((point) => {
-    const raw = point[historyVariable];
-    return {
-      time: formatTime(point.timestamp),
-      recorded: typeof raw === "number" ? raw : null,
-    };
-  });
+  const historySeries = useMemo(
+    () => toChartPoints(detail?.history.series ?? [], historyVariable),
+    [detail, historyVariable],
+  );
   const reviewLabel =
     status === "offline"
       ? "Data availability event"
@@ -393,7 +380,7 @@ function InvestigationPreview({
         : "Review needed";
 
   return (
-    <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
+    <>
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="section-kicker">{alert.station_id} / Investigation</p>
@@ -413,17 +400,17 @@ function InvestigationPreview({
           {reviewLabel}
         </span>
       </div>
-      {detailQuery.isPending && (
+      {detailLoading && (
         <p className="mt-2 text-[10px] text-muted-foreground" role="status">
           Loading investigation detail…
         </p>
       )}
-      {detailQuery.isError && (
+      {detailError && (
         <p
           className="mt-2 rounded-xl border border-offline/30 bg-offline-soft px-2.5 py-2 text-[9px] font-semibold text-offline-deep"
           role="alert"
         >
-          Could not load full investigation detail: {errorMessage(detailQuery.error)}
+          Could not load full investigation detail: {detailError}
         </p>
       )}
       <div className="mt-2.5 grid grid-cols-3 gap-1.5">
@@ -432,7 +419,7 @@ function InvestigationPreview({
           value={
             observations
               ? formatTemp(observations.temperature_c)
-              : detailQuery.isPending
+              : detailLoading
                 ? "…"
                 : "Not available"
           }
@@ -444,7 +431,7 @@ function InvestigationPreview({
           value={
             observations
               ? formatHumidity(observations.relative_humidity_pct)
-              : detailQuery.isPending
+              : detailLoading
                 ? "…"
                 : "Not available"
           }
@@ -455,7 +442,7 @@ function InvestigationPreview({
           value={
             observations
               ? formatPressure(observations.pressure_hpa)
-              : detailQuery.isPending
+              : detailLoading
                 ? "…"
                 : "Not available"
           }
@@ -463,19 +450,8 @@ function InvestigationPreview({
           valueTone="text-info"
         />
       </div>
-      <div className="mt-2.5 rounded-xl border border-border p-2.5">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">
-          Why this needs review
-        </p>
-        <div className="mt-1.5">
-          {detail ? (
-            <EvidenceList evidence={detail.evidence} />
-          ) : (
-            <p className="text-[9px] text-muted-foreground">
-              {detailQuery.isPending ? "Loading evidence…" : "No evidence items available."}
-            </p>
-          )}
-        </div>
+      <div className="mt-2.5">
+        <EvidenceList evidence={detail?.evidence ?? []} loading={detailLoading} />
       </div>
       <div className="mt-2.5 rounded-xl border border-border p-2.5">
         <div className="flex items-start justify-between gap-2">
@@ -490,69 +466,55 @@ function InvestigationPreview({
           </div>
         </div>
         <div className="mt-1">
-          {detail ? (
-            <HistoryChart data={historySeries} />
-          ) : (
-            <p className="flex h-[72px] items-center justify-center text-[9px] text-muted-foreground">
-              {detailQuery.isPending ? "Loading history…" : "No history available."}
+          {detailLoading && historySeries.length === 0 ? (
+            <p
+              className="flex h-[72px] items-center justify-center text-[9px] text-muted-foreground"
+              role="status"
+            >
+              Loading history…
             </p>
+          ) : (
+            <HistoryChart
+              data={historySeries}
+              height={72}
+              ariaLabel={`${historyVariable} history for ${alert.station_id}`}
+            />
           )}
         </div>
       </div>
-      <div
-        className={cn(
-          "mt-2.5 flex items-start gap-2 rounded-xl border p-2.5",
-          status === "offline"
-            ? "border-offline/30 bg-offline-soft text-offline"
-            : status === "anomaly"
-              ? "border-anomaly/30 bg-anomaly-soft text-anomaly"
-              : "border-warning/30 bg-warning-soft text-warning",
-        )}
-      >
-        <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-        <p className="text-[9px] leading-snug">
-          <strong
-            className={cn(
-              "block",
-              status === "offline"
-                ? "text-offline-deep"
-                : status === "anomaly"
-                  ? "text-anomaly-deep"
-                  : "text-warning-deep",
-            )}
-          >
-            {cleanText(detail?.root_cause.class) ?? cleanText(alert.root_cause) ?? alert.event}
-          </strong>
-          <span className="text-muted-foreground">
-            {cleanText(detail?.explanation.text) ??
-              cleanText(alert.summary) ??
-              "No explanation available."}
-          </span>
-        </p>
+      <div className="mt-2.5">
+        <OutcomeBanner
+          status={status}
+          outcome={alert.event}
+          message="Open the full investigation for evidence, root cause and explanation."
+        />
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-2">
-        <Link
-          to="/investigations/$alertId"
-          params={{ alertId: alert.alert_id }}
-          className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
+        <Button
+          size="sm"
+          onClick={() =>
+            navigate({ to: "/investigations/$alertId", params: { alertId: alert.alert_id } })
+          }
         >
           <ArrowUpRight />
           Open investigation
-        </Link>
-        <Link
-          to="/stations/$stationId"
-          params={{ stationId: alert.station_id }}
-          className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-strong bg-background px-3 text-xs font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            navigate({ to: "/stations/$stationId", params: { stationId: alert.station_id } })
+          }
         >
           <Eye />
           View station
-        </Link>
+        </Button>
       </div>
-    </aside>
+    </>
   );
 }
 
-function RecentPreview({
+function RecentAlerts({
   alerts,
   selectedAlertId,
   onSelectAlert,
@@ -572,6 +534,10 @@ function RecentPreview({
   networkLoading: boolean;
 }) {
   const navigate = useNavigate();
+  const openAlert = (alert: AlertSummary) => {
+    onSelectAlert(alert);
+    navigate({ to: "/alerts/$alertId", params: { alertId: alert.alert_id } });
+  };
   return (
     <section className="panel shrink-0 p-4" aria-label="Recent alerts">
       <div className="flex items-center justify-between gap-2">
@@ -579,14 +545,9 @@ function RecentPreview({
           <p className="section-kicker">Attention queue</p>
           <h2 className="mt-1 text-lg font-extrabold">Recent Alerts</h2>
         </div>
-        <div className="flex items-center gap-2">
-          <Link to="/alerts" className="text-[10px] font-bold text-info hover:underline">
-            View all →
-          </Link>
-          <span className="flex size-8 items-center justify-center rounded-xl bg-anomaly-soft text-anomaly">
-            <Bell className="size-4" />
-          </span>
-        </div>
+        <span className="flex size-8 items-center justify-center rounded-xl bg-anomaly-soft text-anomaly">
+          <Bell className="size-4" />
+        </span>
       </div>
       {loading && (
         <p className="mt-3 text-[10px] text-muted-foreground" role="status">
@@ -623,18 +584,18 @@ function RecentPreview({
               const selected = selectedAlertId === alert.alert_id;
               const status = normalizeStatus(alert.status, true);
               return (
-                <button
+                <div
                   key={alert.alert_id}
-                  type="button"
-                  onClick={() => {
-                    onSelectAlert(alert);
-                    navigate({
-                      to: "/alerts/$alertId",
-                      params: { alertId: alert.alert_id },
-                    });
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Open alert ${alert.event} at ${alert.station_id}`}
+                  onClick={() => openAlert(alert)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openAlert(alert);
+                    }
                   }}
-                  aria-pressed={selected}
-                  title={alert.summary}
                   className={cn(
                     "grid w-full cursor-pointer grid-cols-[88px_minmax(0,1fr)_104px_128px_60px] items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-colors",
                     selected
@@ -658,7 +619,7 @@ function RecentPreview({
                   <time className="text-right text-[10px] font-medium text-muted-foreground">
                     {formatTime(alert.timestamp)}
                   </time>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -790,24 +751,11 @@ function BottomInsights({
               <div className="mt-1 min-h-0 flex-1">
                 {!unavailable && sensor.series.values.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={sensor.series.values}>
-                      <defs>
-                        <linearGradient id={`fill-${sensor.title}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={sensor.color} stopOpacity={0.28} />
-                          <stop offset="100%" stopColor={sensor.color} stopOpacity={0.02} />
-                        </linearGradient>
-                      </defs>
-                      <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke={sensor.color}
-                        strokeWidth={2.2}
-                        fill={`url(#fill-${sensor.title})`}
-                        dot={false}
-                        connectNulls={false}
-                        isAnimationActive={false}
-                      />
-                    </AreaChart>
+                    <SensorSpark
+                      values={sensor.series.values}
+                      color={sensor.color}
+                      gradientId={`fill-${sensor.title}`}
+                    />
                   </ResponsiveContainer>
                 ) : (
                   <p className="flex h-full items-center justify-center text-[9px] text-muted-foreground">

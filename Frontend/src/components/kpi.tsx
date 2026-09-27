@@ -1,11 +1,11 @@
-import type { ComponentType } from "react";
 import { AlertTriangle, HeartPulse, RadioTower, ShieldCheck, WifiOff } from "lucide-react";
+import type { ComponentType } from "react";
 
 import { cn } from "@/lib/utils";
 import type { NetworkSummary } from "@/lib/api";
 
-/** Network KPI cards shared by Overview and Network Health. */
-export function NetworkKpis({
+/** Network KPI cards; values always come from /network/summary. */
+export function KpiRow({
   summary,
   loading,
   error,
@@ -63,7 +63,7 @@ export function NetworkKpis({
 
   return (
     <section aria-label="Network summary">
-      <div className="grid shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
         {kpis.map((kpi) => (
           <article key={kpi.label} className="metric-card">
             <span className={cn("flex size-9 items-center justify-center rounded-xl", kpi.tone)}>

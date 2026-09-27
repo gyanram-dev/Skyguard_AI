@@ -16,10 +16,14 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        sidebar: "bg-transparent text-sidebar-muted shadow-none hover:bg-sidebar-accent hover:text-sidebar-foreground",
-        sidebarActive: "bg-sidebar-accent text-sidebar-accent-foreground shadow-none hover:bg-sidebar-accent",
-        mapPin: "rounded-full bg-transparent p-0 shadow-none ring-0 hover:bg-transparent focus-visible:ring-2 focus-visible:ring-primary",
-        alertRow: "rounded-xl border border-border bg-card text-card-foreground shadow-none hover:border-primary/30 hover:bg-info-soft",
+        sidebar:
+          "bg-transparent text-sidebar-muted shadow-none hover:bg-sidebar-accent hover:text-sidebar-foreground",
+        sidebarActive:
+          "bg-sidebar-accent text-sidebar-accent-foreground shadow-none hover:bg-sidebar-accent",
+        mapPin:
+          "rounded-full bg-transparent p-0 shadow-none ring-0 hover:bg-transparent focus-visible:ring-2 focus-visible:ring-primary",
+        alertRow:
+          "rounded-xl border border-border bg-card text-card-foreground shadow-none hover:border-primary/30 hover:bg-info-soft",
       },
       size: {
         default: "h-9 px-4 py-2",

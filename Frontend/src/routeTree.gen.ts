@@ -10,15 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as AppAlertsRouteImport } from './routes/_app/alerts'
-import { Route as AppInvestigationsRouteImport } from './routes/_app/investigations'
-import { Route as AppJudgeProbeRouteImport } from './routes/_app/judge-probe'
-import { Route as AppNetworkHealthRouteImport } from './routes/_app/network-health'
-import { Route as AppStationsRouteImport } from './routes/_app/stations'
-import { Route as AppAlertsAlertIdRouteImport } from './routes/_app/alerts.$alertId'
-import { Route as AppInvestigationsAlertIdRouteImport } from './routes/_app/investigations.$alertId'
-import { Route as AppStationsStationIdRouteImport } from './routes/_app/stations.$stationId'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppJudgeProbeRouteImport } from './routes/_app.judge-probe'
+import { Route as AppNetworkHealthRouteImport } from './routes/_app.network-health'
+import { Route as AppAlertsIndexRouteImport } from './routes/_app/alerts/index'
+import { Route as AppAlertsAlertIdRouteImport } from './routes/_app/alerts/$alertId'
+import { Route as AppInvestigationsIndexRouteImport } from './routes/_app/investigations/index'
+import { Route as AppInvestigationsAlertIdRouteImport } from './routes/_app/investigations/$alertId'
+import { Route as AppStationsIndexRouteImport } from './routes/_app/stations/index'
+import { Route as AppStationsStationIdRouteImport } from './routes/_app/stations/$stationId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -27,16 +27,6 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAlertsRoute = AppAlertsRouteImport.update({
-  id: '/alerts',
-  path: '/alerts',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppInvestigationsRoute = AppInvestigationsRouteImport.update({
-  id: '/investigations',
-  path: '/investigations',
   getParentRoute: () => AppRoute,
 } as any)
 const AppJudgeProbeRoute = AppJudgeProbeRouteImport.update({
@@ -49,98 +39,108 @@ const AppNetworkHealthRoute = AppNetworkHealthRouteImport.update({
   path: '/network-health',
   getParentRoute: () => AppRoute,
 } as any)
-const AppStationsRoute = AppStationsRouteImport.update({
-  id: '/stations',
-  path: '/stations',
+const AppAlertsIndexRoute = AppAlertsIndexRouteImport.update({
+  id: '/alerts/',
+  path: '/alerts/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAlertsAlertIdRoute = AppAlertsAlertIdRouteImport.update({
-  id: '/$alertId',
-  path: '/$alertId',
-  getParentRoute: () => AppAlertsRoute,
+  id: '/alerts/$alertId',
+  path: '/alerts/$alertId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInvestigationsIndexRoute = AppInvestigationsIndexRouteImport.update({
+  id: '/investigations/',
+  path: '/investigations/',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppInvestigationsAlertIdRoute =
   AppInvestigationsAlertIdRouteImport.update({
-    id: '/$alertId',
-    path: '/$alertId',
-    getParentRoute: () => AppInvestigationsRoute,
+    id: '/investigations/$alertId',
+    path: '/investigations/$alertId',
+    getParentRoute: () => AppRoute,
   } as any)
+const AppStationsIndexRoute = AppStationsIndexRouteImport.update({
+  id: '/stations/',
+  path: '/stations/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStationsStationIdRoute = AppStationsStationIdRouteImport.update({
-  id: '/$stationId',
-  path: '/$stationId',
-  getParentRoute: () => AppStationsRoute,
+  id: '/stations/$stationId',
+  path: '/stations/$stationId',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
-  '/alerts': typeof AppAlertsRouteWithChildren
-  '/investigations': typeof AppInvestigationsRouteWithChildren
   '/judge-probe': typeof AppJudgeProbeRoute
   '/network-health': typeof AppNetworkHealthRoute
-  '/stations': typeof AppStationsRouteWithChildren
   '/alerts/$alertId': typeof AppAlertsAlertIdRoute
   '/investigations/$alertId': typeof AppInvestigationsAlertIdRoute
   '/stations/$stationId': typeof AppStationsStationIdRoute
+  '/alerts/': typeof AppAlertsIndexRoute
+  '/investigations/': typeof AppInvestigationsIndexRoute
+  '/stations/': typeof AppStationsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/alerts': typeof AppAlertsRouteWithChildren
-  '/investigations': typeof AppInvestigationsRouteWithChildren
   '/judge-probe': typeof AppJudgeProbeRoute
   '/network-health': typeof AppNetworkHealthRoute
-  '/stations': typeof AppStationsRouteWithChildren
   '/': typeof AppIndexRoute
   '/alerts/$alertId': typeof AppAlertsAlertIdRoute
   '/investigations/$alertId': typeof AppInvestigationsAlertIdRoute
   '/stations/$stationId': typeof AppStationsStationIdRoute
+  '/alerts': typeof AppAlertsIndexRoute
+  '/investigations': typeof AppInvestigationsIndexRoute
+  '/stations': typeof AppStationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
-  '/_app/alerts': typeof AppAlertsRouteWithChildren
-  '/_app/investigations': typeof AppInvestigationsRouteWithChildren
   '/_app/judge-probe': typeof AppJudgeProbeRoute
   '/_app/network-health': typeof AppNetworkHealthRoute
-  '/_app/stations': typeof AppStationsRouteWithChildren
   '/_app/': typeof AppIndexRoute
   '/_app/alerts/$alertId': typeof AppAlertsAlertIdRoute
   '/_app/investigations/$alertId': typeof AppInvestigationsAlertIdRoute
   '/_app/stations/$stationId': typeof AppStationsStationIdRoute
+  '/_app/alerts/': typeof AppAlertsIndexRoute
+  '/_app/investigations/': typeof AppInvestigationsIndexRoute
+  '/_app/stations/': typeof AppStationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/alerts'
-    | '/investigations'
     | '/judge-probe'
     | '/network-health'
-    | '/stations'
     | '/alerts/$alertId'
     | '/investigations/$alertId'
     | '/stations/$stationId'
+    | '/alerts/'
+    | '/investigations/'
+    | '/stations/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/alerts'
-    | '/investigations'
     | '/judge-probe'
     | '/network-health'
-    | '/stations'
     | '/'
     | '/alerts/$alertId'
     | '/investigations/$alertId'
     | '/stations/$stationId'
+    | '/alerts'
+    | '/investigations'
+    | '/stations'
   id:
     | '__root__'
     | '/_app'
-    | '/_app/alerts'
-    | '/_app/investigations'
     | '/_app/judge-probe'
     | '/_app/network-health'
-    | '/_app/stations'
     | '/_app/'
     | '/_app/alerts/$alertId'
     | '/_app/investigations/$alertId'
     | '/_app/stations/$stationId'
+    | '/_app/alerts/'
+    | '/_app/investigations/'
+    | '/_app/stations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -163,20 +163,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/alerts': {
-      id: '/_app/alerts'
-      path: '/alerts'
-      fullPath: '/alerts'
-      preLoaderRoute: typeof AppAlertsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/investigations': {
-      id: '/_app/investigations'
-      path: '/investigations'
-      fullPath: '/investigations'
-      preLoaderRoute: typeof AppInvestigationsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/judge-probe': {
       id: '/_app/judge-probe'
       path: '/judge-probe'
@@ -191,88 +177,73 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNetworkHealthRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/stations': {
-      id: '/_app/stations'
-      path: '/stations'
-      fullPath: '/stations'
-      preLoaderRoute: typeof AppStationsRouteImport
+    '/_app/alerts/': {
+      id: '/_app/alerts/'
+      path: '/alerts'
+      fullPath: '/alerts/'
+      preLoaderRoute: typeof AppAlertsIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/alerts/$alertId': {
       id: '/_app/alerts/$alertId'
-      path: '/$alertId'
+      path: '/alerts/$alertId'
       fullPath: '/alerts/$alertId'
       preLoaderRoute: typeof AppAlertsAlertIdRouteImport
-      parentRoute: typeof AppAlertsRoute
+      parentRoute: typeof AppRoute
+    }
+    '/_app/investigations/': {
+      id: '/_app/investigations/'
+      path: '/investigations'
+      fullPath: '/investigations/'
+      preLoaderRoute: typeof AppInvestigationsIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/investigations/$alertId': {
       id: '/_app/investigations/$alertId'
-      path: '/$alertId'
+      path: '/investigations/$alertId'
       fullPath: '/investigations/$alertId'
       preLoaderRoute: typeof AppInvestigationsAlertIdRouteImport
-      parentRoute: typeof AppInvestigationsRoute
+      parentRoute: typeof AppRoute
+    }
+    '/_app/stations/': {
+      id: '/_app/stations/'
+      path: '/stations'
+      fullPath: '/stations/'
+      preLoaderRoute: typeof AppStationsIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/stations/$stationId': {
       id: '/_app/stations/$stationId'
-      path: '/$stationId'
+      path: '/stations/$stationId'
       fullPath: '/stations/$stationId'
       preLoaderRoute: typeof AppStationsStationIdRouteImport
-      parentRoute: typeof AppStationsRoute
+      parentRoute: typeof AppRoute
     }
   }
 }
 
-interface AppAlertsRouteChildren {
-  AppAlertsAlertIdRoute: typeof AppAlertsAlertIdRoute
-}
-
-const AppAlertsRouteChildren: AppAlertsRouteChildren = {
-  AppAlertsAlertIdRoute: AppAlertsAlertIdRoute,
-}
-
-const AppAlertsRouteWithChildren = AppAlertsRoute._addFileChildren(
-  AppAlertsRouteChildren,
-)
-
-interface AppInvestigationsRouteChildren {
-  AppInvestigationsAlertIdRoute: typeof AppInvestigationsAlertIdRoute
-}
-
-const AppInvestigationsRouteChildren: AppInvestigationsRouteChildren = {
-  AppInvestigationsAlertIdRoute: AppInvestigationsAlertIdRoute,
-}
-
-const AppInvestigationsRouteWithChildren =
-  AppInvestigationsRoute._addFileChildren(AppInvestigationsRouteChildren)
-
-interface AppStationsRouteChildren {
-  AppStationsStationIdRoute: typeof AppStationsStationIdRoute
-}
-
-const AppStationsRouteChildren: AppStationsRouteChildren = {
-  AppStationsStationIdRoute: AppStationsStationIdRoute,
-}
-
-const AppStationsRouteWithChildren = AppStationsRoute._addFileChildren(
-  AppStationsRouteChildren,
-)
-
 interface AppRouteChildren {
-  AppAlertsRoute: typeof AppAlertsRouteWithChildren
-  AppInvestigationsRoute: typeof AppInvestigationsRouteWithChildren
   AppJudgeProbeRoute: typeof AppJudgeProbeRoute
   AppNetworkHealthRoute: typeof AppNetworkHealthRoute
-  AppStationsRoute: typeof AppStationsRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppAlertsAlertIdRoute: typeof AppAlertsAlertIdRoute
+  AppInvestigationsAlertIdRoute: typeof AppInvestigationsAlertIdRoute
+  AppStationsStationIdRoute: typeof AppStationsStationIdRoute
+  AppAlertsIndexRoute: typeof AppAlertsIndexRoute
+  AppInvestigationsIndexRoute: typeof AppInvestigationsIndexRoute
+  AppStationsIndexRoute: typeof AppStationsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAlertsRoute: AppAlertsRouteWithChildren,
-  AppInvestigationsRoute: AppInvestigationsRouteWithChildren,
   AppJudgeProbeRoute: AppJudgeProbeRoute,
   AppNetworkHealthRoute: AppNetworkHealthRoute,
-  AppStationsRoute: AppStationsRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppAlertsAlertIdRoute: AppAlertsAlertIdRoute,
+  AppInvestigationsAlertIdRoute: AppInvestigationsAlertIdRoute,
+  AppStationsStationIdRoute: AppStationsStationIdRoute,
+  AppAlertsIndexRoute: AppAlertsIndexRoute,
+  AppInvestigationsIndexRoute: AppInvestigationsIndexRoute,
+  AppStationsIndexRoute: AppStationsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

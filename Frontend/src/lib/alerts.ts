@@ -1,19 +1,39 @@
-import { normalizeStatus } from "@/lib/api";
+import { normalizeStatus, type DisplayStatus } from "@/lib/api";
+import { cleanText } from "@/lib/format";
 
-export type AlertFilter = "all" | "anomaly" | "review" | "offline";
+export type AlertFilter = "all" | DisplayStatus;
 
-/** Client-side filtering over loaded API alert data (no backend search endpoint). */
-export function filterAlerts<
-  T extends { station_id: string; event: string; status: string; root_cause?: string | null },
->(alerts: T[], search: string, filter: AlertFilter): T[] {
-  const needle = search.trim().toLowerCase();
+export const alertFilters: Array<{ value: AlertFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "anomaly", label: "Anomaly" },
+  { value: "review", label: "Needs review" },
+  { value: "offline", label: "Offline / availability" },
+];
+
+export type AlertLike = {
+  station_id: string;
+  event: string;
+  root_cause: string | null;
+  status: string;
+};
+
+/** Client-side filtering over loaded alert data (no backend search endpoint). */
+export function filterAlerts<T extends AlertLike>(
+  alerts: T[],
+  search: string,
+  statusFilter: AlertFilter,
+  stationFilter = "all",
+): T[] {
+  const term = search.trim().toLowerCase();
   return alerts.filter((alert) => {
-    if (filter !== "all" && normalizeStatus(alert.status, true) !== filter) return false;
-    if (needle === "") return true;
+    const status = normalizeStatus(alert.status, true);
+    if (statusFilter !== "all" && status !== statusFilter) return false;
+    if (stationFilter !== "all" && alert.station_id !== stationFilter) return false;
+    if (term === "") return true;
     return (
-      alert.station_id.toLowerCase().includes(needle) ||
-      alert.event.toLowerCase().includes(needle) ||
-      (alert.root_cause ?? "").toLowerCase().includes(needle)
+      alert.station_id.toLowerCase().includes(term) ||
+      alert.event.toLowerCase().includes(term) ||
+      (cleanText(alert.root_cause) ?? "").toLowerCase().includes(term)
     );
   });
 }

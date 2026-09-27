@@ -76,7 +76,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "SkyGuard AI" },
-      { name: "description", content: "Context-aware weather intelligence and station trust monitoring." },
+      {
+        name: "description",
+        content: "Context-aware weather intelligence and station trust monitoring.",
+      },
       { name: "author", content: "SkyGuard AI" },
       { property: "og:title", content: "SkyGuard AI" },
       { property: "og:description", content: "Trusted weather observations for a safer tomorrow." },
@@ -90,7 +93,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap",
+      },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
   }),
@@ -105,7 +111,9 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         {/* Guarantee light mode before first paint — dark is a session-only toggle, never persisted. */}
-        <script dangerouslySetInnerHTML={{ __html: `document.documentElement.classList.remove("dark");` }} />
+        <script
+          dangerouslySetInnerHTML={{ __html: `document.documentElement.classList.remove("dark");` }}
+        />
         <HeadContent />
       </head>
       <body>

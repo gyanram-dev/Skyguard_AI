@@ -11,23 +11,22 @@ import {
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAlerts } from "@/hooks/useSkyguard";
 
 const navItems = [
-  { label: "Overview", to: "/", icon: BarChart3, exact: true },
-  { label: "Stations", to: "/stations", icon: MapPin, exact: false },
-  { label: "Alerts", to: "/alerts", icon: Bell, exact: false },
-  { label: "Investigations", to: "/investigations", icon: Search, exact: false },
-  { label: "Network Health", to: "/network-health", icon: HeartPulse, exact: false },
-  { label: "Judge Probe", to: "/judge-probe", icon: FlaskConical, exact: false },
+  { label: "Overview", icon: BarChart3, to: "/" },
+  { label: "Stations", icon: MapPin, to: "/stations" },
+  { label: "Alerts", icon: Bell, to: "/alerts" },
+  { label: "Investigations", icon: Search, to: "/investigations" },
+  { label: "Network Health", icon: HeartPulse, to: "/network-health" },
+  { label: "Judge Probe", icon: FlaskConical, to: "/judge-probe" },
 ] as const;
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
-  const alertsQuery = useAlerts();
-  const alertCount = alertsQuery.data ? String(alertsQuery.data.alerts.length) : null;
+const idleClass = cn(buttonVariants({ variant: "sidebar" }), "w-full justify-start");
+const activeClass = cn(buttonVariants({ variant: "sidebarActive" }), "w-full justify-start");
 
+export function Sidebar({ alertCount }: { alertCount: string | null }) {
   return (
-    <>
+    <aside className="hidden w-[176px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 text-sidebar-foreground lg:flex">
       <div className="flex items-center gap-2 px-2">
         <div className="flex size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-logo">
           <ShieldCheck className="size-6" strokeWidth={2.4} />
@@ -50,13 +49,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           <Link
             key={item.label}
             to={item.to}
-            onClick={onNavigate}
+            className={idleClass}
+            activeProps={{ className: activeClass }}
+            activeOptions={{ exact: item.to === "/" }}
             title={item.label}
-            activeOptions={item.exact ? { exact: true } : { exact: false }}
-            activeProps={{
-              className: cn(buttonVariants({ variant: "sidebarActive" }), "w-full justify-start"),
-            }}
-            className={cn(buttonVariants({ variant: "sidebar" }), "w-full justify-start")}
           >
             <item.icon />
             <span>{item.label}</span>
@@ -68,14 +64,31 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         ))}
       </nav>
-    </>
+    </aside>
   );
 }
 
-export function Sidebar() {
+/** Compact navigation for viewports where the sidebar is hidden. */
+export function MobileNav() {
   return (
-    <aside className="hidden w-[176px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 text-sidebar-foreground lg:flex">
-      <SidebarNav />
-    </aside>
+    <nav
+      className="flex shrink-0 gap-1.5 overflow-x-auto px-3 pb-1 lg:hidden"
+      aria-label="Primary navigation"
+    >
+      {navItems.map((item) => (
+        <Link
+          key={item.label}
+          to={item.to}
+          className={cn(buttonVariants({ variant: "sidebar", size: "sm" }), "shrink-0")}
+          activeProps={{
+            className: cn(buttonVariants({ variant: "sidebarActive", size: "sm" }), "shrink-0"),
+          }}
+          activeOptions={{ exact: item.to === "/" }}
+        >
+          <item.icon />
+          <span>{item.label}</span>
+        </Link>
+      ))}
+    </nav>
   );
 }

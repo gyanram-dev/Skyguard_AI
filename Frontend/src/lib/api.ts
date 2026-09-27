@@ -257,12 +257,12 @@ export interface NetworkSummary {
 
 export type HistoryVariable = "temperature" | "humidity" | "pressure";
 
-export interface HistoryPoint {
+export type HistoryPoint = {
   timestamp: string;
   temperature?: number | null;
   humidity?: number | null;
   pressure?: number | null;
-}
+};
 
 export interface HistoryResponse {
   station_id: string;

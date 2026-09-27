@@ -1,7 +1,6 @@
 import { ApiError } from "@/lib/api";
 
-/** Shared display formatters for API-backed values (Phase 13/14). */
-
+/** Human-readable message for any query failure. */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
@@ -38,6 +37,11 @@ export function formatPressure(value: number | null | undefined): string {
 export function formatScore(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return value.toFixed(3);
+}
+
+export function formatConfidence(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "Not available";
+  return `${(value * 100).toFixed(0)}%`;
 }
 
 export function formatTime(iso: string | null | undefined): string {

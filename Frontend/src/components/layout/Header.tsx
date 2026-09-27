@@ -1,44 +1,92 @@
-import { Activity, Menu, Moon, Sun } from "lucide-react";
+import { useRouterState } from "@tanstack/react-router";
+import { Activity, Moon, Sun } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { DATA_MODE_HISTORICAL_REPLAY } from "@/lib/api";
-import { useHealth } from "@/hooks/useSkyguard";
-import { useTheme } from "@/components/layout/ThemeContext";
+
+export type Theme = "light" | "dark";
+
+type PageMeta = { title: string; subtitle: string };
+
+function pageMetaFor(pathname: string): PageMeta {
+  const segments = pathname.split("/").filter(Boolean);
+  const root = segments[0] ?? "";
+  const detail = segments[1] ?? "";
+  switch (root) {
+    case "":
+      return {
+        title: "Live Overview",
+        subtitle: "National weather station monitoring and anomaly intelligence",
+      };
+    case "stations":
+      return detail
+        ? {
+            title: `Station ${detail}`,
+            subtitle: "Current observations, data quality and station history",
+          }
+        : {
+            title: "Stations",
+            subtitle: "Monitor and inspect the weather station network",
+          };
+    case "alerts":
+      return detail
+        ? {
+            title: "Alert Detail",
+            subtitle: "Evidence, observations and history for one alert",
+          }
+        : {
+            title: "Alerts",
+            subtitle: "Review detected anomalies and data availability events",
+          };
+    case "investigations":
+      return detail
+        ? {
+            title: "Investigation",
+            subtitle: "Deep explanation workspace for one flagged observation",
+          }
+        : {
+            title: "Investigations",
+            subtitle: "Understand why observations were flagged",
+          };
+    case "network-health":
+      return {
+        title: "Network Health",
+        subtitle: "Monitor station availability and trust health",
+      };
+    case "judge-probe":
+      return {
+        title: "Judge Probe",
+        subtitle: "Test a weather observation through SkyGuard",
+      };
+    default:
+      return {
+        title: "SkyGuard AI",
+        subtitle: "Context-aware weather intelligence",
+      };
+  }
+}
 
 export function Header({
-  title,
-  subtitle,
-  onMenuClick,
+  theme,
+  onThemeChange,
+  online,
+  dataMode,
 }: {
-  title: string;
-  subtitle: string;
-  onMenuClick: () => void;
+  theme: Theme;
+  onThemeChange: (theme: Theme) => void;
+  online: boolean;
+  dataMode: string | null;
 }) {
-  const { theme, setTheme } = useTheme();
-  const healthQuery = useHealth();
-  const online = !healthQuery.isError;
-  const dataMode = healthQuery.data?.data_mode ?? null;
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const meta = pageMetaFor(pathname);
   const replay = dataMode === DATA_MODE_HISTORICAL_REPLAY;
-
   return (
-    <header className="flex h-[72px] shrink-0 items-center justify-between gap-2 px-5">
-      <div className="flex min-w-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={onMenuClick}
-          aria-label="Open navigation"
-          className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-soft lg:hidden"
-        >
-          <Menu className="size-4" />
-        </button>
-        <div className="min-w-0">
-          <h1 className="truncate text-[25px] font-extrabold leading-tight text-foreground">
-            {title}
-          </h1>
-          <p className="truncate text-xs font-medium text-muted-foreground">{subtitle}</p>
-        </div>
+    <header className="flex h-[72px] shrink-0 items-center justify-between px-5">
+      <div>
+        <h1 className="text-[25px] font-extrabold leading-tight text-foreground">{meta.title}</h1>
+        <p className="text-xs font-medium text-muted-foreground">{meta.subtitle}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex items-center gap-2">
         {online ? (
           <span className="status-pill bg-success-soft text-success-deep">
             <span className="status-dot bg-success" />
@@ -71,7 +119,7 @@ export function Header({
         >
           <button
             type="button"
-            onClick={() => setTheme("light")}
+            onClick={() => onThemeChange("light")}
             aria-pressed={theme === "light"}
             aria-label="Light mode"
             title="Light mode"
@@ -86,7 +134,7 @@ export function Header({
           </button>
           <button
             type="button"
-            onClick={() => setTheme("dark")}
+            onClick={() => onThemeChange("dark")}
             aria-pressed={theme === "dark"}
             aria-label="Dark mode"
             title="Dark mode"
