@@ -170,3 +170,72 @@ class HistoryResponse(BaseModel):
 class ErrorResponse(BaseModel):
     detail: str
     code: str
+
+
+class ProbeRequest(BaseModel):
+    station_id: str | None = None
+    temperature: float
+    pressure: float
+    humidity: float
+
+
+class ProbeObservation(BaseModel):
+    station_id: str | None = None
+    temperature: float
+    pressure: float
+    humidity: float
+
+
+class ProbeContext(BaseModel):
+    station_available: bool
+    historical_anchor: str | None = None
+    spatial_available: bool = False
+    neighbor_count: int = 0
+    context_note: str
+
+
+class ProbeResult(BaseModel):
+    is_anomalous: bool
+    anomaly_score: float | None = None
+    confidence: float | None = None
+    availability: str = "INSUFFICIENT_EVIDENCE"
+    threshold: float | None = None
+    method: str = "ens_median"
+
+
+class ComponentEvidence(BaseModel):
+    available: bool
+    raw: float | None = None
+    calibrated: float | None = None
+
+
+class ProbeEvidence(BaseModel):
+    statistical: ComponentEvidence
+    isolation_forest: ComponentEvidence
+    lstm: ComponentEvidence
+    multivariate: dict = Field(default_factory=dict)
+    spatial: dict = Field(default_factory=dict)
+    data_quality: dict = Field(default_factory=dict)
+
+
+class ProbeRootCause(BaseModel):
+    class_: str | None = Field(default=None, alias="class")
+    confidence: float | None = None
+    runner_up: str | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+class ProbeExplanation(BaseModel):
+    text: str | None = None
+    features: list[ExplanationFeature] = Field(default_factory=list)
+
+
+class ProbeResponse(BaseModel):
+    data_mode: str = "historical_replay"
+    probe: ProbeObservation
+    context: ProbeContext
+    result: ProbeResult
+    evidence: ProbeEvidence
+    root_cause: ProbeRootCause
+    explanation: ProbeExplanation

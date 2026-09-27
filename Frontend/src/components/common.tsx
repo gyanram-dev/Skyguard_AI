@@ -66,9 +66,9 @@ export function DetailStat({
 }: {
   label: string;
   value: string;
-  emphasis?: boolean;
-  tone?: string;
-  valueTone?: string;
+  emphasis?: boolean | undefined;
+  tone?: string | undefined;
+  valueTone?: string | undefined;
 }) {
   return (
     <div

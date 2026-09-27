@@ -59,20 +59,33 @@ export class ApiError extends Error {
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+const PROBE_TIMEOUT_MS = 120_000;
 
-async function request<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+async function request<T>(
+  path: string,
+  options?: { method?: string; body?: unknown; timeoutMs?: number },
+): Promise<T> {
+  const method = options?.method ?? "GET";
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let response: Response;
+  const init: RequestInit = {
+    method,
+    headers: {
+      Accept: "application/json",
+      ...(options?.body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    signal: controller.signal,
+  };
+  if (options?.body !== undefined) {
+    init.body = JSON.stringify(options.body);
+  }
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    });
+    response = await fetch(`${API_BASE_URL}${path}`, init);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new ApiError(`Request timed out: GET ${path}`);
+      throw new ApiError(`Request timed out: ${method} ${path}`);
     }
     throw new ApiError(
       `Unable to reach the SkyGuard API at ${API_BASE_URL}. Is the backend running?`,
@@ -88,13 +101,17 @@ async function request<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise
       const body = (await response.json()) as { detail?: unknown; code?: unknown };
       if (typeof body.detail === "string" && body.detail.trim() !== "") {
         detail = body.detail;
+      } else if (Array.isArray(body.detail)) {
+        // Pydantic request-validation errors: summarize without leaking schema internals.
+        detail = `Invalid probe input (${response.status}). Check the highlighted fields.`;
+        code = "invalid_input";
       }
       if (typeof body.code === "string") code = body.code;
     } catch {
       // Non-JSON error body: fall through to the status-based message.
     }
     throw new ApiError(
-      detail ?? `SkyGuard API error ${response.status} for GET ${path}`,
+      detail ?? `SkyGuard API error ${response.status} for ${method} ${path}`,
       response.status,
       code,
     );
@@ -308,4 +325,78 @@ export function getAlert(alertId: string): Promise<AlertDetailResponse> {
 
 export function getNetworkSummary(): Promise<NetworkSummary> {
   return request<NetworkSummary>("/api/v1/network/summary");
+}
+
+// ---------------------------------------------------------------------------
+// Judge probe types mirroring Backend/src/api/schemas.py (Phase 15).
+// ---------------------------------------------------------------------------
+
+export interface ProbePayload {
+  station_id: string | null;
+  temperature: number;
+  pressure: number;
+  humidity: number;
+}
+
+export interface ProbeObservationEcho {
+  station_id: string | null;
+  temperature: number;
+  pressure: number;
+  humidity: number;
+}
+
+export interface ProbeContext {
+  station_available: boolean;
+  historical_anchor: string | null;
+  spatial_available: boolean;
+  neighbor_count: number;
+  context_note: string;
+}
+
+export interface ProbeResult {
+  is_anomalous: boolean;
+  anomaly_score: number | null;
+  confidence: number | null;
+  availability: string;
+  threshold: number | null;
+  method: string;
+}
+
+export interface ProbeComponentEvidence {
+  available: boolean;
+  raw: number | null;
+  calibrated: number | null;
+}
+
+export interface ProbeEvidence {
+  statistical: ProbeComponentEvidence;
+  isolation_forest: ProbeComponentEvidence;
+  lstm: ProbeComponentEvidence;
+  multivariate: Record<string, number | null>;
+  spatial: Record<string, number | string | boolean | null>;
+  data_quality: Record<string, number | string | boolean | null>;
+}
+
+export interface ProbeRootCause {
+  class: string | null;
+  confidence: number | null;
+  runner_up: string | null;
+}
+
+export interface ProbeResponse {
+  data_mode: string;
+  probe: ProbeObservationEcho;
+  context: ProbeContext;
+  result: ProbeResult;
+  evidence: ProbeEvidence;
+  root_cause: ProbeRootCause;
+  explanation: Explanation;
+}
+
+export function probeObservation(payload: ProbePayload): Promise<ProbeResponse> {
+  return request<ProbeResponse>("/api/v1/demo/probe", {
+    method: "POST",
+    body: payload,
+    timeoutMs: PROBE_TIMEOUT_MS,
+  });
 }

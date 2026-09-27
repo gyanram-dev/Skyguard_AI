@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
   getAlert,
@@ -8,7 +8,9 @@ import {
   getStation,
   getStations,
   getStationHistory,
+  probeObservation,
   type HistoryVariable,
+  type ProbePayload,
 } from "@/lib/api";
 
 /**
@@ -90,5 +92,17 @@ export function useAlert(alertId: string | null) {
     staleTime: STALE_MS,
     retry: 1,
     refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Judge-probe mutation. Never runs automatically: the page submits
+ * explicitly. Result lives on the mutation (no global state), retry
+ * re-submits the same payload.
+ */
+export function useProbeObservation() {
+  return useMutation({
+    mutationFn: (payload: ProbePayload) => probeObservation(payload),
+    retry: false,
   });
 }

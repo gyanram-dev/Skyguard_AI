@@ -18,6 +18,7 @@ from src.api.services import health_service as HS
 from src.api.services import investigation_service as IV
 from src.api.services import network_service as NS
 from src.api.services import observation_service as OS
+from src.api.services import probe_service as PS
 from src.api.services import station_service as SS
 
 logger = logging.getLogger("skyguard.api")
@@ -53,7 +54,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -240,3 +241,15 @@ def network_summary() -> dict:
         state = _station_state(store, entry)
         states.append({"status": state["status"], "last_updated": state["last_updated"]})
     return NS.summarize(store, states)
+
+
+@app.post("/api/v1/demo/probe", response_model=S.ProbeResponse)
+def probe_observation(payload: S.ProbeRequest) -> dict:
+    """Interactive inference: one judge-supplied observation, same pipeline."""
+    store = get_store()
+    try:
+        return PS.run_probe(store, payload.station_id, payload.temperature,
+                            payload.pressure, payload.humidity)
+    except PS.ProbeError as exc:
+        return JSONResponse(status_code=exc.status_code,
+                            content={"detail": exc.detail, "code": exc.code})
