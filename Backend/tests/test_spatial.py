@@ -52,22 +52,27 @@ def test_2_3_4_neighbors_rank_radius_exclusion():
 
 
 def test_5_temporal_tolerance():
-    """Nearest within ±30 min matches; outside does not."""
+    """Causal (Phase 21B): latest neighbor at/before target within 30 min
+    matches; future observations never match, even when nearer."""
     tgt = pd.Series(pd.to_datetime(["2022-01-01 00:00+00:00"]))
-    near = pd.Series(pd.to_datetime(["2022-01-01 00:29+00:00", "2022-01-01 05:00+00:00"]))
-    pos = align_neighbor(tgt, near)
-    assert int(pos.iloc[0]) == 0
-    far = pd.Series(pd.to_datetime(["2022-01-01 00:31+00:00"]))
+    future = pd.Series(pd.to_datetime(["2022-01-01 00:29+00:00", "2022-01-01 05:00+00:00"]))
+    assert int(align_neighbor(tgt, future).iloc[0]) == -1
+    past = pd.Series(pd.to_datetime(["2021-12-31 23:30+00:00", "2022-01-01 05:00+00:00"]))
+    assert int(align_neighbor(tgt, past).iloc[0]) == 0
+    far = pd.Series(pd.to_datetime(["2021-12-31 23:00+00:00"]))
     assert int(align_neighbor(tgt, far).iloc[0]) == -1
     assert TIME_TOLERANCE == pd.Timedelta(minutes=30)
 
 
 def test_6_no_interpolation():
-    """Alignment returns positions of real rows only (-1 for gaps)."""
+    """Alignment returns positions of real rows only (-1 for gaps);
+    causal (Phase 21B): future records never match."""
     tgt = pd.Series(pd.to_datetime(["2022-01-01 00:00+00:00", "2022-01-01 06:00+00:00"]))
     nbr = pd.Series(pd.to_datetime(["2022-01-01 00:10+00:00"]))
     pos = align_neighbor(tgt, nbr)
-    assert int(pos.iloc[0]) == 0 and int(pos.iloc[1]) == -1
+    assert int(pos.iloc[0]) == -1 and int(pos.iloc[1]) == -1
+    past = pd.Series(pd.to_datetime(["2021-12-31 23:50+00:00"]))
+    assert int(align_neighbor(tgt, past).iloc[0]) == 0
 
 
 def test_7_median_reference():

@@ -1,0 +1,153 @@
+{
+  "generated": "2026-09-28",
+  "root": "Backend",
+  "artifacts": [
+    {
+      "path": "data/api/station_mapping.json",
+      "purpose": "frontend/backend station identity map",
+      "sha256": "f7c1c8d75f5a234d38ce7d4df1c2879e7f26a61bcfedd79a3ed5aedced868e9f",
+      "bytes": 3043,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "data/processed/jena_clean.csv",
+      "purpose": "frozen cleaned Jena observations (serving history)",
+      "sha256": "36835cd1615a46558d1cdb570ff27aa2b7c0c9ba373bd067841b9503ee18021d",
+      "bytes": 18402413,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "data/processed/delhi_clean.csv",
+      "purpose": "frozen cleaned Delhi observations (serving history)",
+      "sha256": "019de716920f3a093aca1f4b772ab6fadcfc6621cf02421a37acbe5c53f08766",
+      "bytes": 18371572,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "data/ensemble/jena_ensemble_predictions.csv",
+      "purpose": "frozen Jena detector outputs (operational alerts)",
+      "sha256": "501159c02f0543774ffe16c4a24844a2f66b5d8b5e69d64e1b7c91277a1a9563",
+      "bytes": 56648890,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "data/ensemble/delhi_ensemble_predictions.csv",
+      "purpose": "frozen Delhi detector outputs (operational alerts)",
+      "sha256": "5181eb3e4d7bd12f09c6bb5c1cc4c9ceae9f36bc51140767d5e5892e445a1f0b",
+      "bytes": 39998909,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "data/root_cause/jena_root_cause_predictions.csv",
+      "purpose": "frozen Jena diagnosis table (alert evidence)",
+      "sha256": "306992bb53f40d30d85be62b20b20fd9a5d2109bdda340154b5418c541eebb08",
+      "bytes": 5892634,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "data/root_cause/delhi_root_cause_predictions.csv",
+      "purpose": "frozen Delhi diagnosis table (alert evidence)",
+      "sha256": "b058d5907270fa3e95a6f63395e351fa91f543631268287a3e0a9f93a8647e12",
+      "bytes": 10081402,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "data/noaa/processed/spatial_consistency.csv",
+      "purpose": "frozen NOAA spatial evidence (context only)",
+      "sha256": "7a209567e6102b647b29932e7205855cbe76dc4a5a441beefd1817443ede931b",
+      "bytes": 76995451,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "data/noaa/metadata/neighbor_graph.csv",
+      "purpose": "frozen neighbor graph (spatial context)",
+      "sha256": "8cb01a2c66fbbeb01d30a58cade9cbe69d0c170e93737af99384775503590f55",
+      "bytes": 3699,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/isolation_forest/jena_isolation_forest.joblib",
+      "purpose": "frozen Isolation Forest detector",
+      "sha256": "acd00fcc6dd22f82ad6aa955889bd64431b057bf0e646672dca6c3bab7051a43",
+      "bytes": 4015870,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/isolation_forest/delhi_isolation_forest.joblib",
+      "purpose": "frozen Isolation Forest detector",
+      "sha256": "08b63c9091463209fabb89fa270f12aea2bfc8bae19535c89e71dc7a98860ffa",
+      "bytes": 3433294,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/lstm_autoencoder/jena_lstm_autoencoder.keras",
+      "purpose": "frozen LSTM autoencoder detector",
+      "sha256": "5faddfa9767674045a0ee033c9aed07cf008c308de571c34ef6f1c757108a832",
+      "bytes": 683042,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/lstm_autoencoder/delhi_lstm_autoencoder.keras",
+      "purpose": "frozen LSTM autoencoder detector",
+      "sha256": "d34ba728fa8e4c274aeea5e5a3689e69b5b1a98828f7349ef26693ef02dec7ea",
+      "bytes": 683078,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/lstm_autoencoder/jena_scaler.joblib",
+      "purpose": "frozen LSTM feature scaler",
+      "sha256": "7d8f1aa324e3e15cea202dcfbd41f5bc7d3db87f1fa430f71c4ed6dfcbe3db8b",
+      "bytes": 2134,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/lstm_autoencoder/delhi_scaler.joblib",
+      "purpose": "frozen LSTM feature scaler",
+      "sha256": "9197bcef9a31c615c4ecd893c290321177a7d5bcba19b246e2622d22d3f28f19",
+      "bytes": 2134,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/ensemble/jena_calibration.joblib",
+      "purpose": "frozen ensemble calibration + thresholds",
+      "sha256": "46ffb76d2986e9df2215214a0b5a7c9dcdff4f4e33d692a9b113dcae93b10c38",
+      "bytes": 8066808,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/ensemble/delhi_calibration.joblib",
+      "purpose": "frozen ensemble calibration + thresholds",
+      "sha256": "370bf4592bad7e377973ec898d017aaa498f1a300eae518d5a8d507d4830c2e2",
+      "bytes": 5536185,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/root_cause/jena_root_cause.joblib",
+      "purpose": "frozen root-cause classifier",
+      "sha256": "5182fd8a665cb0b7215c818df0525b7fd033e3ce8d32297eee3dea8f384e6e54",
+      "bytes": 4808905,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/root_cause/delhi_root_cause.joblib",
+      "purpose": "frozen root-cause classifier",
+      "sha256": "0c30e3779ebc11cccbaab492330147bc8e2da394b29303b701071c4c296a2816",
+      "bytes": 5196553,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/root_cause/jena_root_cause_explainer.joblib",
+      "purpose": "frozen SHAP explainer",
+      "sha256": "26d3b5c863e2b9a5da15f4249715b9a4ab80d03303475e24a442ed4d2334c79e",
+      "bytes": 7601622,
+      "version": "frozen-phase21b"
+    },
+    {
+      "path": "models/root_cause/delhi_root_cause_explainer.joblib",
+      "purpose": "frozen SHAP explainer",
+      "sha256": "dfadf13058f1a342430b3c1fa2da52cdfff4f7882a09828e42562cbfd9a33f40",
+      "bytes": 8324358,
+      "version": "frozen-phase21b"
+    }
+  ]
+}

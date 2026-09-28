@@ -49,7 +49,16 @@ def detect_frozen_runs_with_threshold(
     is_gap_row: pd.Series,
     threshold_rows: int,
 ) -> tuple[pd.Series, list[dict]]:
-    """Flag rows in identical-value runs with length >= threshold_rows."""
+    """Flag rows in identical-value runs, causally.
+
+    Row *i* is flagged only when the run length observable *at i*
+    (current + strictly previous rows) already reaches the threshold.
+    Earlier rows of a run are never marked using later arrivals: for a
+    run starting at *s*, rows s..s+threshold-2 stay unflagged and the
+    first flag lands at detection position s+threshold-1. Event records
+    therefore separate run start (start_pos) from detection
+    (detection_pos); the original event timestamp is never rewritten.
+    """
     n = len(values)
     arr = pd.to_numeric(values, errors="coerce").to_numpy(dtype=float)
     gap = is_gap_row.to_numpy(dtype=bool) if len(is_gap_row) == n else [False] * n
@@ -94,15 +103,18 @@ def detect_frozen_runs_with_threshold(
             run_id[i] = cur_id
             run_len_at_row[i] = cur_len
 
-    # Final run lengths per run id.
+    # Final run lengths per run id (for event records only).
     max_len: dict[int, int] = {}
     for i in range(n):
         if run_id[i] >= 0:
             max_len[run_id[i]] = max(max_len.get(run_id[i], 0), run_len_at_row[i])
 
+    # Causal flags: only rows that have personally observed enough
+    # consecutive evidence are marked. Appending future rows can only
+    # extend flags forward, never rewrite earlier decisions.
     flags = [0] * n
     for i in range(n):
-        if run_id[i] >= 0 and max_len[run_id[i]] >= threshold_rows:
+        if run_id[i] >= 0 and run_len_at_row[i] >= threshold_rows:
             flags[i] = 1
 
     events: list[dict] = []
@@ -114,6 +126,7 @@ def detect_frozen_runs_with_threshold(
                     "run_length": int(total),
                     "start_pos": int(members[0]),
                     "end_pos": int(members[-1]),
+                    "detection_pos": int(members[0] + threshold_rows - 1),
                 }
             )
     return pd.Series(flags, index=values.index, dtype=int), events

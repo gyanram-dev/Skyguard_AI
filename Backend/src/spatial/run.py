@@ -103,7 +103,7 @@ def run_spatial_pipeline(project_root: str | Path = ".") -> dict:
     config = {
         "k_maximum": N.MAX_NEIGHBORS,
         "radius_km": N.MAX_RADIUS_KM,
-        "temporal_tolerance": "±30 minutes (nearest real observation; no interpolation)",
+        "temporal_tolerance": "30 minutes back from target (latest real observation at/before target; future records never selected; no interpolation)",
         "timestamp_basis": "UTC (Delhi AWS IST converted IST-5:30)",
         "variables": {prefix: column for prefix, column in E.VARIABLES},
         "pressure_basis": PRESSURE_BASIS,

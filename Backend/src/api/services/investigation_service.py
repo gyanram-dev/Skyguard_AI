@@ -8,14 +8,21 @@ from src.api.services import station_service as SS
 
 
 def build_investigation(store, alert: dict) -> dict:
-    """Full evidence bundle for one alert (frozen artifacts only)."""
+    """Full evidence bundle for one alert (frozen detector outputs only).
+
+    Every lookup is keyed by (dataset, alert timestamp): the focus row is
+    the ensemble row AT the alert time, the history window ends AT the
+    alert time, and the diagnosis is the classifier row AT the alert time.
+    No injection IDs, fault labels, or event tables enter.
+    """
     ds = alert["backend_id"]
     bundle = store.pipeline[ds]
+    stamp = str(alert.get("timestamp"))
     ens = bundle["ens"]
-    rows = ens[ens["injection_id"] == alert["alert_id"].split(":", 2)[2]]
-    flagged = rows[rows["ens_median_flag"].astype(int) == 1]
-    focus = flagged.iloc[0] if len(flagged) else rows.iloc[0]
-    stamp = str(focus["timestamp"])
+    rows = ens[ens["timestamp"].astype(str) == stamp]
+    if len(rows) == 0:
+        raise KeyError(f"No ensemble row at '{stamp}'")
+    focus = rows.iloc[0]
     evidence = [
         {"title": "Statistical evidence",
          "detail": f"max|z|={SS._num(focus['z_raw'])} "
@@ -39,18 +46,18 @@ def build_investigation(store, alert: dict) -> dict:
                          "detail": _noaa_detail(store, stamp),
                          "source": "spatial"})
     rc = bundle["rc"]
-    rc_rows = rc[rc["injection_id"] == alert["alert_id"].split(":", 2)[2]]
+    rc_rows = rc[rc["timestamp"].astype(str) == stamp]
     rc_rows = rc_rows[rc_rows["has_diagnosis"].astype(bool)]
     root_class, confidence, explanation, features = None, None, None, []
     if len(rc_rows):
-        best = rc_rows.sort_values("timestamp").iloc[0]
+        best = rc_rows.iloc[0]
         root_class = str(best["predicted_class"])
         confidence = SS._num(best["confidence"])
         explanation = str(best["explanation"]) if str(best["explanation"]) else None
         features = _parse_shap(best.get("shap_top5"))
-    history = SS.history_series(
+    history = SS.history_range(
         store, {"backend_station_id": ds, "source_dataset": f"{ds}_clean"},
-        "temperature", 24)
+        "temperature", str(alert.get("timestamp")), 24)
     observations = {"temperature_c": SS._num(focus["temperature_c"]),
                     "relative_humidity_pct": SS._num(focus["relative_humidity_pct"]),
                     "pressure_hpa": SS._num(focus["pressure_hpa"])}

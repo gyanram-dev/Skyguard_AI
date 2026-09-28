@@ -352,7 +352,7 @@ function ProbeResultView({ result }: { result: ProbeResponse }) {
               trusted ? "text-success-deep" : "text-anomaly-deep",
             )}
           >
-            {trusted ? "Trusted observation" : "Anomaly — needs review"}
+            {trusted ? "Not flagged — consistent with available context" : "Anomaly — needs review"}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Scored {result.result.anomaly_score?.toFixed(3) ?? "—"} against threshold{" "}
@@ -360,7 +360,7 @@ function ProbeResultView({ result }: { result: ProbeResponse }) {
             {availabilityLabel(result.result.availability)}
             {result.result.confidence !== null &&
               result.result.confidence !== undefined &&
-              ` · Evidence confidence ${(result.result.confidence * 100).toFixed(0)}%`}
+              ` · Evidence coverage ${(result.result.confidence * 100).toFixed(0)}%`}
           </p>
         </div>
         <StatusBadge status={trusted ? "healthy" : "anomaly"} />

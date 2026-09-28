@@ -233,7 +233,11 @@ def alert_detail(alert_id: str) -> dict:
     alert = store.alert_index.get(alert_id)
     if alert is None:
         raise HTTPException(status_code=404, detail=f"Unknown alert '{alert_id}'")
-    bundle = IV.build_investigation(store, alert)
+    try:
+        bundle = IV.build_investigation(store, alert)
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=f"No evidence row for '{alert_id}'") from None
     return {"alert": {k: alert.get(k) for k in
                       ("alert_id", "station_id", "timestamp", "status", "event",
                        "anomaly_score", "root_cause", "root_cause_confidence", "summary")},

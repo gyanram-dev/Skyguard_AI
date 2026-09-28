@@ -1,0 +1,19 @@
+# SkyGuard AI backend — pinned runtime dependencies (Phase 21B).
+# Python 3.14. Install with:  pip install -r requirements.txt
+# Verified against the local serving environment on 2026-09-28.
+anyio==4.14.2
+fastapi==0.141.1
+httpx==0.28.1
+joblib==1.6.0
+numpy==2.5.1
+pandas==3.0.6
+pydantic==2.13.5
+pydantic_core==2.46.5
+pytest==9.1.1
+scikit-learn==1.9.1
+scipy==1.18.1
+shap==0.52.0
+starlette==1.7.0
+tensorflow-cpu==2.22.0rc0
+uvicorn==0.54.0
+websockets==16.1.1

@@ -227,7 +227,9 @@ def _attach_event_timestamps(events: dict, ts_strings: pd.Series) -> dict:
                     "run_length": ev["run_length"],
                     "start_timestamp": str(ts_strings.iloc[ev["start_pos"]]),
                     "end_timestamp": str(ts_strings.iloc[ev["end_pos"]]),
+                    "detection_timestamp": str(
+                        ts_strings.iloc[ev.get("detection_pos", ev["end_pos"])]),
                 }
             )
-        out[var] = enriched
+            out[var] = enriched
     return out

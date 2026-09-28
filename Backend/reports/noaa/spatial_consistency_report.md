@@ -6,18 +6,18 @@ Evidence signals only: per-variable spatial inconsistency versus nearby stations
 
 Up to 3 nearest stations within 600.0 km (haversine), target excluded, deterministic rank by (distance, station ID). Fixed constants, tuned against nothing.
 
-- `INI0000VIDD`: INI0000VIJP (239.02 km, coverage 100.0%); INI0000VILK (415.55 km, coverage 99.9%); INI0000VABP (589.15 km, coverage 98.9%).
-- `INI0000VIJP`: INI0000VIDD (239.02 km, coverage 51.3%); INI0000VABP (422.19 km, coverage 78.0%); INI0000VILK (503.96 km, coverage 98.4%).
-- `INI0000VILK`: INI0000VIDD (415.55 km, coverage 53.0%); INI0000VIJP (503.96 km, coverage 100.0%); INI0000VABP (526.45 km, coverage 80.4%).
+- `INI0000VIDD`: INI0000VIJP (239.02 km, coverage 99.9%); INI0000VILK (415.55 km, coverage 99.8%); INI0000VABP (589.15 km, coverage 98.3%).
+- `INI0000VIJP`: INI0000VIDD (239.02 km, coverage 35.2%); INI0000VABP (422.19 km, coverage 69.0%); INI0000VILK (503.96 km, coverage 97.4%).
+- `INI0000VILK`: INI0000VIDD (415.55 km, coverage 36.6%); INI0000VIJP (503.96 km, coverage 99.9%); INI0000VABP (526.45 km, coverage 71.6%).
 - `INI0000VABB`: no neighbors within radius.
-- `INI0000VABP`: INI0000VIJP (422.19 km, coverage 100.0%); INI0000VILK (526.45 km, coverage 99.9%); INI0000VIDD (589.15 km, coverage 58.6%).
-- `INU042809-1`: INU042410-1 (497.61 km, coverage 98.2%).
+- `INI0000VABP`: INI0000VIJP (422.19 km, coverage 99.9%); INI0000VILK (526.45 km, coverage 99.7%); INI0000VIDD (589.15 km, coverage 46.4%).
+- `INU042809-1`: INU042410-1 (497.61 km, coverage 96.2%).
 - `INU042410-1`: INU042809-1 (497.61 km, coverage 100.0%).
 - `INI0000VOMM`: INI0000VOBL (269.61 km, coverage 99.9%).
-- `INI0000VOBL`: INI0000VOMM (269.61 km, coverage 99.9%); INI0000VOTV (531.47 km, coverage 99.3%).
+- `INI0000VOBL`: INI0000VOMM (269.61 km, coverage 99.8%); INI0000VOTV (531.47 km, coverage 99.1%).
 - `INI0000VOTV`: INI0000VOBL (531.47 km, coverage 99.9%).
 
-Temporal alignment: ±30 minutes (nearest real observation; no interpolation); UTC (Delhi AWS IST converted IST-5:30).
+Temporal alignment: 30 minutes back from target (latest real observation at/before target; future records never selected; no interpolation); UTC (Delhi AWS IST converted IST-5:30).
 
 ## Variables and pressure decision
 
@@ -33,12 +33,12 @@ Temperature (`temperature_c`) and relative humidity (`relative_humidity_pct`) sc
 
 ## Coverage
 
-- temp: 149,312.0/448,145 scored; HIGH 114,805.0, MEDIUM 34,507.0, LOW 244,972.0, UNAVAILABLE 53,861.0; abs-diff p50/p90/p99 3.0/7.0/10.0; score p50/p90/p99 2.333/10.0/25.0.
-- rh: 153,945.0/448,145 scored; HIGH 116,405.0, MEDIUM 37,540.0, LOW 240,225.0, UNAVAILABLE 53,975.0; abs-diff p50/p90/p99 11.0/30.0/48.0; score p50/p90/p99 2.0/10.333/35.0.
-- pres: 129,342.0/448,145 scored; HIGH 49,016.0, MEDIUM 80,326.0, LOW 248,704.0, UNAVAILABLE 70,099.0; abs-diff p50/p90/p99 3.0/6.5/8.0; score p50/p90/p99 2.5/9.0/13.0.
-- alignment: FULL 334,306.0, PARTIAL 60,066.0, NONE 53,773.0.
+- temp: 141,562.0/448,145 scored; HIGH 97,709.0, MEDIUM 43,853.0, LOW 251,125.0, UNAVAILABLE 55,458.0; abs-diff p50/p90/p99 3.0/7.0/10.0; score p50/p90/p99 2.333/9.5/24.0.
+- rh: 146,103.0/448,145 scored; HIGH 98,399.0, MEDIUM 47,704.0, LOW 246,471.0, UNAVAILABLE 55,571.0; abs-diff p50/p90/p99 11.0/30.0/48.0; score p50/p90/p99 2.0/10.0/36.0.
+- pres: 123,580.0/448,145 scored; HIGH 48,619.0, MEDIUM 74,961.0, LOW 253,447.0, UNAVAILABLE 71,118.0; abs-diff p50/p90/p99 3.0/6.5/8.0; score p50/p90/p99 2.5/9.0/13.0.
+- alignment: FULL 313,205.0, PARTIAL 79,570.0, NONE 55,370.0.
 
-Delhi AWS contextual coverage: 288,319/289,728 AWS rows (99.5%) have >= 1 NOAA context station; context = INI0000VIDD, INI0000VIJP, INI0000VILK, INI0000VABP (NOAA Delhi/Safdarjung plus its geographic neighbors; different sensors, not ground truth, no labels derived; AWS pressure never differenced against altimeter).
+Delhi AWS contextual coverage: 286,777/289,728 AWS rows (99.0%) have >= 1 NOAA context station; context = INI0000VIDD, INI0000VIJP, INI0000VILK, INI0000VABP (NOAA Delhi/Safdarjung plus its geographic neighbors; different sensors, not ground truth, no labels derived; AWS pressure never differenced against altimeter).
 
 ## Limitations
 

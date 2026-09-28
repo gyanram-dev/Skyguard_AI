@@ -1,7 +1,7 @@
 {
   "k_maximum": 3,
   "radius_km": 600.0,
-  "temporal_tolerance": "\u00b130 minutes (nearest real observation; no interpolation)",
+  "temporal_tolerance": "30 minutes back from target (latest real observation at/before target; future records never selected; no interpolation)",
   "timestamp_basis": "UTC (Delhi AWS IST converted IST-5:30)",
   "variables": {
     "temp": "temperature_c",

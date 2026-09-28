@@ -36,10 +36,35 @@ One inference pipeline serves REST, the judge probe, and the replay stream.
   clear message when they are absent.
 - Frontend: Node.js (recent LTS) and npm.
 
+## Clean checkout startup (Phase 21B)
+
+```sh
+git clone <remote> Skyguard_AI
+cd Skyguard_AI
+cd Backend
+pip install -r requirements.txt
+cd ../Frontend
+npm install
+```
+
+Demo artifacts (`data/`, `models/` under `Backend/`) are git-ignored
+frozen pipeline outputs. Reproduce them with the project pipeline on the
+source machine, then verify against
+`Backend/reports/phase21b_go1_artifact_manifest.json` (path, purpose,
+version, sha256 per serving-required artifact). No download URL is
+invented: artifacts travel with the demo machine, never fetched blindly.
+Benchmark evaluation tables are NOT required to serve.
+
+```sh
+cd Backend
+python -m src.api.run
+```
+
 ## Backend setup
 
 ```sh
 cd Backend
+pip install -r requirements.txt
 python -m src.api.run
 ```
 

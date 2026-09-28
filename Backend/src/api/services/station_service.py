@@ -97,3 +97,30 @@ def history_series(store, mapping: dict, variable: str, hours: int) -> list[dict
     for stamp, value in zip(frame.loc[mask, ts_col].astype(str), frame.loc[mask, col]):
         points.append({"timestamp": stamp, variable: _num(value)})
     return points
+
+
+def history_range(store, mapping: dict, variable: str, end: str,
+                  hours: int) -> list[dict]:
+    """Timestamp/value pairs for the window ending at an event timestamp.
+
+    Investigation history is anchored at the SELECTED alert/event time,
+    never at the dataset latest: rows later than the event cannot inform
+    a decision about it. String-domain comparison inside one dataset
+    frame keeps naive-local (Delhi/Jena) and UTC (NOAA) frames in their
+    native basis with no fabricated offsets.
+    """
+    backend_id = mapping["backend_station_id"]
+    if mapping["source_dataset"] == "noaa_ghcnh":
+        frame = store.noaa_obs[backend_id]
+        ts_col, col = "timestamp_utc", NOAA_VARIABLE_COLUMNS[variable]
+    else:
+        frame = store.pipeline[backend_id]["obs"]
+        ts_col, col = "timestamp", VARIABLE_COLUMNS[variable]
+    stamps = frame[ts_col].astype(str)
+    end_key = str(end)
+    start_key = str(pd.Timestamp(end_key) - pd.Timedelta(hours=hours))
+    mask = (stamps <= end_key) & (stamps >= start_key)
+    points = []
+    for stamp, value in zip(frame.loc[mask, ts_col].astype(str), frame.loc[mask, col]):
+        points.append({"timestamp": stamp, variable: _num(value)})
+    return points

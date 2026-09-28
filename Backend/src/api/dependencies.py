@@ -25,9 +25,11 @@ REQUIRED_FILES = [
     "data/ensemble/delhi_ensemble_predictions.csv",
     "data/root_cause/jena_root_cause_predictions.csv",
     "data/root_cause/delhi_root_cause_predictions.csv",
-    "reports/ensemble/jena_event_results.csv",
-    "reports/ensemble/delhi_event_results.csv",
-    "reports/root_cause/end_to_end_diagnosis.csv",
+    # NOTE (Phase 21B): benchmark evaluation tables
+    # (reports/ensemble/*_event_results.csv,
+    # reports/root_cause/end_to_end_diagnosis.csv) are deliberately NOT
+    # required to serve: operational alerts derive from frozen detector
+    # outputs only, never from labels or event tables.
     "data/noaa/processed/spatial_consistency.csv",
     "data/noaa/metadata/neighbor_graph.csv",
     "models/isolation_forest/jena_isolation_forest.joblib",

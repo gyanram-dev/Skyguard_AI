@@ -199,6 +199,8 @@ def test_15_short_repeats_do_not_trigger_freeze():
 
 
 def test_16_36_identical_jena_values_trigger_possible_freeze():
+    # Phase 21B: causal flags — a 40-row run with threshold 36 flags only
+    # rows 36..40 (previously the whole run was marked using future rows).
     assert freeze_threshold_rows("jena") == 36
     rows = []
     base = pd.Timestamp("2024-01-01 00:00")
@@ -208,7 +210,7 @@ def test_16_36_identical_jena_values_trigger_possible_freeze():
                      "pressure_hpa": 1000.0 + i * 0.01,
                      "relative_humidity_pct": 50.0 + (i % 3) * 0.1})
     qdf, _ = validate_dataframe(_clean_frame(rows, "jena"), "jena")
-    assert int(qdf["temperature_possible_freeze"].sum()) == 40
+    assert int(qdf["temperature_possible_freeze"].sum()) == 5
     assert int(qdf["pressure_possible_freeze"].sum()) == 0
     last = qdf.iloc[-1]
     assert last["quality_status"] == POSSIBLE_FREEZE
@@ -216,6 +218,7 @@ def test_16_36_identical_jena_values_trigger_possible_freeze():
 
 
 def test_17_72_identical_delhi_values_trigger_possible_freeze():
+    # Phase 21B causal flags: an 80-row run with threshold 72 flags rows 72..80.
     assert freeze_threshold_rows("delhi") == 72
     rows = []
     base = pd.Timestamp("2024-01-01 00:00")
@@ -225,14 +228,15 @@ def test_17_72_identical_delhi_values_trigger_possible_freeze():
                      "pressure_hpa": 990.0,
                      "relative_humidity_pct": 60.0 + (i % 5) * 0.1})
     qdf, _ = validate_dataframe(_clean_frame(rows, "delhi"), "delhi")
-    assert int(qdf["pressure_possible_freeze"].sum()) == 80
+    assert int(qdf["pressure_possible_freeze"].sum()) == 9
     last = qdf.iloc[-1]
     assert last["quality_status"] == POSSIBLE_FREEZE
     assert int(last["ml_eligible"]) == 1
 
 
 def test_17b_nan_separates_freeze_runs_without_id_collision():
-    """40 identical + NaN + 5 identical (threshold 36): only the first run flags."""
+    """40 identical + NaN + 5 identical (threshold 36): causal flags mark
+    rows 36..40 of the first run only (previously all 40 rows)."""
     import numpy as np
 
     base = pd.Timestamp("2024-01-01 00:00")
@@ -244,7 +248,7 @@ def test_17b_nan_separates_freeze_runs_without_id_collision():
                      "pressure_hpa": 1000.0 + i * 0.01,
                      "relative_humidity_pct": 50.0 + (i % 3) * 0.1})
     qdf, summary = validate_dataframe(_clean_frame(rows, "jena"), "jena")
-    assert int(qdf["temperature_possible_freeze"].sum()) == 40
+    assert int(qdf["temperature_possible_freeze"].sum()) == 5
     assert int(qdf.iloc[-1]["temperature_possible_freeze"]) == 0
     # Availability rows for the NaN pair take priority over nothing else.
     assert int((qdf["quality_status"] == DATA_AVAILABILITY_EVENT).sum()) == 2
