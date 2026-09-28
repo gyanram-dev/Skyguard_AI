@@ -8,7 +8,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -22,6 +22,8 @@ from src.api.services import observation_service as OS
 from src.api.services import probe_service as PS
 from src.api.services import readiness_service as RS
 from src.api.services import station_service as SS
+from src.api.services import upload_analysis as UA
+from src.api.services import upload_session as US
 
 logger = logging.getLogger("skyguard.api")
 
@@ -278,6 +280,54 @@ def evaluation_summary() -> dict:
 def demo_readiness() -> dict:
     """Lightweight judge-demo capability check (no ML inference)."""
     return RS.check(get_store())
+
+
+def _upload_error(exc: US.UploadError):
+    return JSONResponse(status_code=exc.status_code,
+                        content={"detail": exc.detail, "code": exc.code})
+
+
+@app.post("/api/v1/analyze/upload", response_model=S.UploadResponse)
+async def analyze_upload(file: UploadFile = File(...)) -> dict:
+    """Ingest a judge-supplied station CSV (parse + mapping proposal)."""
+    get_store()
+    try:
+        content = await file.read()
+        return US.create_session(file.filename or "upload.csv", content)
+    except US.UploadError as exc:
+        return _upload_error(exc)
+
+
+@app.post("/api/v1/analyze/{session_id}/confirm", response_model=S.DQPreview)
+def analyze_confirm(session_id: str, payload: S.ConfirmRequest) -> dict:
+    """Confirm mapping/units and return the data-quality preview."""
+    get_store()
+    try:
+        US.confirm_session(session_id, payload.mapping.model_dump(),
+                           payload.units.model_dump(), payload.station_label)
+        return UA.dq_preview(session_id)
+    except US.UploadError as exc:
+        return _upload_error(exc)
+
+
+@app.post("/api/v1/analyze/{session_id}/run", response_model=S.AnalysisResult)
+def analyze_run(session_id: str) -> dict:
+    """Run uploaded-dataset analysis (statistical + DQ + multivariate)."""
+    get_store()
+    try:
+        return UA.run_analysis(session_id)
+    except US.UploadError as exc:
+        return _upload_error(exc)
+
+
+@app.get("/api/v1/analyze/{session_id}", response_model=S.AnalysisResult)
+def analyze_result(session_id: str) -> dict:
+    """Stored analysis result for navigation re-fetch (no recompute)."""
+    get_store()
+    try:
+        return UA.get_result(session_id)
+    except US.UploadError as exc:
+        return _upload_error(exc)
 
 
 @app.websocket("/api/v1/live")

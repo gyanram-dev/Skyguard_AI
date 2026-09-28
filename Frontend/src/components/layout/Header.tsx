@@ -63,6 +63,11 @@ function pageMetaFor(pathname: string): PageMeta {
         title: "SkyGuard Evaluation",
         subtitle: "Validated benchmark and runtime evidence",
       };
+    case "analyze-data":
+      return {
+        title: "Analyze Data",
+        subtitle: "Upload a station CSV and run SkyGuard analysis",
+      };
     default:
       return {
         title: "SkyGuard AI",

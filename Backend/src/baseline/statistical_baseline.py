@@ -59,8 +59,12 @@ BASELINE_COLUMNS = [
 ]
 
 
-def baseline_window_rows(dataset_name: str) -> int:
+def baseline_window_rows(dataset_name: str, cadence_min: float | None = None) -> int:
     """2-hour causal window in rows for the dataset's native cadence."""
+    if cadence_min is not None:
+        from src.features.feature_builder import horizons_for_cadence
+
+        return int(horizons_for_cadence(cadence_min)["2h"])
     key = dataset_name.lower()
     if key not in CADENCE_HORIZONS:
         raise ValueError(f"Unknown dataset '{dataset_name}'. Must be 'jena' or 'delhi'.")
@@ -73,6 +77,7 @@ def build_statistical_baseline(
     dataset_name: str,
     z_threshold: float = Z_THRESHOLD,
     iqr_factor: float = IQR_FACTOR,
+    cadence_min: float | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     """Build the combined statistical baseline. Return (baseline_df, summary)."""
     key = dataset_name.lower()
@@ -81,7 +86,7 @@ def build_statistical_baseline(
             f"Feature/quality row mismatch: {len(df_feat)} != {len(df_quality)}"
         )
     n = len(df_feat)
-    window_rows = baseline_window_rows(key)
+    window_rows = baseline_window_rows(key, cadence_min)
 
     zscores = compute_zscores(df_feat)
     zflags = compute_zscore_flags(zscores, z_threshold)

@@ -74,11 +74,16 @@ def load_clean_train_frame(dataset: str, project_root: str | Path = ".") -> pd.D
     return frame
 
 
-def prepare_split(sensor_frame: pd.DataFrame, dataset: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Causal features + DQ context from sensor values (clean or benchmark)."""
+def prepare_split(sensor_frame: pd.DataFrame, dataset: str,
+                  cadence_min: float | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Causal features + DQ context from sensor values (clean or benchmark).
+
+    An explicit cadence overrides frozen dataset tables for uploaded data;
+    existing callers pass nothing and are unaffected.
+    """
     feat_input = _as_feature_input(sensor_frame, dataset)
-    features = build_features_for_dataset(feat_input, dataset)
-    quality, _ = validate_dataframe(feat_input, dataset)
+    features = build_features_for_dataset(feat_input, dataset, cadence_min)
+    quality, _ = validate_dataframe(feat_input, dataset, cadence_min)
     return features, quality
 
 

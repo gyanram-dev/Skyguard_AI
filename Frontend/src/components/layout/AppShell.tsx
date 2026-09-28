@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Header, type Theme } from "@/components/layout/Header";
 import { MobileNav, Sidebar } from "@/components/layout/Sidebar";
 import { ReplaySessionProvider } from "@/components/replay/ReplaySessionContext";
+import { UploadSessionProvider } from "@/components/upload/UploadSessionContext";
 import { useAlerts, useHealth } from "@/hooks/useSkyguard";
 
 /** Shared application shell: sidebar + header + theme, rendered once. */
@@ -34,7 +35,9 @@ export function AppShell() {
           <MobileNav />
           <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 pt-0 lg:overflow-y-auto">
             <ReplaySessionProvider>
-              <Outlet />
+              <UploadSessionProvider>
+                <Outlet />
+              </UploadSessionProvider>
             </ReplaySessionProvider>
           </div>
         </section>

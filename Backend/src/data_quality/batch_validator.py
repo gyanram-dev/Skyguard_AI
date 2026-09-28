@@ -56,14 +56,20 @@ QUALITY_COLUMNS = [
 ]
 
 
-def validate_dataframe(df_clean: pd.DataFrame, dataset_name: str) -> tuple[pd.DataFrame, dict]:
-    """Validate a Phase 2 cleaned dataframe. Return (quality_df, summary)."""
+def validate_dataframe(df_clean: pd.DataFrame, dataset_name: str,
+                       cadence_min: float | None = None) -> tuple[pd.DataFrame, dict]:
+    """Validate a Phase 2 cleaned dataframe. Return (quality_df, summary).
+
+    An explicit cadence (minutes, e.g. inferred from uploaded data) drives
+    gap/freeze thresholds instead of the frozen dataset table; existing
+    callers pass nothing and are unaffected.
+    """
     key = dataset_name.lower()
     if key not in ("jena", "delhi"):
         raise ValueError(f"Unknown dataset '{dataset_name}'. Must be 'jena' or 'delhi'.")
     n = len(df_clean)
-    threshold = gap_threshold_minutes(key)
-    freeze_threshold = freeze_threshold_rows(key)
+    threshold = gap_threshold_minutes(key, cadence_min)
+    freeze_threshold = freeze_threshold_rows(key, cadence_min)
 
     # --- Timestamps (strict parse; cleaned data is ISO-8601 strings) ---
     dt_series = pd.to_datetime(df_clean["timestamp"], format="%Y-%m-%d %H:%M:%S", errors="coerce")

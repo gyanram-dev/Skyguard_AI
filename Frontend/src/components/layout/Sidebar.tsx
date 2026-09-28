@@ -8,6 +8,7 @@ import {
   MapPin,
   Search,
   ShieldCheck,
+  Upload,
 } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const navItems = [
   { label: "Network Health", icon: HeartPulse, to: "/network-health" },
   { label: "Judge Probe", icon: FlaskConical, to: "/judge-probe" },
   { label: "Evaluation", icon: Award, to: "/evaluation" },
+  { label: "Analyze Data", icon: Upload, to: "/analyze-data" },
 ] as const;
 
 const idleClass = cn(buttonVariants({ variant: "sidebar" }), "w-full justify-start");

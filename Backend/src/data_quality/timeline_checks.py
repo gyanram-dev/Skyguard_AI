@@ -19,8 +19,16 @@ EXPECTED_INTERVAL_MIN = {
 GAP_FACTOR = 1.5
 
 
-def gap_threshold_minutes(dataset_name: str) -> float:
-    """Return the communication-gap threshold in minutes for a dataset."""
+def gap_threshold_minutes(dataset_name: str, cadence_min: float | None = None) -> float:
+    """Return the communication-gap threshold in minutes for a dataset.
+
+    An explicit cadence (e.g. inferred from uploaded data) overrides the
+    frozen dataset table; existing callers pass nothing and are unaffected.
+    """
+    if cadence_min is not None:
+        if not cadence_min > 0:
+            raise ValueError(f"Invalid cadence '{cadence_min}'. Must be positive.")
+        return float(cadence_min) * GAP_FACTOR
     key = dataset_name.lower()
     if key not in EXPECTED_INTERVAL_MIN:
         raise ValueError(f"Unknown dataset '{dataset_name}'. Must be 'jena' or 'delhi'.")

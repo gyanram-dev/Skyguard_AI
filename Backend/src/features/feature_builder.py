@@ -39,19 +39,39 @@ CADENCE_HORIZONS: Dict[str, Dict[str, int]] = {
 }
 
 
+def horizons_for_cadence(cadence_min: float) -> Dict[str, int]:
+    """Row windows for an arbitrary cadence (e.g. uploaded station data).
+
+    Horizons keep their canonical names; effective durations are reported
+    by callers. Minimums keep windows statistically meaningful.
+    """
+    if not cadence_min > 0:
+        raise ValueError(f"Invalid cadence '{cadence_min}'. Must be positive.")
+    return {
+        "expected_interval_min": cadence_min,
+        "30m": max(3, int(round(30 / cadence_min))),
+        "2h": max(6, int(round(120 / cadence_min))),
+        "6h": max(12, int(round(360 / cadence_min))),
+    }
+
+
 def build_features_for_dataset(
     df_clean: pd.DataFrame,
     dataset_name: str,
+    cadence_min: float | None = None,
 ) -> pd.DataFrame:
     """Transform Phase 2 standardized observations into causal ML-ready features.
 
-    Strictly causal: no future observations are ever used.
+    Strictly causal: no future observations are ever used. An explicit
+    cadence (minutes) overrides the frozen dataset table for uploaded
+    data; existing callers pass nothing and are unaffected.
     """
     ds_key = dataset_name.lower()
     if ds_key not in CADENCE_HORIZONS:
         raise ValueError(f"Unknown dataset '{dataset_name}'. Must be 'jena' or 'delhi'.")
 
-    cfg = CADENCE_HORIZONS[ds_key]
+    cfg = horizons_for_cadence(cadence_min) if cadence_min is not None \
+        else CADENCE_HORIZONS[ds_key]
     interval_min = cfg["expected_interval_min"]
     w_30m = cfg["30m"]
     w_2h = cfg["2h"]

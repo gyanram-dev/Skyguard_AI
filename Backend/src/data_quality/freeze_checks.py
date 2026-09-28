@@ -28,8 +28,16 @@ from src.data_quality.timeline_checks import EXPECTED_INTERVAL_MIN
 FREEZE_DURATION_HOURS = 6
 
 
-def freeze_threshold_rows(dataset_name: str) -> int:
-    """Consecutive identical readings spanning FREEZE_DURATION_HOURS."""
+def freeze_threshold_rows(dataset_name: str, cadence_min: float | None = None) -> int:
+    """Consecutive identical readings spanning FREEZE_DURATION_HOURS.
+
+    An explicit cadence (e.g. inferred from uploaded data) overrides the
+    frozen dataset table; existing callers pass nothing and are unaffected.
+    """
+    if cadence_min is not None:
+        if not cadence_min > 0:
+            raise ValueError(f"Invalid cadence '{cadence_min}'. Must be positive.")
+        return max(2, int(round(FREEZE_DURATION_HOURS * 60 / cadence_min)))
     key = dataset_name.lower()
     if key not in EXPECTED_INTERVAL_MIN:
         raise ValueError(f"Unknown dataset '{dataset_name}'. Must be 'jena' or 'delhi'.")

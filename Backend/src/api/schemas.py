@@ -313,3 +313,99 @@ class ReadinessResponse(BaseModel):
     probe_available: bool = False
     evaluation_available: bool = False
     missing: list[str] = Field(default_factory=list)
+
+
+class MappingProposal(BaseModel):
+    column: str | None = None
+    confidence: str
+    alternates: list[str] = Field(default_factory=list)
+
+
+class UnitsProposal(BaseModel):
+    unit: str | None = None
+    source: str
+
+
+class UploadResponse(BaseModel):
+    session_id: str
+    filename: str
+    size_bytes: int
+    rows: int
+    columns: list[str] = Field(default_factory=list)
+    mapping: dict[str, MappingProposal] = Field(default_factory=dict)
+    units: dict[str, UnitsProposal] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ConfirmMapping(BaseModel):
+    timestamp: str
+    temperature: str
+    humidity: str | None = None
+    pressure: str | None = None
+
+
+class ConfirmUnits(BaseModel):
+    temperature: str
+    pressure: str | None = None
+
+
+class ConfirmRequest(BaseModel):
+    mapping: ConfirmMapping
+    units: ConfirmUnits
+    station_label: str | None = None
+
+
+class TimeRange(BaseModel):
+    start: str | None = None
+    end: str | None = None
+
+
+class DQPreview(BaseModel):
+    session_id: str
+    station_label: str
+    rows: int
+    time_range: TimeRange
+    cadence_min: float
+    horizons: dict = Field(default_factory=dict)
+    duplicates: int
+    missing: dict = Field(default_factory=dict)
+    large_gaps: int
+    invalid_timestamps: int
+    non_finite: int
+    rh_invalid: int | None = None
+    rh_available: bool
+    pressure_available: bool
+    ml_eligible: int
+    quality_counts: dict = Field(default_factory=dict)
+
+
+class AnomalyRecord(BaseModel):
+    timestamp: str
+    station: str
+    observation: dict = Field(default_factory=dict)
+    score: float | None = None
+    decision: str = "anomaly"
+    confidence: float | None = None
+    root_cause_estimate: str
+    evidence: dict = Field(default_factory=dict)
+    explanation: str
+    correction: dict | None = None
+    recommended_action: str
+
+
+class AnalysisResult(BaseModel):
+    session_id: str
+    filename: str
+    station_label: str
+    data_mode: str = "upload_analysis"
+    cadence_min: float
+    observations: int
+    normal: int
+    anomalies: int
+    dq_events: int
+    evidence_availability: dict = Field(default_factory=dict)
+    breakdown: dict = Field(default_factory=dict)
+    anomalies_detail: list[AnomalyRecord] = Field(default_factory=list)
+    mapping: dict = Field(default_factory=dict)
+    units: dict = Field(default_factory=dict)
+    notes: list[str] = Field(default_factory=list)

@@ -63,7 +63,7 @@ const PROBE_TIMEOUT_MS = 120_000;
 
 async function request<T>(
   path: string,
-  options?: { method?: string; body?: unknown; timeoutMs?: number },
+  options?: { method?: string; body?: unknown; rawBody?: BodyInit; timeoutMs?: number },
 ): Promise<T> {
   const method = options?.method ?? "GET";
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -78,7 +78,9 @@ async function request<T>(
     },
     signal: controller.signal,
   };
-  if (options?.body !== undefined) {
+  if (options?.rawBody !== undefined) {
+    init.body = options.rawBody;
+  } else if (options?.body !== undefined) {
     init.body = JSON.stringify(options.body);
   }
   try {
@@ -497,4 +499,130 @@ export interface DemoReadiness {
 
 export function getDemoReadiness(): Promise<DemoReadiness> {
   return request<DemoReadiness>("/api/v1/demo/readiness");
+}
+
+// ---------------------------------------------------------------------------
+// CSV upload analysis types mirroring Backend/src/api/schemas.py (Phase 20).
+// ---------------------------------------------------------------------------
+
+export interface UploadMappingProposal {
+  column: string | null;
+  confidence: string;
+  alternates: string[];
+}
+
+export interface UploadUnitsProposal {
+  unit: string | null;
+  source: string;
+}
+
+export interface UploadResponse {
+  session_id: string;
+  filename: string;
+  size_bytes: number;
+  rows: number;
+  columns: string[];
+  mapping: Record<string, UploadMappingProposal>;
+  units: Record<string, UploadUnitsProposal>;
+  warnings: string[];
+}
+
+export interface ConfirmUploadPayload {
+  mapping: {
+    timestamp: string;
+    temperature: string;
+    humidity?: string | null | undefined;
+    pressure?: string | null | undefined;
+  };
+  units: { temperature: string; pressure?: string | null | undefined };
+  station_label?: string | undefined;
+}
+
+export interface DQPreview {
+  session_id: string;
+  station_label: string;
+  rows: number;
+  time_range: { start: string | null; end: string | null };
+  cadence_min: number;
+  horizons: Record<string, number>;
+  duplicates: number;
+  missing: Record<string, number>;
+  large_gaps: number;
+  invalid_timestamps: number;
+  non_finite: number;
+  rh_invalid: number | null;
+  rh_available: boolean;
+  pressure_available: boolean;
+  ml_eligible: number;
+  quality_counts: Record<string, number>;
+}
+
+export interface UploadAnomalyCorrection {
+  original_value: number | null;
+  suggested_value: number | null;
+  reason: string;
+}
+
+export interface UploadAnomalyRecord {
+  timestamp: string;
+  station: string;
+  observation: Record<string, number | null>;
+  score: number | null;
+  decision: string;
+  confidence: number | null;
+  root_cause_estimate: string;
+  evidence: Record<string, unknown>;
+  explanation: string;
+  correction: UploadAnomalyCorrection | null;
+  recommended_action: string;
+}
+
+export interface UploadAnalysisResult {
+  session_id: string;
+  filename: string;
+  station_label: string;
+  data_mode: string;
+  cadence_min: number;
+  observations: number;
+  normal: number;
+  anomalies: number;
+  dq_events: number;
+  evidence_availability: Record<string, boolean>;
+  breakdown: Record<string, number>;
+  anomalies_detail: UploadAnomalyRecord[];
+  mapping: Record<string, string | null>;
+  units: Record<string, string | null>;
+  notes: string[];
+}
+
+export function uploadCsv(file: File): Promise<UploadResponse> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  return request<UploadResponse>("/api/v1/analyze/upload", {
+    method: "POST",
+    rawBody: form,
+    timeoutMs: 60_000,
+  });
+}
+
+export function confirmUpload(
+  sessionId: string,
+  payload: ConfirmUploadPayload,
+): Promise<DQPreview> {
+  return request<DQPreview>(`/api/v1/analyze/${encodeURIComponent(sessionId)}/confirm`, {
+    method: "POST",
+    body: payload,
+    timeoutMs: 60_000,
+  });
+}
+
+export function runUploadAnalysis(sessionId: string): Promise<UploadAnalysisResult> {
+  return request<UploadAnalysisResult>(`/api/v1/analyze/${encodeURIComponent(sessionId)}/run`, {
+    method: "POST",
+    timeoutMs: 300_000,
+  });
+}
+
+export function getUploadAnalysis(sessionId: string): Promise<UploadAnalysisResult> {
+  return request<UploadAnalysisResult>(`/api/v1/analyze/${encodeURIComponent(sessionId)}`);
 }
