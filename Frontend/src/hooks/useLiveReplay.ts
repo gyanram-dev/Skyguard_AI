@@ -58,6 +58,9 @@ export function useLiveReplay() {
   const [latestByStation, setLatestByStation] = useState<Record<string, LiveReading>>({});
   const [recentReadings, setRecentReadings] = useState<LiveReading[]>([]);
   const [liveAlerts, setLiveAlerts] = useState<LiveAlert[]>([]);
+  const [anomalyMap, setAnomalyMap] = useState<Record<string, LiveReading>>({});
+  const [obsCount, setObsCount] = useState(0);
+  const [runId, setRunId] = useState(0);
   const [completeInfo, setCompleteInfo] = useState<CompleteInfo | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -67,6 +70,11 @@ export function useLiveReplay() {
   const reconnectTimerRef = useRef<number | null>(null);
   const stateRef = useRef({ connection, replay });
   stateRef.current = { connection, replay };
+  // Session-owned pairing state: exact streamed payloads keyed by alert_id,
+  // plus the set of seen reading sequences for duplicate-proof counting.
+  // Cleared on every Start; never merged with persistent REST alerts.
+  const sessionRef = useRef<{ seen: Set<number> }>({ seen: new Set() });
+  const readingsRef = useRef<LiveReading[]>([]);
 
   useEffect(
     () => () => {
@@ -101,16 +109,37 @@ export function useLiveReplay() {
       return;
     }
     if (event.type === "reading") {
+      // Duplicate deliveries (same sequence) update the latest view but are
+      // never counted twice in the session summary.
+      const isNew = !sessionRef.current.seen.has(event.sequence);
+      if (isNew) {
+        sessionRef.current.seen.add(event.sequence);
+        setObsCount((count) => count + 1);
+      }
       setLatestByStation((prev) => ({ ...prev, [event.station_id]: event }));
-      setRecentReadings((prev) => [...prev.slice(-(MAX_READINGS - 1)), event]);
+      setRecentReadings((prev) => {
+        const next = isNew
+          ? [...prev.slice(-(MAX_READINGS - 1)), event]
+          : prev.map((row) => (row.sequence === event.sequence ? event : row));
+        readingsRef.current = next;
+        return next;
+      });
       setReplay((prev) => ({ ...prev, sequence: event.sequence }));
       return;
     }
     if (event.type === "alert") {
+      const reading = readingsRef.current.find(
+        (row) => row.station_id === event.station_id && row.sequence === event.sequence,
+      );
       setLiveAlerts((prev) => {
         if (prev.some((alert) => alert.alert_id === event.alert_id)) return prev;
         return [event, ...prev].slice(0, MAX_ALERTS);
       });
+      if (reading) {
+        setAnomalyMap((prev) =>
+          prev[event.alert_id] ? prev : { ...prev, [event.alert_id]: reading },
+        );
+      }
       return;
     }
     if (event.type === "complete") {
@@ -213,11 +242,18 @@ export function useLiveReplay() {
 
   const start = useCallback(
     (params: ReplayStartParams) => {
+      // New session: clear every previous replay artifact (readings, alerts,
+      // exact payloads, counters). Persistent REST alerts are untouched.
+      sessionRef.current = { seen: new Set() };
+      readingsRef.current = [];
       setNotice(null);
       setCompleteInfo(null);
       setLiveAlerts([]);
+      setAnomalyMap({});
+      setObsCount(0);
       setRecentReadings([]);
       setLatestByStation({});
+      setRunId((id) => id + 1);
       setReplay({
         status: "idle",
         stationId: params.station_id,
@@ -259,12 +295,24 @@ export function useLiveReplay() {
     [connect, disconnect, start, pause, resume, stop, setSpeed, clearNotice],
   );
 
+  const summary = useMemo(
+    () => ({
+      observations: obsCount,
+      anomalies: liveAlerts.length,
+      normal: Math.max(0, obsCount - liveAlerts.length),
+    }),
+    [obsCount, liveAlerts.length],
+  );
+
   return {
     connection,
     replay,
     latestByStation,
     recentReadings,
     liveAlerts,
+    anomalyMap,
+    summary,
+    runId,
     completeInfo,
     notice,
     ...actions,

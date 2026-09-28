@@ -34,13 +34,16 @@ export interface LiveReading {
     score: number | null;
     confidence: number | null;
     availability: string;
+    threshold: number | null;
+    method: string;
   };
-  root_cause: { class: string | null; confidence: number | null };
+  root_cause: { class: string | null; confidence: number | null; runner_up: string | null };
   evidence: {
     statistical: LiveComponentEvidence;
     isolation_forest: LiveComponentEvidence;
     lstm: LiveComponentEvidence;
     multivariate: Record<string, number | null>;
+    spatial: Record<string, number | string | boolean | null>;
   };
   explanation: { text: string | null; features: Array<Record<string, unknown>> };
 }
@@ -55,8 +58,10 @@ export interface LiveAlert {
   status: string;
   event: string;
   score: number | null;
+  threshold: number | null;
   root_cause: string | null;
   confidence: number | null;
+  runner_up: string | null;
   data_mode: string;
   summary: string;
 }

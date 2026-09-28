@@ -5,9 +5,9 @@ import { ResponsiveContainer } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { StatusBadge, DetailStat } from "@/components/common";
+import { StatusBadge, DetailStat, FactRow } from "@/components/common";
 import { HistoryChart, SensorSpark, toChartPoints } from "@/components/charts";
-import { EvidenceList, OutcomeBanner } from "@/components/evidence";
+import { EvidenceList, ExplanationBlock, OutcomeBanner } from "@/components/evidence";
 import { KpiRow } from "@/components/kpi";
 import { ReplayControls } from "@/components/replay/ReplayControls";
 import { LiveEventFeed } from "@/components/replay/LiveEventFeed";
@@ -78,6 +78,11 @@ function LiveOverview() {
     live.replay.status === "running" ||
     live.replay.status === "paused" ||
     live.replay.status === "preparing";
+
+  // A new replay run owns a fresh session: drop the previous streamed preview.
+  useEffect(() => {
+    setLivePreview(null);
+  }, [live.runId]);
 
   const networkQuery = useNetworkSummary();
   const stationsQuery = useStations();
@@ -190,14 +195,14 @@ function LiveOverview() {
 
   const selectAlert = (alert: AlertSummary, isLive: boolean) => {
     if (isLive) {
-      const liveAlert = live.liveAlerts.find((item) => item.alert_id === alert.alert_id);
-      const reading = live.recentReadings.find(
-        (row) => row.station_id === alert.station_id && row.sequence === liveAlert?.sequence,
-      );
-      if (liveAlert && reading) {
+      // Authoritative stored payload from this replay session — never the
+      // persistent REST store and never a reconstruction.
+      const reading = live.anomalyMap[alert.alert_id];
+      if (reading) {
         setLivePreview({ summary: alert, reading });
         return;
       }
+      return;
     }
     setLivePreview(null);
     setSelectedAlertId(alert.alert_id);
@@ -213,12 +218,25 @@ function LiveOverview() {
         loading={networkQuery.isPending}
         error={networkQuery.isError ? errorMessage(networkQuery.error) : null}
       />
-      <section
-        className="panel grid shrink-0 grid-cols-1 gap-3 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
-        aria-label="Live historical replay"
-      >
-        <ReplayControls live={live} stations={replayStations} />
-        <LiveEventFeed readings={live.recentReadings} limit={6} />
+      <section className="panel shrink-0 p-3" aria-label="Live historical replay">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <ReplayControls live={live} stations={replayStations} />
+          <LiveEventFeed readings={live.recentReadings} limit={6} />
+        </div>
+        <div className="mt-2 border-t border-border pt-2">
+          <ReplaySummary
+            status={live.replay.status}
+            observations={live.summary.observations}
+            normal={live.summary.normal}
+            anomalies={live.summary.anomalies}
+          />
+          <ReplayAnomalies
+            status={live.replay.status}
+            alerts={liveSummaries}
+            selectedAlertId={livePreview ? livePreview.summary.alert_id : null}
+            onReview={(alert) => selectAlert(alert, true)}
+          />
+        </div>
       </section>
       <div className="grid min-h-[500px] shrink-0 grid-cols-1 gap-3 xl:h-[520px] xl:min-h-0 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] 2xl:h-[600px]">
         <MapLab
@@ -237,6 +255,7 @@ function LiveOverview() {
           alertsLoading={alertsQuery.isPending}
           alertsError={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
           livePreview={livePreview}
+          split={live.replay.split}
         />
       </div>
       <RecentAlerts
@@ -260,6 +279,114 @@ function LiveOverview() {
         liveActive={liveActive}
       />
     </>
+  );
+}
+
+function ReplaySummary({
+  status,
+  observations,
+  normal,
+  anomalies,
+}: {
+  status: string;
+  observations: number;
+  normal: number;
+  anomalies: number;
+}) {
+  if (status === "idle") return null;
+  const cells = [
+    { label: "Observations", value: String(observations) },
+    { label: "Normal", value: String(normal) },
+    { label: "Anomalies", value: String(anomalies) },
+  ];
+  return (
+    <div aria-label="Replay summary">
+      <p className="section-kicker">Replay Summary</p>
+      <div className="mt-1 grid grid-cols-3 gap-2">
+        {cells.map((cell) => (
+          <div key={cell.label} className="rounded-xl bg-muted p-2">
+            <p className="text-[9px] font-semibold text-muted-foreground">{cell.label}</p>
+            <p className="text-base font-extrabold leading-tight tabular-nums">{cell.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReplayAnomalies({
+  status,
+  alerts,
+  selectedAlertId,
+  onReview,
+}: {
+  status: string;
+  alerts: AlertSummary[];
+  selectedAlertId: string | null;
+  onReview: (alert: AlertSummary) => void;
+}) {
+  return (
+    <div className="mt-2" aria-label="Current replay anomalies">
+      <p className="section-kicker">Current Replay Anomalies</p>
+      {alerts.length === 0 ? (
+        <p className="mt-1 text-[10px] text-muted-foreground" role="status">
+          {status === "idle"
+            ? "No replay anomalies yet. Start a historical replay to generate observations."
+            : "No anomalies detected in the observations processed so far."}
+        </p>
+      ) : (
+        <div className="mt-1.5 max-h-[220px] space-y-1.5 overflow-y-auto pr-0.5">
+          {alerts.map((alert) => {
+            const selected = selectedAlertId === alert.alert_id;
+            const liveStatus = normalizeStatus(alert.status, true);
+            return (
+              <div
+                key={alert.alert_id}
+                role="link"
+                tabIndex={0}
+                aria-label={`Review replay anomaly ${alert.event} at ${alert.station_id}`}
+                onClick={() => onReview(alert)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onReview(alert);
+                  }
+                }}
+                className={cn(
+                  "grid w-full cursor-pointer grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-colors",
+                  selected
+                    ? "border-primary/50 bg-info-soft"
+                    : "border-border bg-card hover:border-primary/30 hover:bg-info-soft/50",
+                )}
+              >
+                <time className="text-[10px] font-semibold text-muted-foreground">
+                  {formatTime(alert.timestamp)}
+                </time>
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-extrabold">
+                    {alert.station_id} · {alert.event}{" "}
+                    <span className="ml-1 rounded bg-warning-soft px-1 text-[8px] font-extrabold text-warning-deep">
+                      Replay
+                    </span>
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Score {formatScore(alert.anomaly_score)} · Confidence{" "}
+                    {alert.root_cause_confidence !== null &&
+                    alert.root_cause_confidence !== undefined
+                      ? formatConfidence(alert.root_cause_confidence)
+                      : "Not available"}
+                  </p>
+                </div>
+                <span className="flex items-center gap-1.5">
+                  <StatusBadge status={liveStatus} />
+                  <span className="text-[10px] font-extrabold text-info">Review →</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -419,11 +546,13 @@ function InvestigationPanel({
   alertsLoading,
   alertsError,
   livePreview,
+  split,
 }: {
   alert: AlertSummary | null;
   alertsLoading: boolean;
   alertsError: string | null;
   livePreview: { summary: AlertSummary; reading: LiveReading } | null;
+  split: string | null;
 }) {
   const detailQuery = useAlert(alert?.alert_id ?? null);
 
@@ -434,6 +563,7 @@ function InvestigationPanel({
           key={livePreview.summary.alert_id}
           summary={livePreview.summary}
           reading={livePreview.reading}
+          split={split}
         />
       </aside>
     );
@@ -487,12 +617,33 @@ function InvestigationPanel({
 function LiveInvestigationBody({
   summary,
   reading,
+  split,
 }: {
   summary: AlertSummary;
   reading: LiveReading;
+  split: string | null;
 }) {
   const navigate = useNavigate();
   const status = normalizeStatus(summary.status, true);
+  const historyQuery = useStationHistory(summary.station_id, "temperature", 24);
+  const historySeries = useMemo(
+    () => toChartPoints(historyQuery.data?.points ?? [], "temperature"),
+    [historyQuery.data],
+  );
+  const spatial = reading.evidence.spatial;
+  const spatialAvailable = spatial["available"] === true;
+  const multi = reading.evidence.multivariate;
+  const explanationFeatures = useMemo(
+    () =>
+      reading.explanation.features.map((feature) => ({
+        name: String(feature["name"] ?? "feature"),
+        value: typeof feature["value"] === "number" ? (feature["value"] as number) : null,
+        contribution:
+          typeof feature["contribution"] === "number" ? (feature["contribution"] as number) : null,
+        direction: String(feature["direction"] ?? "unknown"),
+      })),
+    [reading],
+  );
   const evidence = [
     {
       title: "Statistical evidence",
@@ -511,16 +662,41 @@ function LiveInvestigationBody({
     },
     {
       title: "Ensemble decision",
-      detail: `score=${reading.anomaly.score?.toFixed(3) ?? "—"}; availability=${reading.anomaly.availability}.`,
+      detail: `score=${reading.anomaly.score?.toFixed(3) ?? "—"} vs threshold ${reading.anomaly.threshold?.toFixed(3) ?? "—"}; availability=${reading.anomaly.availability}.`,
       source: "ensemble",
+    },
+    {
+      title: "Multivariate evidence",
+      detail:
+        typeof multi["multivariate_max_abs_robust_deviation_2h"] === "number"
+          ? `max robust deviation=${(multi["multivariate_max_abs_robust_deviation_2h"] as number).toFixed(2)}.`
+          : "Multivariate context not available for this event.",
+      source: "multivariate",
+    },
+    {
+      title: "Spatial evidence",
+      detail: spatialAvailable
+        ? `Reference median ${typeof spatial["reference_median"] === "number" ? `${(spatial["reference_median"] as number).toFixed(1)}°C` : "—"} (${String(spatial["neighbor_count"] ?? "—")} neighbors, ${String(spatial["context"] ?? "—")}).`
+        : "Spatial context unavailable — no neighbor values invented.",
+      source: "spatial",
+    },
+    {
+      title: "Data-quality evidence",
+      detail: `${reading.data_quality.status}; ML ${reading.data_quality.ml_eligible ? "eligible" : "ineligible"}.`,
+      source: "quality",
     },
   ];
   return (
     <>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="section-kicker">{summary.station_id} / Investigation · Streamed</p>
-          <h2 className="mt-0.5 text-sm font-extrabold">{summary.event}</h2>
+          <p className="section-kicker">Replay Anomaly</p>
+          <h2 className="mt-0.5 text-sm font-extrabold">
+            {summary.station_id} · {reading.city}
+          </h2>
+          <p className="text-[10px] text-muted-foreground">
+            Historical Replay · {split ?? "—"} · {formatTime(reading.timestamp)}
+          </p>
         </div>
         <StatusBadge status={status} />
       </div>
@@ -543,6 +719,17 @@ function LiveInvestigationBody({
           valueTone="text-info"
         />
       </div>
+      <div className="mt-2.5 divide-y divide-border rounded-xl border border-border px-2.5">
+        <FactRow
+          label="Anomaly score"
+          value={`${formatScore(reading.anomaly.score)} / threshold ${formatScore(reading.anomaly.threshold)}`}
+        />
+        <FactRow
+          label="Confidence"
+          value={formatConfidence(summary.root_cause_confidence ?? reading.anomaly.confidence)}
+        />
+        <FactRow label="Data quality" value={reading.data_quality.status} />
+      </div>
       <div className="mt-2.5">
         <EvidenceList evidence={evidence} loading={false} />
       </div>
@@ -554,9 +741,49 @@ function LiveInvestigationBody({
             cleanText(reading.explanation.text) ??
             "Streamed replay event assessed by the frozen pipeline."
           }
-          rootCauseConfidence={reading.root_cause.confidence}
-          ensembleMethod="ens_median"
+          rootCauseConfidence={summary.root_cause_confidence ?? reading.root_cause.confidence}
+          ensembleMethod={reading.anomaly.method}
         />
+        {cleanText(reading.root_cause.runner_up) && (
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Runner-up: {reading.root_cause.runner_up} — uncertainty preserved, no diagnosis
+            invented.
+          </p>
+        )}
+      </div>
+      <div className="mt-2.5">
+        <ExplanationBlock
+          explanation={{ text: reading.explanation.text, features: explanationFeatures }}
+          loading={false}
+        />
+      </div>
+      <div className="mt-2.5 rounded-xl border border-border p-2.5">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">
+          Temporal context · station history
+        </p>
+        <div className="mt-1">
+          {historyQuery.isPending ? (
+            <p
+              className="flex h-[72px] items-center justify-center text-[9px] text-muted-foreground"
+              role="status"
+            >
+              Loading station history…
+            </p>
+          ) : historyQuery.isError ? (
+            <p
+              className="flex h-[72px] items-center justify-center text-[9px] text-muted-foreground"
+              role="alert"
+            >
+              Station history unavailable.
+            </p>
+          ) : (
+            <HistoryChart
+              data={historySeries}
+              height={72}
+              ariaLabel={`Temperature history for ${summary.station_id}`}
+            />
+          )}
+        </div>
       </div>
       <div className="mt-2.5 grid grid-cols-1 gap-2">
         <Button
@@ -571,8 +798,8 @@ function LiveInvestigationBody({
         </Button>
       </div>
       <p className="mt-2 text-center text-[8px] text-muted-foreground">
-        Streamed event from accelerated historical replay — stored alert pages cover recorded
-        alerts.
+        Replay investigation — exact streamed payload from this session. Stored alert pages cover
+        persistent historical alerts.
       </p>
     </>
   );
@@ -777,7 +1004,7 @@ function RecentAlerts({
     <section className="panel shrink-0 p-4" aria-label="Recent alerts">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="section-kicker">Attention queue</p>
+          <p className="section-kicker">Attention queue · Historical alerts</p>
           <h2 className="mt-1 text-lg font-extrabold">Recent Alerts</h2>
         </div>
         <span className="flex size-8 items-center justify-center rounded-xl bg-anomaly-soft text-anomaly">

@@ -209,3 +209,32 @@ def test_13_16_disconnect_and_malformed(client):
                       "split": "OOD", "speed": 3600, "limit": 2})
         done = collect_until(ws, "complete", timeout_s=300.0)[0]
         assert done["processed"] == 2
+
+# 19A. Reading/alert events expose threshold, method, runner-up, and spatial.
+def test_19a_event_fields(client):
+    with client.websocket_connect("/api/v1/live") as ws:
+        ws.receive_json()
+        ws.send_json({"action": "start", "station_id": "DEL-01",
+                      "split": "OOD", "speed": 3600, "limit": 200})
+        readings = []
+        alerts = []
+        deadline = time.perf_counter() + 400.0
+        while time.perf_counter() < deadline:
+            message = ws.receive_json()
+            if message["type"] == "reading":
+                readings.append(message)
+            elif message["type"] == "alert":
+                alerts.append(message)
+            elif message["type"] == "complete":
+                break
+        assert len(readings) == 200
+        first = readings[0]
+        assert first["anomaly"]["threshold"] == pytest.approx(0.978295475557844)
+        assert first["anomaly"]["method"] == "ens_median"
+        assert isinstance(first["evidence"]["spatial"], dict)
+        assert first["evidence"]["spatial"]["available"] is True
+        assert first["evidence"]["spatial"]["neighbor_count"] >= 2
+        assert len(alerts) >= 1
+        for alert in alerts:
+            assert alert["threshold"] == pytest.approx(0.978295475557844)
+            assert alert["root_cause"] in RC_TAXONOMY

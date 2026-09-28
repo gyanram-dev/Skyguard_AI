@@ -286,14 +286,18 @@ class ReplaySession:
             "data_quality": {"status": dq["status"], "ml_eligible": dq["ml_eligible"]},
             "anomaly": {"detected": ens["is_anomalous"], "score": ens["median"],
                         "confidence": ens["confidence"],
-                        "availability": ens["availability"]},
+                        "availability": ens["availability"],
+                        "threshold": ens["threshold"],
+                        "method": ens["method"]},
             "root_cause": {"class": scored["root_cause"]["class"],
-                           "confidence": scored["root_cause"]["confidence"]},
+                           "confidence": scored["root_cause"]["confidence"],
+                           "runner_up": scored["root_cause"]["runner_up"]},
             "evidence": {
                 "statistical": scored["evidence"]["statistical"],
                 "isolation_forest": scored["evidence"]["isolation_forest"],
                 "lstm": scored["evidence"]["lstm"],
                 "multivariate": scored["evidence"]["multivariate"],
+                "spatial": scored["evidence"]["spatial"],
             },
             "explanation": scored["explanation"],
         }
@@ -315,8 +319,10 @@ class ReplaySession:
             "status": status,
             "event": event,
             "score": score,
+            "threshold": ens["threshold"],
             "root_cause": rc_class,
             "confidence": rc["confidence"],
+            "runner_up": rc["runner_up"],
             "data_mode": SC.DATA_MODE,
             "summary": (f"{event} on {self._station_id} at {timestamp}: "
                         f"ensemble score {score:.3f} "
