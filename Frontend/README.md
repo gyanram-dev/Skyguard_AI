@@ -2,20 +2,23 @@
 
 Context-aware weather intelligence and AWS sensor-trust platform.
 
-Frontend only. Runs standalone with local mock data — no backend required.
+Frontend dashboard for the SkyGuard FastAPI backend. All station, alert,
+investigation, probe, replay, and evaluation data comes from the backend
+REST/WebSocket API — no mock data, no fabricated results.
 
 ## Tech stack
 
 - React 19 + TypeScript
 - TanStack Start (SSR) + TanStack Router (file-based routing in `src/routes/`)
-- TanStack Query
+- TanStack Query (server state) + local state for the WebSocket replay stream
 - Vite 8 + Nitro (build / preview server)
 - Tailwind CSS 4 + shadcn-style UI components (`src/components/ui/`)
 - Recharts (sensor trend charts)
 
 ## Prerequisites
 
-- Node.js (see `.nvmrc` if present, otherwise any recent LTS) and npm
+- Node.js (recent LTS) and npm
+- A running SkyGuard backend (see the repository root README)
 
 ## Install
 
@@ -23,13 +26,25 @@ Frontend only. Runs standalone with local mock data — no backend required.
 npm install
 ```
 
+## Environment
+
+Copy `.env.example` to `.env`:
+
+```sh
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+The app falls back to `http://localhost:8000` when unset. Production-style
+deployments must set `VITE_API_BASE_URL` to the real backend origin.
+
 ## Development
 
 ```sh
 npm run dev
 ```
 
-Starts the local dev server. Open the printed `localhost` URL.
+Starts the local dev server (default port 3000, covered by backend CORS).
+Open the printed `localhost` URL.
 
 ## Production build
 
@@ -47,14 +62,20 @@ npm run preview
 
 ```sh
 npm run lint
-npm run format
+npx tsc --noEmit
 ```
+
+(`npm run lint` also covers pre-existing line-ending noise across untouched
+scaffold files; the application sources under `src/lib`, `src/components`,
+`src/routes`, and `src/hooks` are lint-clean.)
 
 ## Notes
 
-- The dashboard (`/`) uses centralized mock data defined in `src/routes/index.tsx`
-  (stations, alerts, sensor readings, network activity). It is intentional:
-  keep the app fully runnable without a backend.
-- Static images (India map, robot, icons) live in `public/assets/` and are
-  served from `/assets/*`.
-- No environment variables are required to run the frontend.
+- API layer: `src/lib/api.ts` (native fetch, `VITE_API_BASE_URL`,
+  centralized errors). Live replay transport: `src/lib/live.ts`.
+- Server state: `src/hooks/useSkyguard.ts` (React Query);
+  streaming replay state: `src/hooks/useLiveReplay.ts` (local state only).
+- Static images (India map, icons) live in `public/assets/` and are served
+  from `/assets/*`.
+- Data mode is historical replay unless the backend reports otherwise; the
+  header and replay bar label it honestly.

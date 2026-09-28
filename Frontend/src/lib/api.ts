@@ -478,3 +478,23 @@ export interface EvaluationSummary {
 export function getEvaluationSummary(): Promise<EvaluationSummary> {
   return request<EvaluationSummary>("/api/v1/evaluation/summary");
 }
+
+// ---------------------------------------------------------------------------
+// Demo readiness types mirroring Backend/src/api/schemas.py (Phase 18).
+// Lightweight capability flags; never blocks the app when unavailable.
+// ---------------------------------------------------------------------------
+
+export interface DemoReadiness {
+  ready: boolean;
+  data_mode: string;
+  default_station: string | null;
+  default_split: string;
+  replay_available: boolean;
+  probe_available: boolean;
+  evaluation_available: boolean;
+  missing: string[];
+}
+
+export function getDemoReadiness(): Promise<DemoReadiness> {
+  return request<DemoReadiness>("/api/v1/demo/readiness");
+}

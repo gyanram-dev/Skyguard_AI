@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   getAlert,
   getAlerts,
+  getDemoReadiness,
   getEvaluationSummary,
   getHealth,
   getNetworkSummary,
@@ -114,6 +115,17 @@ export function useEvaluation() {
     queryKey: ["evaluation-summary"],
     queryFn: getEvaluationSummary,
     staleTime: STALE_MS,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Demo capability flags; failure never blocks the app (no mocks). */
+export function useReadiness() {
+  return useQuery({
+    queryKey: ["demo-readiness"],
+    queryFn: getDemoReadiness,
+    staleTime: 60_000,
     retry: 1,
     refetchOnWindowFocus: false,
   });

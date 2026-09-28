@@ -20,6 +20,7 @@ from src.api.services import investigation_service as IV
 from src.api.services import network_service as NS
 from src.api.services import observation_service as OS
 from src.api.services import probe_service as PS
+from src.api.services import readiness_service as RS
 from src.api.services import station_service as SS
 
 logger = logging.getLogger("skyguard.api")
@@ -39,7 +40,13 @@ async def lifespan(app: FastAPI):
     """Load and validate every artifact once; fail fast with causes."""
     global STORE
     root = Path(os.environ.get("SKYGUARD_DATA_ROOT", ".")).resolve()
-    STORE = DataStore.load(root)
+    try:
+        STORE = DataStore.load(root)
+    except RuntimeError as exc:
+        # Startup precheck: one clean line naming the missing artifacts
+        # (relative paths only, never machine-specific absolutes).
+        logger.error("SkyGuard startup validation failed: %s", exc)
+        raise
     logger.info("SkyGuard API ready (data_mode=%s)", OS.DATA_MODE)
     yield
     STORE = None
@@ -265,6 +272,12 @@ def evaluation_summary() -> dict:
     except RuntimeError as exc:
         return JSONResponse(status_code=503,
                             content={"detail": str(exc), "code": "artifacts_unavailable"})
+
+
+@app.get("/api/v1/demo/readiness", response_model=S.ReadinessResponse)
+def demo_readiness() -> dict:
+    """Lightweight judge-demo capability check (no ML inference)."""
+    return RS.check(get_store())
 
 
 @app.websocket("/api/v1/live")

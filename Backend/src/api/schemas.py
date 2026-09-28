@@ -18,6 +18,7 @@ class HealthResponse(BaseModel):
     service: str = "skyguard-api"
     version: str
     data_mode: str = "historical_replay"
+    data_status: str = "available"
     model_status: ModelStatus
 
 
@@ -301,3 +302,14 @@ class EvaluationSummary(BaseModel):
     root_cause: list[RootCauseEntry] = Field(default_factory=list)
     runtime: dict = Field(default_factory=dict)
     notes: list[str] = Field(default_factory=list)
+
+
+class ReadinessResponse(BaseModel):
+    ready: bool
+    data_mode: str = "historical_replay"
+    default_station: str | None = None
+    default_split: str = "OOD"
+    replay_available: bool = False
+    probe_available: bool = False
+    evaluation_available: bool = False
+    missing: list[str] = Field(default_factory=list)

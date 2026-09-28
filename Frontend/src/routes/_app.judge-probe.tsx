@@ -104,6 +104,22 @@ function JudgeProbePage() {
     }
   };
 
+  /** Presets only fill the form; inference always runs through the backend. */
+  const applyPreset = (kind: "normal" | "spike") => {
+    const row = availableStations.find((station) => station.station_id === stationId) ?? selected;
+    if (!row) return;
+    setFieldErrors({});
+    if (kind === "normal" || row.temperature === null || row.temperature === undefined) {
+      setTemperature(toNumberInput(row.temperature));
+      setHumidity(toNumberInput(row.humidity));
+      setPressure(toNumberInput(row.pressure));
+      return;
+    }
+    setTemperature(Math.min(row.temperature + 25, 69.9).toFixed(1));
+    setHumidity(toNumberInput(row.humidity));
+    setPressure(toNumberInput(row.pressure));
+  };
+
   const submit = () => {
     const errors: FieldErrors = {};
     if (!stationId) errors.station = "Select a station for historical context.";
@@ -235,10 +251,30 @@ function JudgeProbePage() {
                 </div>
               </div>
 
-              <Button size="sm" onClick={submit} disabled={probe.isPending}>
-                <FlaskConical />
-                {probe.isPending ? "Analyzing…" : "Analyze observation"}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={submit} disabled={probe.isPending}>
+                  <FlaskConical />
+                  {probe.isPending ? "Analyzing…" : "Analyze observation"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyPreset("normal")}
+                  disabled={probe.isPending}
+                  title="Fill the form with the station's latest reading"
+                >
+                  Normal observation
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyPreset("spike")}
+                  disabled={probe.isPending}
+                  title="Fill the form with an elevated temperature to test"
+                >
+                  Spike-like observation
+                </Button>
+              </div>
               <p className="text-[10px] text-muted-foreground">
                 Probe against historical station context — inputs are prefilled from the selected
                 station&apos;s latest replayed reading and remain editable.

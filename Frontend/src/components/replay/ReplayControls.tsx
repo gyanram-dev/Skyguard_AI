@@ -11,8 +11,18 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { LiveReplay } from "@/hooks/useLiveReplay";
+import { useReadiness } from "@/hooks/useSkyguard";
 
 const SPEED_PRESETS = [1, 10, 60, 300, 900];
+
+const DEMO_FLOW = [
+  "Start Historical Replay",
+  "Watch station observations",
+  "Open an anomaly",
+  "Inspect investigation",
+  "Try Judge Probe",
+  "Open Evaluation",
+];
 
 const statusTone: Record<string, string> = {
   running: "bg-success",
@@ -62,6 +72,8 @@ export function ReplayControls({
   const [stationId, setStationId] = useState("DEL-01");
   const [split, setSplit] = useState("OOD");
   const [speed, setSpeed] = useState(10);
+  const [showFlow, setShowFlow] = useState(false);
+  const readinessQuery = useReadiness();
 
   return (
     <div className="min-w-0 flex-1">
@@ -71,6 +83,18 @@ export function ReplayControls({
           <strong className="text-[11px] font-extrabold">LIVE REPLAY</strong>
           <span className="text-[10px] text-muted-foreground">{statusLabel(live)}</span>
         </span>
+        <ReadinessChip
+          ready={readinessQuery.data?.ready ?? null}
+          missing={readinessQuery.data?.missing ?? []}
+        />
+        <button
+          type="button"
+          onClick={() => setShowFlow((value) => !value)}
+          aria-expanded={showFlow}
+          className="text-[10px] font-bold text-info hover:underline"
+        >
+          Demo flow
+        </button>
         <Select value={stationId} onValueChange={setStationId} disabled={busy}>
           <SelectTrigger className="h-8 w-[132px] text-[11px]" aria-label="Replay station">
             <SelectValue placeholder="Station" />
@@ -144,6 +168,13 @@ export function ReplayControls({
         {live.replay.effectiveSpeed != null && ` · effective ${live.replay.effectiveSpeed}×`}
         {live.completeInfo && ` · done in ${(live.completeInfo.durationMs / 1000).toFixed(1)}s`}
       </p>
+      {showFlow && (
+        <ol className="mt-1.5 list-decimal space-y-0.5 pl-5 text-[10px] text-muted-foreground">
+          {DEMO_FLOW.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      )}
       {live.notice && (
         <p className="mt-1 text-[10px] font-semibold text-offline-deep" role="alert">
           {live.notice}{" "}
@@ -157,5 +188,28 @@ export function ReplayControls({
         </p>
       )}
     </div>
+  );
+}
+
+/** Non-blocking demo capability chip (never mocks, never blocks the app). */
+function ReadinessChip({ ready, missing }: { ready: boolean | null; missing: string[] }) {
+  if (ready === null) return null;
+  if (ready) {
+    return (
+      <span className="status-pill bg-success-soft text-success-deep" role="status">
+        <span className="status-dot bg-success" />
+        Demo Ready
+      </span>
+    );
+  }
+  return (
+    <span
+      className="status-pill bg-offline-soft text-offline-deep"
+      role="alert"
+      title={missing.length > 0 ? missing.join("; ") : "Demo services unavailable."}
+    >
+      <span className="status-dot bg-offline" />
+      Demo services unavailable
+    </span>
   );
 }
