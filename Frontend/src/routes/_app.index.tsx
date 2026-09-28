@@ -10,6 +10,7 @@ import { SensorSpark } from "@/components/charts";
 import { KpiRow } from "@/components/kpi";
 import { ReplayControls } from "@/components/replay/ReplayControls";
 import { LiveEventFeed } from "@/components/replay/LiveEventFeed";
+import { ReplayIntelligence } from "@/components/replay/ReplayIntelligence";
 import { useReplaySession } from "@/components/replay/ReplaySessionContext";
 import type { LiveReading } from "@/lib/live";
 import { normalizeStatus, type AlertSummary, type StationDetailResponse } from "@/lib/api";
@@ -244,12 +245,20 @@ function LiveOverview() {
           liveActive={liveActive}
           onSelectStation={selectStation}
         />
-        <CurrentReplayCard
-          status={live.replay.status}
-          split={live.replay.split}
-          latest={liveActive ? (live.recentReadings[live.recentReadings.length - 1] ?? null) : null}
-          alertId={latestLiveAlertId}
-        />
+        <div
+          className="flex min-h-0 flex-col gap-3 overflow-y-auto xl:min-h-0"
+          aria-label="Replay intelligence"
+        >
+          <CurrentReplayCard
+            status={live.replay.status}
+            split={live.replay.split}
+            latest={
+              liveActive ? (live.recentReadings[live.recentReadings.length - 1] ?? null) : null
+            }
+            alertId={latestLiveAlertId}
+          />
+          <ReplayIntelligence live={live} />
+        </div>
       </div>
       <RecentAlerts
         alerts={recentAlerts}
