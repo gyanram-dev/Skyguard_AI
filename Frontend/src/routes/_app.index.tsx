@@ -11,7 +11,7 @@ import { EvidenceList, ExplanationBlock, OutcomeBanner } from "@/components/evid
 import { KpiRow } from "@/components/kpi";
 import { ReplayControls } from "@/components/replay/ReplayControls";
 import { LiveEventFeed } from "@/components/replay/LiveEventFeed";
-import { useLiveReplay } from "@/hooks/useLiveReplay";
+import { useReplaySession } from "@/components/replay/ReplaySessionContext";
 import type { LiveAlert, LiveReading } from "@/lib/live";
 import {
   normalizeStatus,
@@ -68,21 +68,15 @@ export const Route = createFileRoute("/_app/")({
 function LiveOverview() {
   const [selectedStationId, setSelectedStationId] = useState<string | null>("DEL-01");
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
-  const [livePreview, setLivePreview] = useState<{
-    summary: AlertSummary;
-    reading: LiveReading;
-  } | null>(null);
 
-  const live = useLiveReplay();
+  // Replay session lives in the AppShell-level provider: navigating between
+  // routes remounts this page but never destroys the stream, counters, or
+  // the selected streamed anomaly.
+  const { live, livePreview, setLivePreview } = useReplaySession();
   const liveActive =
     live.replay.status === "running" ||
     live.replay.status === "paused" ||
     live.replay.status === "preparing";
-
-  // A new replay run owns a fresh session: drop the previous streamed preview.
-  useEffect(() => {
-    setLivePreview(null);
-  }, [live.runId]);
 
   const networkQuery = useNetworkSummary();
   const stationsQuery = useStations();
