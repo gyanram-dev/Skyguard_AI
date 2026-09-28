@@ -39,6 +39,12 @@ function pageMetaFor(pathname: string): PageMeta {
             subtitle: "Review detected anomalies and data availability events",
           };
     case "investigations":
+      if (detail === "replay") {
+        return {
+          title: "Replay Anomaly",
+          subtitle: "Streamed replay investigation workspace",
+        };
+      }
       return detail
         ? {
             title: "Investigation",

@@ -1,25 +1,18 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Bell, CloudSun, Droplets, Eye, Gauge, Thermometer } from "lucide-react";
+import { Bell, CloudSun, Droplets, Gauge, Thermometer } from "lucide-react";
 import { ResponsiveContainer } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StatusBadge, DetailStat, FactRow } from "@/components/common";
-import { HistoryChart, SensorSpark, toChartPoints } from "@/components/charts";
-import { EvidenceList, ExplanationBlock, OutcomeBanner } from "@/components/evidence";
+import { SensorSpark } from "@/components/charts";
 import { KpiRow } from "@/components/kpi";
 import { ReplayControls } from "@/components/replay/ReplayControls";
 import { LiveEventFeed } from "@/components/replay/LiveEventFeed";
 import { useReplaySession } from "@/components/replay/ReplaySessionContext";
-import type { LiveAlert, LiveReading } from "@/lib/live";
-import {
-  normalizeStatus,
-  type AlertDetailResponse,
-  type AlertSummary,
-  type StationDetailResponse,
-} from "@/lib/api";
-import type { DisplayStatus } from "@/lib/api";
+import type { LiveReading } from "@/lib/live";
+import { normalizeStatus, type AlertSummary, type StationDetailResponse } from "@/lib/api";
 import {
   errorMessage,
   cleanText,
@@ -33,7 +26,6 @@ import {
 } from "@/lib/format";
 import { mergeStations, stationMapMeta, type MergedStation } from "@/lib/mapMeta";
 import {
-  useAlert,
   useAlerts,
   useNetworkSummary,
   useStation,
@@ -70,9 +62,10 @@ function LiveOverview() {
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
 
   // Replay session lives in the AppShell-level provider: navigating between
-  // routes remounts this page but never destroys the stream, counters, or
-  // the selected streamed anomaly.
-  const { live, livePreview, setLivePreview } = useReplaySession();
+  // routes remounts this page but never destroys the stream or counters.
+  // Anomaly selection is URL-driven (/investigations/replay/$anomalyId).
+  const { live } = useReplaySession();
+  const navigate = useNavigate();
   const liveActive =
     live.replay.status === "running" ||
     live.replay.status === "paused" ||
@@ -151,6 +144,17 @@ function LiveOverview() {
   const selectedLive =
     liveActive && selectedStationId ? (live.latestByStation[selectedStationId] ?? null) : null;
 
+  const latestLiveAlertId = useMemo(() => {
+    if (!liveActive || live.recentReadings.length === 0) return null;
+    const latest = live.recentReadings[live.recentReadings.length - 1];
+    if (!latest?.anomaly.detected) return null;
+    return (
+      live.liveAlerts.find(
+        (alert) => alert.station_id === latest.station_id && alert.sequence === latest.sequence,
+      )?.alert_id ?? null
+    );
+  }, [live.recentReadings, live.liveAlerts, liveActive]);
+
   const liveSeries = useMemo(() => {
     const rows = live.recentReadings.filter((row) => row.station_id === selectedStationId);
     const pick = (get: (row: LiveReading) => number | null) =>
@@ -182,23 +186,20 @@ function LiveOverview() {
 
   const selectStation = (stationId: string) => {
     setSelectedStationId(stationId);
-    setLivePreview(null);
     const match = alerts.find((alert) => alert.station_id === stationId);
     if (match) setSelectedAlertId(match.alert_id);
   };
 
   const selectAlert = (alert: AlertSummary, isLive: boolean) => {
     if (isLive) {
-      // Authoritative stored payload from this replay session — never the
-      // persistent REST store and never a reconstruction.
-      const reading = live.anomalyMap[alert.alert_id];
-      if (reading) {
-        setLivePreview({ summary: alert, reading });
-        return;
-      }
+      // Dedicated replay investigation route backed by the exact stored
+      // streamed payload — never the persistent REST store.
+      navigate({
+        to: "/investigations/replay/$anomalyId",
+        params: { anomalyId: alert.alert_id },
+      });
       return;
     }
-    setLivePreview(null);
     setSelectedAlertId(alert.alert_id);
     if (stationMapMeta.some((meta) => meta.id === alert.station_id)) {
       setSelectedStationId(alert.station_id);
@@ -227,7 +228,6 @@ function LiveOverview() {
           <ReplayAnomalies
             status={live.replay.status}
             alerts={liveSummaries}
-            selectedAlertId={livePreview ? livePreview.summary.alert_id : null}
             onReview={(alert) => selectAlert(alert, true)}
           />
         </div>
@@ -244,19 +244,18 @@ function LiveOverview() {
           liveActive={liveActive}
           onSelectStation={selectStation}
         />
-        <InvestigationPanel
-          alert={livePreview ? null : selectedAlert}
-          alertsLoading={alertsQuery.isPending}
-          alertsError={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
-          livePreview={livePreview}
+        <CurrentReplayCard
+          status={live.replay.status}
           split={live.replay.split}
+          latest={liveActive ? (live.recentReadings[live.recentReadings.length - 1] ?? null) : null}
+          alertId={latestLiveAlertId}
         />
       </div>
       <RecentAlerts
         alerts={recentAlerts}
         liveAlerts={liveSummaries}
         liveIds={liveIds}
-        selectedAlertId={livePreview ? livePreview.summary.alert_id : selectedAlertId}
+        selectedAlertId={selectedAlertId}
         onSelectAlert={selectAlert}
         loading={alertsQuery.isPending}
         error={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
@@ -311,12 +310,10 @@ function ReplaySummary({
 function ReplayAnomalies({
   status,
   alerts,
-  selectedAlertId,
   onReview,
 }: {
   status: string;
   alerts: AlertSummary[];
-  selectedAlertId: string | null;
   onReview: (alert: AlertSummary) => void;
 }) {
   return (
@@ -331,7 +328,6 @@ function ReplayAnomalies({
       ) : (
         <div className="mt-1.5 max-h-[220px] space-y-1.5 overflow-y-auto pr-0.5">
           {alerts.map((alert) => {
-            const selected = selectedAlertId === alert.alert_id;
             const liveStatus = normalizeStatus(alert.status, true);
             return (
               <div
@@ -347,10 +343,7 @@ function ReplayAnomalies({
                   }
                 }}
                 className={cn(
-                  "grid w-full cursor-pointer grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-colors",
-                  selected
-                    ? "border-primary/50 bg-info-soft"
-                    : "border-border bg-card hover:border-primary/30 hover:bg-info-soft/50",
+                  "grid w-full cursor-pointer grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-border bg-card px-2.5 py-2 text-left transition-colors hover:border-primary/30 hover:bg-info-soft/50",
                 )}
               >
                 <time className="text-[10px] font-semibold text-muted-foreground">
@@ -381,6 +374,113 @@ function ReplayAnomalies({
         </div>
       )}
     </div>
+  );
+}
+
+function CurrentReplayCard({
+  status,
+  split,
+  latest,
+  alertId,
+}: {
+  status: string;
+  split: string | null;
+  latest: LiveReading | null;
+  alertId: string | null;
+}) {
+  const navigate = useNavigate();
+  return (
+    <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Current replay">
+      <p className="section-kicker">Current Replay</p>
+      {!latest ? (
+        <>
+          <h2 className="mt-0.5 text-sm font-extrabold">Replay idle</h2>
+          <p className="mt-2 text-[10px] text-muted-foreground" role="status">
+            No streamed observations yet. Start a historical replay to generate observations.
+          </p>
+        </>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="mt-0.5 text-sm font-extrabold">
+                {latest.station_id} · {latest.city}
+              </h2>
+              <p className="text-[10px] text-muted-foreground">
+                Historical Replay · {split ?? "—"} · {formatTime(latest.timestamp)}
+              </p>
+            </div>
+            <StatusBadge
+              status={
+                latest.anomaly.detected
+                  ? latest.root_cause.class && latest.root_cause.class !== "UNKNOWN"
+                    ? "anomaly"
+                    : "review"
+                  : latest.data_quality.ml_eligible
+                    ? "healthy"
+                    : "offline"
+              }
+            />
+          </div>
+          <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+            <DetailStat
+              label="Temperature"
+              value={formatTemp(latest.observations.temperature_c)}
+              emphasis={latest.anomaly.detected}
+              tone={latest.anomaly.detected ? "bg-anomaly-soft" : undefined}
+            />
+            <DetailStat
+              label="Humidity"
+              value={formatHumidity(latest.observations.relative_humidity_pct)}
+              tone="bg-surface-blue-tint"
+            />
+            <DetailStat
+              label="Pressure"
+              value={formatPressure(latest.observations.pressure_hpa)}
+              tone="bg-surface-blue-tint"
+              valueTone="text-info"
+            />
+          </div>
+          <div className="mt-2.5 divide-y divide-border rounded-xl border border-border px-2.5">
+            <FactRow
+              label="Anomaly score"
+              value={`${formatScore(latest.anomaly.score)} / ${formatScore(latest.anomaly.threshold)}`}
+            />
+            <FactRow label="Confidence" value={formatConfidence(latest.anomaly.confidence)} />
+            {latest.anomaly.detected && (
+              <FactRow
+                label="Root cause"
+                value={cleanText(latest.root_cause.class) ?? "Not available"}
+              />
+            )}
+          </div>
+          {!latest.anomaly.detected ? (
+            <p className="mt-2.5 text-[10px] text-muted-foreground" role="status">
+              {latest.data_quality.ml_eligible
+                ? "No investigation required"
+                : `Data quality: ${latest.data_quality.status} — no investigation required`}
+            </p>
+          ) : alertId ? (
+            <Button
+              size="sm"
+              className="mt-2.5 w-full"
+              onClick={() =>
+                navigate({
+                  to: "/investigations/replay/$anomalyId",
+                  params: { anomalyId: alertId },
+                })
+              }
+            >
+              Investigate →
+            </Button>
+          ) : (
+            <p className="mt-2.5 text-[10px] text-muted-foreground" role="status">
+              Alert incoming…
+            </p>
+          )}
+        </>
+      )}
+    </aside>
   );
 }
 
@@ -532,433 +632,6 @@ function MapLab({
         </div>
       )}
     </section>
-  );
-}
-
-function InvestigationPanel({
-  alert,
-  alertsLoading,
-  alertsError,
-  livePreview,
-  split,
-}: {
-  alert: AlertSummary | null;
-  alertsLoading: boolean;
-  alertsError: string | null;
-  livePreview: { summary: AlertSummary; reading: LiveReading } | null;
-  split: string | null;
-}) {
-  const detailQuery = useAlert(alert?.alert_id ?? null);
-
-  if (livePreview) {
-    return (
-      <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
-        <LiveInvestigationBody
-          key={livePreview.summary.alert_id}
-          summary={livePreview.summary}
-          reading={livePreview.reading}
-          split={split}
-        />
-      </aside>
-    );
-  }
-
-  if (alertsError) {
-    return (
-      <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
-        <p className="section-kicker">Investigation</p>
-        <h2 className="mt-0.5 text-sm font-extrabold">Alerts unavailable</h2>
-        <p className="mt-2 text-[10px] text-muted-foreground" role="alert">
-          {alertsError}
-        </p>
-      </aside>
-    );
-  }
-
-  if (alertsLoading || alert === null) {
-    return (
-      <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
-        <p className="section-kicker">Investigation</p>
-        <h2 className="mt-0.5 text-sm font-extrabold">
-          {alertsLoading ? "Loading alerts…" : "No alerts"}
-        </h2>
-        <p className="mt-2 text-[10px] text-muted-foreground" role="status">
-          {alertsLoading
-            ? "Fetching the attention queue from the API."
-            : "No alerts in the current window."}
-        </p>
-      </aside>
-    );
-  }
-
-  const detail = detailQuery.data;
-  const status = normalizeStatus(alert.status, true);
-
-  return (
-    <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Investigation panel">
-      <InvestigationBody
-        key={alert.alert_id}
-        alert={alert}
-        detail={detail}
-        detailLoading={detailQuery.isPending}
-        detailError={detailQuery.isError ? errorMessage(detailQuery.error) : null}
-        status={status}
-      />
-    </aside>
-  );
-}
-
-function LiveInvestigationBody({
-  summary,
-  reading,
-  split,
-}: {
-  summary: AlertSummary;
-  reading: LiveReading;
-  split: string | null;
-}) {
-  const navigate = useNavigate();
-  const status = normalizeStatus(summary.status, true);
-  const historyQuery = useStationHistory(summary.station_id, "temperature", 24);
-  const historySeries = useMemo(
-    () => toChartPoints(historyQuery.data?.points ?? [], "temperature"),
-    [historyQuery.data],
-  );
-  const spatial = reading.evidence.spatial;
-  const spatialAvailable = spatial["available"] === true;
-  const multi = reading.evidence.multivariate;
-  const explanationFeatures = useMemo(
-    () =>
-      reading.explanation.features.map((feature) => ({
-        name: String(feature["name"] ?? "feature"),
-        value: typeof feature["value"] === "number" ? (feature["value"] as number) : null,
-        contribution:
-          typeof feature["contribution"] === "number" ? (feature["contribution"] as number) : null,
-        direction: String(feature["direction"] ?? "unknown"),
-      })),
-    [reading],
-  );
-  const evidence = [
-    {
-      title: "Statistical evidence",
-      detail: `max|z|=${reading.evidence.statistical.raw?.toFixed(2) ?? "—"} (calibrated ${reading.evidence.statistical.calibrated?.toFixed(3) ?? "—"}).`,
-      source: "statistical",
-    },
-    {
-      title: "Isolation Forest evidence",
-      detail: `raw score=${reading.evidence.isolation_forest.raw?.toFixed(3) ?? "—"} (calibrated ${reading.evidence.isolation_forest.calibrated?.toFixed(3) ?? "—"}).`,
-      source: "isolation_forest",
-    },
-    {
-      title: "LSTM reconstruction evidence",
-      detail: `target MSE=${reading.evidence.lstm.raw?.toFixed(3) ?? "—"} (calibrated ${reading.evidence.lstm.calibrated?.toFixed(3) ?? "—"}).`,
-      source: "lstm",
-    },
-    {
-      title: "Ensemble decision",
-      detail: `score=${reading.anomaly.score?.toFixed(3) ?? "—"} vs threshold ${reading.anomaly.threshold?.toFixed(3) ?? "—"}; availability=${reading.anomaly.availability}.`,
-      source: "ensemble",
-    },
-    {
-      title: "Multivariate evidence",
-      detail:
-        typeof multi["multivariate_max_abs_robust_deviation_2h"] === "number"
-          ? `max robust deviation=${(multi["multivariate_max_abs_robust_deviation_2h"] as number).toFixed(2)}.`
-          : "Multivariate context not available for this event.",
-      source: "multivariate",
-    },
-    {
-      title: "Spatial evidence",
-      detail: spatialAvailable
-        ? `Reference median ${typeof spatial["reference_median"] === "number" ? `${(spatial["reference_median"] as number).toFixed(1)}°C` : "—"} (${String(spatial["neighbor_count"] ?? "—")} neighbors, ${String(spatial["context"] ?? "—")}).`
-        : "Spatial context unavailable — no neighbor values invented.",
-      source: "spatial",
-    },
-    {
-      title: "Data-quality evidence",
-      detail: `${reading.data_quality.status}; ML ${reading.data_quality.ml_eligible ? "eligible" : "ineligible"}.`,
-      source: "quality",
-    },
-  ];
-  return (
-    <>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="section-kicker">Replay Anomaly</p>
-          <h2 className="mt-0.5 text-sm font-extrabold">
-            {summary.station_id} · {reading.city}
-          </h2>
-          <p className="text-[10px] text-muted-foreground">
-            Historical Replay · {split ?? "—"} · {formatTime(reading.timestamp)}
-          </p>
-        </div>
-        <StatusBadge status={status} />
-      </div>
-      <div className="mt-2.5 grid grid-cols-3 gap-1.5">
-        <DetailStat
-          label="Streamed temperature"
-          value={formatTemp(reading.observations.temperature_c)}
-          emphasis
-          tone="bg-anomaly-soft"
-        />
-        <DetailStat
-          label="Streamed humidity"
-          value={formatHumidity(reading.observations.relative_humidity_pct)}
-          tone="bg-surface-blue-tint"
-        />
-        <DetailStat
-          label="Streamed pressure"
-          value={formatPressure(reading.observations.pressure_hpa)}
-          tone="bg-surface-blue-tint"
-          valueTone="text-info"
-        />
-      </div>
-      <div className="mt-2.5 divide-y divide-border rounded-xl border border-border px-2.5">
-        <FactRow
-          label="Anomaly score"
-          value={`${formatScore(reading.anomaly.score)} / threshold ${formatScore(reading.anomaly.threshold)}`}
-        />
-        <FactRow
-          label="Confidence"
-          value={formatConfidence(summary.root_cause_confidence ?? reading.anomaly.confidence)}
-        />
-        <FactRow label="Data quality" value={reading.data_quality.status} />
-      </div>
-      <div className="mt-2.5">
-        <EvidenceList evidence={evidence} loading={false} />
-      </div>
-      <div className="mt-2.5">
-        <OutcomeBanner
-          status={status}
-          outcome={cleanText(summary.root_cause) ?? summary.event}
-          message={
-            cleanText(reading.explanation.text) ??
-            "Streamed replay event assessed by the frozen pipeline."
-          }
-          rootCauseConfidence={summary.root_cause_confidence ?? reading.root_cause.confidence}
-          ensembleMethod={reading.anomaly.method}
-        />
-        {cleanText(reading.root_cause.runner_up) && (
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            Runner-up: {reading.root_cause.runner_up} — uncertainty preserved, no diagnosis
-            invented.
-          </p>
-        )}
-      </div>
-      <div className="mt-2.5">
-        <ExplanationBlock
-          explanation={{ text: reading.explanation.text, features: explanationFeatures }}
-          loading={false}
-        />
-      </div>
-      <div className="mt-2.5 rounded-xl border border-border p-2.5">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">
-          Temporal context · station history
-        </p>
-        <div className="mt-1">
-          {historyQuery.isPending ? (
-            <p
-              className="flex h-[72px] items-center justify-center text-[9px] text-muted-foreground"
-              role="status"
-            >
-              Loading station history…
-            </p>
-          ) : historyQuery.isError ? (
-            <p
-              className="flex h-[72px] items-center justify-center text-[9px] text-muted-foreground"
-              role="alert"
-            >
-              Station history unavailable.
-            </p>
-          ) : (
-            <HistoryChart
-              data={historySeries}
-              height={72}
-              ariaLabel={`Temperature history for ${summary.station_id}`}
-            />
-          )}
-        </div>
-      </div>
-      <div className="mt-2.5 grid grid-cols-1 gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            navigate({ to: "/stations/$stationId", params: { stationId: summary.station_id } })
-          }
-        >
-          <Eye />
-          View station
-        </Button>
-      </div>
-      <p className="mt-2 text-center text-[8px] text-muted-foreground">
-        Replay investigation — exact streamed payload from this session. Stored alert pages cover
-        persistent historical alerts.
-      </p>
-    </>
-  );
-}
-
-function InvestigationBody({
-  alert,
-  detail,
-  detailLoading,
-  detailError,
-  status,
-}: {
-  alert: AlertSummary;
-  detail: AlertDetailResponse | undefined;
-  detailLoading: boolean;
-  detailError: string | null;
-  status: DisplayStatus;
-}) {
-  const navigate = useNavigate();
-  const observations = detail?.observations;
-  const historyVariable = detail?.history.variable ?? "temperature";
-  const historyHours = detail?.history.hours ?? 24;
-  const historySeries = useMemo(
-    () => toChartPoints(detail?.history.series ?? [], historyVariable),
-    [detail, historyVariable],
-  );
-  const reviewLabel =
-    status === "offline"
-      ? "Data availability event"
-      : status === "anomaly"
-        ? "Anomaly"
-        : "Review needed";
-
-  return (
-    <>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="section-kicker">{alert.station_id} / Investigation</p>
-          <h2 className="mt-0.5 text-sm font-extrabold">{alert.event}</h2>
-        </div>
-        <span
-          className={cn(
-            "status-badge shrink-0",
-            status === "offline"
-              ? "status-offline"
-              : status === "anomaly"
-                ? "status-anomaly"
-                : "status-review",
-          )}
-        >
-          <span className="status-dot" />
-          {reviewLabel}
-        </span>
-      </div>
-      {detailLoading && (
-        <p className="mt-2 text-[10px] text-muted-foreground" role="status">
-          Loading investigation detail…
-        </p>
-      )}
-      {detailError && (
-        <p
-          className="mt-2 rounded-xl border border-offline/30 bg-offline-soft px-2.5 py-2 text-[9px] font-semibold text-offline-deep"
-          role="alert"
-        >
-          Could not load full investigation detail: {detailError}
-        </p>
-      )}
-      <div className="mt-2.5 grid grid-cols-3 gap-1.5">
-        <DetailStat
-          label="Observed temperature"
-          value={
-            observations
-              ? formatTemp(observations.temperature_c)
-              : detailLoading
-                ? "…"
-                : "Not available"
-          }
-          emphasis
-          tone="bg-anomaly-soft"
-        />
-        <DetailStat
-          label="Observed humidity"
-          value={
-            observations
-              ? formatHumidity(observations.relative_humidity_pct)
-              : detailLoading
-                ? "…"
-                : "Not available"
-          }
-          tone="bg-surface-blue-tint"
-        />
-        <DetailStat
-          label="Observed pressure"
-          value={
-            observations
-              ? formatPressure(observations.pressure_hpa)
-              : detailLoading
-                ? "…"
-                : "Not available"
-          }
-          tone="bg-surface-blue-tint"
-          valueTone="text-info"
-        />
-      </div>
-      <div className="mt-2.5">
-        <EvidenceList evidence={detail?.evidence ?? []} loading={detailLoading} />
-      </div>
-      <div className="mt-2.5 rounded-xl border border-border p-2.5">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.04em]">
-            {historyVariable} history · {historyHours} hours
-          </p>
-          <div className="flex flex-wrap justify-end gap-x-2 gap-y-1 text-[7px] font-semibold text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <i className="size-1.5 rounded-full bg-anomaly" />
-              Recorded ({alert.station_id})
-            </span>
-          </div>
-        </div>
-        <div className="mt-1">
-          {detailLoading && historySeries.length === 0 ? (
-            <p
-              className="flex h-[72px] items-center justify-center text-[9px] text-muted-foreground"
-              role="status"
-            >
-              Loading history…
-            </p>
-          ) : (
-            <HistoryChart
-              data={historySeries}
-              height={72}
-              ariaLabel={`${historyVariable} history for ${alert.station_id}`}
-            />
-          )}
-        </div>
-      </div>
-      <div className="mt-2.5">
-        <OutcomeBanner
-          status={status}
-          outcome={alert.event}
-          message="Open the full investigation for evidence, root cause and explanation."
-        />
-      </div>
-      <div className="mt-2.5 grid grid-cols-2 gap-2">
-        <Button
-          size="sm"
-          onClick={() =>
-            navigate({ to: "/investigations/$alertId", params: { alertId: alert.alert_id } })
-          }
-        >
-          <ArrowUpRight />
-          Open investigation
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            navigate({ to: "/stations/$stationId", params: { stationId: alert.station_id } })
-          }
-        >
-          <Eye />
-          View station
-        </Button>
-      </div>
-    </>
   );
 }
 
