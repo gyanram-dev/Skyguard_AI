@@ -365,7 +365,8 @@ def test_23_no_future_phase(project_root):
     # Allowlist amended in Phase 6 (evaluation), Phase 7 (isolation_forest),
     # Phase 8A (noaa acquisition/audit), Phase 8B (spatial evidence),
     # Phase 9 (lstm_autoencoder), Phase 10 (ensemble), Phase 11
-    # (root_cause) and Phase 12 (api): each addition is a mandated
+    # (root_cause), Phase 12 (api) and Phase 21A (data_sources: official
+    # IMD WIS2 ingestion boundary, no models): each addition is a mandated
     # single-purpose package. Intent unchanged. TensorFlow is allowed
     # ONLY inside src/lstm_autoencoder (Phase 9 mandate); the import scans
     # below are unchanged and still forbid it in benchmark/evaluation/
@@ -373,7 +374,7 @@ def test_23_no_future_phase(project_root):
     assert existing <= {"data", "preprocessing", "features", "data_quality", "baseline",
                         "benchmark", "evaluation", "isolation_forest", "noaa",
                         "spatial", "lstm_autoencoder", "ensemble",
-                        "root_cause", "api"}, existing
+                        "root_cause", "api", "data_sources"}, existing
     forbidden = ("sklearn", "tensorflow", "torch", "fastapi", "shap", "xgboost")
     import re
 
