@@ -58,22 +58,25 @@ def _num(value) -> float | None:
     return None if math.isnan(number) or math.isinf(number) else number
 
 
-def dq_preview(session_id: str) -> dict:
-    """Dataset + data-quality summary for a confirmed upload (no ML)."""
-    session = get_session(session_id)
-    frame = session.get("normalized")
-    if frame is None:
+def _station_entries(session: dict) -> list[tuple[str, dict]]:
+    """Normalized per-station frames in deterministic order."""
+    stations = session.get("stations")
+    if not stations:
         raise UploadError(422, "mapping_required",
                          "Confirm column mapping and units before preview.")
-    cadence = float(session["cadence_min"])
+    return sorted(stations.items(), key=lambda kv: kv[0])
+
+
+def _station_preview(sid: str, entry: dict) -> dict:
+    frame = entry["frame"]
+    cadence = float(entry["cadence_min"])
     features, quality = prepare_split(frame, "delhi", cadence)
     stamps = pd.to_datetime(frame["timestamp"], errors="coerce")
     valid = stamps.dropna()
     rh = pd.to_numeric(frame["relative_humidity_pct"], errors="coerce")
     has_rh = bool(rh.notna().any())
     return {
-        "session_id": session_id,
-        "station_label": session["station_label"],
+        "station": sid,
         "rows": int(len(frame)),
         "time_range": {"start": str(valid.min()), "end": str(valid.max())}
         if len(valid) else {"start": None, "end": None},
@@ -86,15 +89,55 @@ def dq_preview(session_id: str) -> dict:
             "pressure": int(quality["pressure_missing"].sum()),
         },
         "large_gaps": int(quality["communication_gap"].sum()),
-        "invalid_timestamps": int((quality["timestamp_valid"] == 0).sum()),
+        "invalid_timestamps": int(entry.get("invalid_timestamps", 0)),
         "non_finite": int(quality["physical_sanity_fault"].sum()),
-        "rh_invalid": int((((rh < 0) | (rh > 100)).fillna(False)).sum()) if has_rh else None,
+        "rh_invalid": int((((rh < 0) | (rh > 100)).fillna(False)).sum())
+        if has_rh else None,
         "rh_available": has_rh,
         "pressure_available": bool(pd.to_numeric(
             frame["pressure_hpa"], errors="coerce").notna().any()),
         "ml_eligible": int((quality["ml_eligible"] == 1).sum()),
         "quality_counts": {str(k): int(v) for k, v in
                            quality["quality_status"].value_counts().items()},
+    }
+
+
+def dq_preview(session_id: str) -> dict:
+    """Dataset + data-quality summary for a confirmed upload (no ML)."""
+    session = get_session(session_id)
+    parts = [_station_preview(sid, entry) for sid, entry in _station_entries(session)]
+    total_rows = sum(p["rows"] for p in parts)
+    cadences = sorted({p["cadence_min"] for p in parts})
+    horizons = horizons_for_cadence(cadences[0])
+    merged_missing = {"temperature": 0, "humidity": 0, "pressure": 0}
+    merged_counts: dict[str, int] = {}
+    for p in parts:
+        for k in merged_missing:
+            merged_missing[k] += int(p["missing"].get(k, 0))
+        for k, v in p["quality_counts"].items():
+            merged_counts[k] = merged_counts.get(k, 0) + int(v)
+    starts = [p["time_range"]["start"] for p in parts if p["time_range"]["start"]]
+    ends = [p["time_range"]["end"] for p in parts if p["time_range"]["end"]]
+    return {
+        "session_id": session_id,
+        "station_label": session["station_label"],
+        "rows": int(total_rows),
+        "time_range": {"start": min(starts) if starts else None,
+                       "end": max(ends) if ends else None},
+        "cadence_min": cadences[0],
+        "horizons": horizons,
+        "duplicates": sum(p["duplicates"] for p in parts),
+        "missing": merged_missing,
+        "large_gaps": sum(p["large_gaps"] for p in parts),
+        "invalid_timestamps": sum(p["invalid_timestamps"] for p in parts),
+        "non_finite": sum(p["non_finite"] for p in parts),
+        "rh_invalid": sum(p["rh_invalid"] or 0 for p in parts)
+        if any(p["rh_available"] for p in parts) else None,
+        "rh_available": any(p["rh_available"] for p in parts),
+        "pressure_available": any(p["pressure_available"] for p in parts),
+        "ml_eligible": sum(p["ml_eligible"] for p in parts),
+        "quality_counts": merged_counts,
+        "stations": parts,
     }
 
 
@@ -128,15 +171,9 @@ def _estimate_pattern(feat: pd.Series, dq_freeze: bool) -> tuple[str, str]:
     return "UNKNOWN", "pattern does not match a known fault shape"
 
 
-def run_analysis(session_id: str) -> dict:
-    """Full uploaded-dataset analysis (statistical + DQ + multivariate)."""
-    session = get_session(session_id)
-    frame: pd.DataFrame | None = session.get("normalized")
-    if frame is None:
-        raise UploadError(422, "mapping_required",
-                         "Confirm column mapping and units before analysis.")
-    cadence = float(session["cadence_min"])
-    label = session["station_label"]
+def _analyze_station(frame: pd.DataFrame, cadence: float, station: str,
+                     multi: bool) -> tuple[list, dict, int]:
+    """Statistical + DQ + multivariate analysis for one station frame."""
     features, quality = prepare_split(frame, "delhi", cadence)
     baseline, _ = build_statistical_baseline(features, quality, "delhi",
                                              cadence_min=cadence)
@@ -177,7 +214,7 @@ def run_analysis(session_id: str) -> dict:
         zmax_text = f"{zmax:.2f}" if zmax is not None else "unavailable (zero local variance)"
         records.append({
             "timestamp": str(frame["timestamp"].iloc[pos]),
-            "station": label,
+            "station": station,
             "observation": {"temperature_c": temp, "pressure_hpa": pres,
                             "relative_humidity_pct": hum},
             "score": round(zmax, 4) if zmax is not None else None,
@@ -209,15 +246,41 @@ def run_analysis(session_id: str) -> dict:
             "correction": correction,
             "recommended_action": RECOMMENDED_ACTIONS[estimate],
         })
-    total = int(len(frame))
     dq_total = int((quality["quality_status"] != "PASS").sum())
+    return records, breakdown, dq_total
+
+
+def run_analysis(session_id: str) -> dict:
+    """Full uploaded-dataset analysis (statistical + DQ + multivariate)."""
+    session = get_session(session_id)
+    entries = _station_entries(session)
+    multi = len(entries) > 1
+    label = session["station_label"]
+    records: list = []
+    breakdown: dict[str, int] = {}
+    total = 0
+    dq_total = 0
+    per_station = []
+    for sid, entry in entries:
+        station_name = sid if multi else label
+        part_records, part_breakdown, part_dq = _analyze_station(
+            entry["frame"], float(entry["cadence_min"]), station_name, multi)
+        records.extend(part_records)
+        for key, count in part_breakdown.items():
+            breakdown[key] = breakdown.get(key, 0) + int(count)
+        total += int(entry["rows"])
+        dq_total += int(part_dq)
+        per_station.append({"station": station_name, "rows": int(entry["rows"]),
+                            "cadence_min": float(entry["cadence_min"]),
+                            "anomalies": int(len(part_records))})
+    records.sort(key=lambda r: (r["timestamp"], r["station"]))
     result = {
         "session_id": session_id,
         "filename": session["filename"],
         "station_label": label,
         "data_mode": DATA_MODE,
-        "cadence_min": cadence,
-        "observations": total,
+        "cadence_min": float(entries[0][1]["cadence_min"]),
+        "observations": int(total),
         "normal": int(total - len(records)),
         "anomalies": int(len(records)),
         "dq_events": int(dq_total),
@@ -231,6 +294,7 @@ def run_analysis(session_id: str) -> dict:
         "anomalies_detail": records,
         "mapping": session.get("mapping"),
         "units": session.get("units"),
+        "stations": per_station,
         "notes": [
             "Anomaly decisions reuse the frozen statistical baseline "
             f"(|z|>{Z_THRESHOLD} or IQR flag) on station-specific rolling context.",

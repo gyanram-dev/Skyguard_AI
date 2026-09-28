@@ -335,6 +335,7 @@ class UploadResponse(BaseModel):
     mapping: dict[str, MappingProposal] = Field(default_factory=dict)
     units: dict[str, UnitsProposal] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+    stations_detected: list[str] = Field(default_factory=list)
 
 
 class ConfirmMapping(BaseModel):
@@ -377,6 +378,7 @@ class DQPreview(BaseModel):
     pressure_available: bool
     ml_eligible: int
     quality_counts: dict = Field(default_factory=dict)
+    stations: list = Field(default_factory=list)
 
 
 class AnomalyRecord(BaseModel):
@@ -408,4 +410,5 @@ class AnalysisResult(BaseModel):
     anomalies_detail: list[AnomalyRecord] = Field(default_factory=list)
     mapping: dict = Field(default_factory=dict)
     units: dict = Field(default_factory=dict)
+    stations: list = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)

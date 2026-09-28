@@ -30,6 +30,8 @@ MAX_SESSIONS = 50
 TIMESTAMP_FORMATS = [
     "%Y-%m-%d %H:%M:%S",
     "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%dT%H:%M:%SZ",
+    "%Y-%m-%dT%H:%M:%S%z",
     "%Y-%m-%d",
     "%Y/%m/%d %H:%M:%S",
     "%Y/%m/%d",
@@ -41,6 +43,19 @@ TIMESTAMP_FORMATS = [
     "%m/%d/%Y",
 ]
 
+# Year-first formats are order-unambiguous, so a column may mix them
+# (naive, Z-suffixed, offset) safely. Day/month-ambiguous slash formats
+# keep the strict single-format rule below.
+ISO_FORMATS = [
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%dT%H:%M:%SZ",
+    "%Y-%m-%dT%H:%M:%S%z",
+    "%Y-%m-%d",
+    "%Y/%m/%d %H:%M:%S",
+    "%Y/%m/%d",
+]
+
 FIELD_CANDIDATES = {
     "timestamp": ["timestamp", "datetime", "date_time", "date", "time"],
     "temperature": ["temperature", "temperature_c", "temp", "temp_c", "air_temp",
@@ -50,6 +65,12 @@ FIELD_CANDIDATES = {
     "pressure": ["pressure", "pressure_hpa", "pres", "atm_pres", "atmospheric_pressure",
                  "station_pressure", "air_pressure", "p", "pressure_pa", "pres_pa"],
 }
+
+# Station-identity column candidates for multi-station uploads. A detected
+# station column partitions the upload; without one, all rows form a
+# single station group (the Phase 20 single-station contract).
+STATION_CANDIDATES = ["station_id", "station", "site_id", "site", "location",
+                      "location_id", "name"]
 
 REQUIRED_FIELDS = ("timestamp", "temperature")
 OPTIONAL_FIELDS = ("humidity", "pressure")
@@ -187,6 +208,19 @@ def create_session(filename: str, content: bytes) -> dict:
     units = {"temperature": _infer_unit(temp_col, "temperature"),
              "pressure": _infer_unit(pres_col, "pressure")}
     session_id = uuid.uuid4().hex
+    station_col = _detect_station_column(columns)
+    detected: list[str] = []
+    if station_col is not None:
+        labels = frame[station_col].astype(str).str.strip()
+        labels = labels[~labels.str.lower().isin(["", "nan"])]
+        seen: list[str] = []
+        for value in labels.tolist():
+            key = str(value)[:80]
+            if key not in seen:
+                seen.append(key)
+            if len(seen) >= 50:
+                break
+        detected = seen
     with _SESSION_LOCK:
         _evict_if_needed()
         _SESSIONS[session_id] = {
@@ -205,12 +239,26 @@ def create_session(filename: str, content: bytes) -> dict:
     return {"session_id": session_id, "filename": str(filename)[:200],
             "size_bytes": len(content), "rows": int(len(frame)),
             "columns": columns, "mapping": mapping, "units": units,
-            "warnings": warnings}
+            "warnings": warnings, "stations_detected": detected}
 
 
 def _parse_timestamps(values: pd.Series) -> tuple[pd.Series, str]:
     """Parse timestamps deterministically; refuse ambiguous orders."""
     texts = values.astype(str).str.strip()
+    iso_parsed = pd.Series(pd.NaT, index=texts.index)
+    iso_used: set[str] = set()
+    for fmt in ISO_FORMATS:
+        missing = iso_parsed.isna()
+        if not bool(missing.any()):
+            break
+        attempt = pd.to_datetime(texts[missing], format=fmt, errors="coerce")
+        hit = attempt.notna()
+        if bool(hit.any()):
+            iso_used.add(fmt)
+            iso_parsed.loc[attempt[hit].index] = attempt[hit].values
+    if bool((~iso_parsed.isna()).all()):
+        label = next(iter(iso_used)) if len(iso_used) == 1 else "ISO-8601 (mixed)"
+        return iso_parsed, label
     full_hits: dict[str, pd.Series] = {}
     for fmt in TIMESTAMP_FORMATS:
         parsed = pd.to_datetime(texts, format=fmt, errors="coerce")
@@ -239,9 +287,55 @@ def _to_numeric(values: pd.Series) -> pd.Series:
     return nums.astype(float)
 
 
+def _detect_station_column(columns: list[str]) -> str | None:
+    """Station-identity column for multi-station uploads (None = single)."""
+    normed = {_norm_name(c): c for c in columns}
+    for candidate in STATION_CANDIDATES:
+        if _norm_name(candidate) in normed:
+            return normed[_norm_name(candidate)]
+    return None
+
+
+def _normalize_station(values: pd.DataFrame, stamps: pd.Series
+                       ) -> tuple[pd.DataFrame, float, int]:
+    """Chronological normalization for one station group.
+
+    Sort ascending by timestamp (original position breaks ties
+    deterministically). Rows with unparseable timestamps cannot be placed
+    in time: they are excluded here and counted (reported as invalid),
+    never silently repaired. Returns (sorted frame, cadence minutes,
+    invalid-timestamp count). Cadence comes from sorted positive diffs
+    only, so duplicate zero-duration diffs and physical CSV order cannot
+    distort it.
+    """
+    valid = stamps.notna()
+    invalid_count = int((~valid).sum())
+    values = values.loc[valid].reset_index(drop=True)
+    stamps = stamps.loc[valid].reset_index(drop=True)
+    order = np.lexsort((values["_pos"].to_numpy(), stamps.to_numpy()))
+    ordered = values.iloc[order].reset_index(drop=True)
+    sorted_ts = stamps.iloc[order].reset_index(drop=True)
+    # Timezone offsets are dropped after parsing; wall-clock time is kept
+    # exactly (no silent conversion), so stored instants match the upload.
+    ordered = ordered.assign(timestamp=sorted_ts.dt.strftime("%Y-%m-%d %H:%M:%S").values)
+    diffs = sorted_ts.diff().dt.total_seconds().div(60.0)
+    positive = diffs[diffs > 0].dropna()
+    if len(positive) == 0:
+        raise UploadError(422, "insufficient_data",
+                         "Timestamps do not advance; temporal context unavailable.")
+    return ordered, round(float(positive.median()), 3), invalid_count
+
+
 def confirm_session(session_id: str, mapping: dict, units: dict,
                     station_label: str | None) -> dict:
-    """Validate mapping/units and store the normalized canonical frame."""
+    """Validate mapping/units and store normalized per-station frames.
+
+    Pipeline: schema mapping -> timestamp parsing/validation -> station
+    identification -> chronological normalization per station -> duplicate
+    detection (DQ) -> cadence inference (sorted) -> gap detection (DQ) ->
+    DQ validation -> feature construction -> analysis. Nothing temporal is
+    ever computed from the physical CSV row order.
+    """
     session = get_session(session_id)
     columns = session["columns"]
     for field in REQUIRED_FIELDS:
@@ -263,6 +357,9 @@ def confirm_session(session_id: str, mapping: dict, units: dict,
                          "Select the pressure unit (hPa or Pa).")
     raw: pd.DataFrame = session["raw"]
     stamps, ts_format = _parse_timestamps(raw[normalized_cols["timestamp"]])
+    if int(stamps.notna().sum()) < 3:
+        raise UploadError(422, "insufficient_data",
+                         "At least 3 valid timestamps are required for temporal context.")
     temp = _to_numeric(raw[normalized_cols["temperature"]])
     if temp_unit == "F":
         temp = (temp - 32.0) * 5.0 / 9.0
@@ -272,33 +369,63 @@ def confirm_session(session_id: str, mapping: dict, units: dict,
         if normalized_cols["pressure"] else pd.Series(np.nan, index=raw.index)
     if pres_unit == "Pa":
         pres = pres / 100.0
-    frame = pd.DataFrame({
-        "timestamp": stamps.dt.strftime("%Y-%m-%d %H:%M:%S"),
+    values = pd.DataFrame({
         "temperature_c": temp.values,
         "pressure_hpa": pres.values,
         "relative_humidity_pct": hum.values,
-        "source_dataset": "upload",
+        "_pos": np.arange(len(raw)),
     })
-    valid_ts = stamps.notna()
-    if int(valid_ts.sum()) < 3:
-        raise UploadError(422, "insufficient_data",
-                         "At least 3 valid timestamps are required for temporal context.")
-    diffs = stamps[valid_ts].diff().dt.total_seconds().div(60.0)
-    positive = diffs[diffs > 0].dropna()
-    if len(positive) == 0:
-        raise UploadError(422, "insufficient_data",
-                         "Timestamps do not advance; temporal context unavailable.")
-    cadence = round(float(positive.median()), 3)
-    label = str(station_label).strip()[:80] if station_label else "New Uploaded Station"
+    station_col = _detect_station_column(columns)
+    groups: dict[str, pd.DataFrame] = {}
+    if station_col is None:
+        groups["__single__"] = values.assign(_station="")
+    else:
+        labels = raw[station_col].astype(str).str.strip()
+        labels = labels.mask(labels.str.lower().isin(["", "nan"]), "")
+        for sid, idx in labels.groupby(labels).groups.items():
+            key = str(sid)[:80] if str(sid) else "__single__"
+            groups[key] = values.loc[list(idx)].assign(_station=key)
+    stations: dict[str, dict] = {}
+    for sid, group in groups.items():
+        part, cadence, invalid = _normalize_station(group, stamps.loc[group.index])
+        part = part.drop(columns=["_pos"])
+        if int(stamps.loc[group.index].notna().sum()) < 3:
+            raise UploadError(422, "insufficient_data",
+                             f"Station '{sid}': at least 3 valid timestamps required.")
+        frame = pd.DataFrame({
+            "timestamp": part["timestamp"].values,
+            "temperature_c": part["temperature_c"].values,
+            "pressure_hpa": part["pressure_hpa"].values,
+            "relative_humidity_pct": part["relative_humidity_pct"].values,
+            "source_dataset": "upload",
+        })
+        stations[sid] = {"frame": frame, "cadence_min": cadence,
+                         "rows": int(len(frame)), "invalid_timestamps": invalid}
+    multi = station_col is not None and len(stations) > 1
+    if station_label and str(station_label).strip() and not multi:
+        label = str(station_label).strip()[:80]
+    elif multi:
+        ids = sorted(stations)
+        shown = ", ".join(ids[:5])
+        label = f"{len(ids)} stations: {shown}" + ("..." if len(ids) > 5 else "")
+    elif station_col is not None:
+        only = next(iter(stations))
+        label = only if only != "__single__" else "New Uploaded Station"
+    else:
+        label = "New Uploaded Station"
+    total_rows = sum(s["rows"] for s in stations.values())
     with _SESSION_LOCK:
         session["mapping"] = normalized_cols
         session["units"] = {"temperature": temp_unit, "pressure": pres_unit}
+        session["station_column"] = station_col
         session["station_label"] = label
         session["timestamp_format"] = ts_format
-        session["cadence_min"] = cadence
-        session["normalized"] = frame
+        session["stations"] = stations
+        session["normalized"] = None
+        session["cadence_min"] = None
         session["analysis"] = None
+    first_cadence = next(iter(stations.values()))["cadence_min"]
     return {"session_id": session_id, "station_label": label,
-            "rows": int(len(frame)), "cadence_min": cadence,
+            "rows": int(total_rows), "cadence_min": first_cadence,
             "timestamp_format": ts_format,
             "fields": {k: v for k, v in normalized_cols.items()}}

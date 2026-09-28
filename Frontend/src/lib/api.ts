@@ -525,6 +525,7 @@ export interface UploadResponse {
   mapping: Record<string, UploadMappingProposal>;
   units: Record<string, UploadUnitsProposal>;
   warnings: string[];
+  stations_detected: string[];
 }
 
 export interface ConfirmUploadPayload {
@@ -555,6 +556,7 @@ export interface DQPreview {
   pressure_available: boolean;
   ml_eligible: number;
   quality_counts: Record<string, number>;
+  stations: Array<Record<string, unknown>>;
 }
 
 export interface UploadAnomalyCorrection {
@@ -592,6 +594,7 @@ export interface UploadAnalysisResult {
   anomalies_detail: UploadAnomalyRecord[];
   mapping: Record<string, string | null>;
   units: Record<string, string | null>;
+  stations: Array<Record<string, unknown>>;
   notes: string[];
 }
 
