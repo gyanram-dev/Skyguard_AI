@@ -41,6 +41,7 @@ from src.root_cause import explain as EX
 from src.root_cause.classifier import predict_proba
 from src.root_cause.features import DIAGNOSTIC_FEATURES, build_evidence_frame
 from src.root_cause.unknown_mixed import decide
+from src.spatial import decision as SD
 
 logger = logging.getLogger("skyguard.scoring")
 
@@ -149,7 +150,89 @@ def build_frames(store, ds: str, sensor_frame: pd.DataFrame) -> dict:
             "if_X": X, "if_scorable": scorable,
             "lstm_scaled": scaled, "lstm_valid": valid,
             "cal": models["cal"]["ecdf"], "thresholds": models["cal"]["thresholds"],
-            "noaa": noaa_lookup(store) if ds == "delhi" else {}}
+            "noaa": noaa_lookup(store) if ds == "delhi" else {},
+            "spatial_neighbors": _serving_neighbors(store, ds)}
+
+
+def _serving_neighbors(store, ds: str) -> dict:
+    """Live neighbor frames for the contextual decision (Delhi only).
+
+    References (never copies) the already-loaded NOAA frames for the
+    mapped Delhi-context stations. Jena and unfamiliar stations get no
+    neighbor graph, hence honestly unavailable spatial evidence.
+    """
+    if ds != "delhi":
+        return {"selected": [], "frames": {}, "expected": 0}
+    wanted = ("INI0000VIJP", "INI0000VILK", "INI0000VABP")
+    frames = {nid: store.noaa_obs[nid] for nid in wanted
+              if nid in getattr(store, "noaa_obs", {})}
+    # Geography provides 4 Delhi-context stations; Safdarjung
+    # (INI0000VIDD) is offline-only, so serving caps below HIGH.
+    return {"selected": sorted(frames), "frames": frames, "expected": 4}
+
+
+def _spatial_evidence(frames: dict, ds: str, spatial_ts: str | None,
+                      obs: dict) -> dict:
+    """Live per-variable neighbor evidence at one decision timestamp.
+
+    Delhi targets align the mapped NOAA context frames causally
+    (neighbor <= target, 30 min); temperature is primary, humidity
+    joins only when measured on both sides, pressure stays unavailable
+    (station-vs-altimeter basis mismatch). Everything else degrades to
+    explicit UNAVAILABLE/INSUFFICIENT states — never fabricated.
+    """
+    neighbors = frames.get("spatial_neighbors") or {}
+    selected = list(neighbors.get("selected", []))
+    expected = int(neighbors.get("expected", 0) or 0)
+    variables = {
+        "temperature": SD.variable_evidence(None, {}, expected),
+        "humidity": SD.variable_evidence(None, {}, expected),
+        "pressure": SD.variable_evidence(None, {}, expected,
+                                         pressure_compatible=False),
+    }
+    target_utc = None
+    if ds == "delhi" and spatial_ts:
+        try:
+            target_utc = (pd.Timestamp(str(spatial_ts))
+                          - pd.Timedelta(hours=5, minutes=30)).tz_localize("UTC")
+        except (TypeError, ValueError):
+            target_utc = None
+    if target_utc is not None and selected:
+        by_frame = neighbors.get("frames", {})
+        temp_vals = SD.gather_neighbor_values(
+            target_utc, by_frame, selected, "temperature_c")
+        variables["temperature"] = SD.variable_evidence(
+            obs.get("temperature_c"), temp_vals, expected)
+        rh_vals = SD.gather_neighbor_values(
+            target_utc, by_frame, selected, "relative_humidity_pct")
+        if obs.get("relative_humidity_pct") is None:
+            variables["humidity"] = SD.variable_evidence(None, {}, expected)
+        else:
+            variables["humidity"] = SD.variable_evidence(
+                obs.get("relative_humidity_pct"), rh_vals, expected)
+    temp = variables["temperature"]
+    available = bool(temp.get("usable_neighbor_count", 0) > 0)
+    return {
+        "available": available,
+        "neighbor_count": int(temp.get("usable_neighbor_count", 0)),
+        "expected_neighbor_count": expected,
+        "context": _context_label(temp.get("status")),
+        "reference_median": temp.get("reference_median"),
+        "probe_difference": (num(obs.get("temperature_c") - temp["reference_median"])
+                             if temp.get("reference_median") is not None
+                             and obs.get("temperature_c") is not None else None),
+        "variables": variables,
+        "note": "Neighbor agreement at the decision timestamp; contextual "
+                "evidence only, not confirmation of a physical event.",
+    }
+
+
+def _context_label(status: str | None) -> str:
+    return {"SPATIAL_SUPPORTED": "SUPPORTED",
+            "SPATIAL_CONTRADICTED": "CONTRADICTED",
+            "SPATIAL_INSUFFICIENT": "INSUFFICIENT",
+            "SPATIAL_UNAVAILABLE": "UNAVAILABLE"}.get(
+        str(status), "UNAVAILABLE")
 
 
 def score_position(frames: dict, ds: str, pos: int, *,
@@ -291,17 +374,19 @@ def score_position(frames: dict, ds: str, pos: int, *,
     explanation_text = sanitize_text(explanation_text,
                                      "Explanation not available for this observation.")
 
-    spatial: dict = {"available": False, "neighbor_count": 0}
-    if ds == "delhi" and spatial_ts:
-        info = frames["noaa"].get(str(spatial_ts))
-        if info:
-            spatial = {"available": True, "neighbor_count": info["count"],
-                       "context": info["context"],
-                       "reference_median": info["median"],
-                       "probe_difference": num(spatial_temp - info["median"])
-                       if spatial_temp is not None else None,
-                       "note": "Historical NOAA context at the anchor timestamp; "
-                               "not live neighboring sensors."}
+    spatial = _spatial_evidence(frames, ds, spatial_ts, obs)
+    if is_anomalous:
+        base_state = SD.BASE_ANOMALOUS
+    elif not ml_eligible or anomaly_score is None or threshold is None:
+        base_state = SD.BASE_INSUFFICIENT
+    else:
+        base_state = SD.BASE_NORMAL
+    spatial_decision = SD.decide_context(
+        base_state, spatial["variables"]["temperature"],
+        spatial["variables"].get("humidity"))
+    spatial_decision["description"] = SD.describe(spatial_decision)
+    spatial["contextual_decision"] = spatial_decision["contextual_decision"]
+    spatial["spatial_influence"] = spatial_decision["spatial_influence"]
 
     multivariate = {k: num(feat.get(k)) for k in
                     ("multivariate_max_abs_robust_deviation_2h",
@@ -326,4 +411,5 @@ def score_position(frames: dict, ds: str, pos: int, *,
         "root_cause": {"class": rc_class, "confidence": rc_conf,
                        "runner_up": rc_runner},
         "explanation": {"text": explanation_text, "features": explanation_features},
+        "spatial_decision": spatial_decision,
     }

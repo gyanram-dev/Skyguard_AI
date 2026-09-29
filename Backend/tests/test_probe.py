@@ -124,6 +124,8 @@ def test_11_no_bad_text(client):
 
 
 # 12. Jena has no spatial context: available=false, nothing invented.
+# Phase 22: the spatial dict is schema-stable (keys present, values null)
+# so clients can rely on its shape; unavailable-ness stays explicit.
 def test_12_spatial_unavailable_jena(client):
     response = _probe(client, {"station_id": "JENA-01", "temperature": 15.0,
                                "pressure": 1013.0, "humidity": 60.0})
@@ -131,4 +133,7 @@ def test_12_spatial_unavailable_jena(client):
     payload = S.ProbeResponse.model_validate(response.json())
     assert payload.evidence.spatial["available"] is False
     assert payload.evidence.spatial["neighbor_count"] == 0
-    assert "reference_median" not in payload.evidence.spatial
+    assert payload.evidence.spatial["reference_median"] is None
+    assert payload.spatial_decision["contextual_decision"] in (
+        "NORMAL", "ANOMALY_WITHOUT_SPATIAL_CONFIRMATION",
+        "INSUFFICIENT_EVIDENCE")

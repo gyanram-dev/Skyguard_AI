@@ -385,6 +385,14 @@ export interface ProbeRootCause {
   runner_up: string | null;
 }
 
+export interface SpatialDecision {
+  base_decision: string;
+  contextual_decision: string;
+  spatial_influence: string;
+  spatial_status: string;
+  description?: string | null;
+}
+
 export interface ProbeResponse {
   data_mode: string;
   probe: ProbeObservationEcho;
@@ -393,6 +401,7 @@ export interface ProbeResponse {
   evidence: ProbeEvidence;
   root_cause: ProbeRootCause;
   explanation: Explanation;
+  spatial_decision?: SpatialDecision | null;
 }
 
 export function probeObservation(payload: ProbePayload): Promise<ProbeResponse> {

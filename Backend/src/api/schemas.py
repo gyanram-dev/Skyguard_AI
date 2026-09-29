@@ -240,6 +240,7 @@ class ProbeResponse(BaseModel):
     evidence: ProbeEvidence
     root_cause: ProbeRootCause
     explanation: ProbeExplanation
+    spatial_decision: dict = Field(default_factory=dict)
 
 
 class DetectionEntry(BaseModel):

@@ -144,4 +144,5 @@ def run_probe(store, station_id: str | None,
         },
         "root_cause": scored["root_cause"],
         "explanation": scored["explanation"],
+        "spatial_decision": scored["spatial_decision"],
     }

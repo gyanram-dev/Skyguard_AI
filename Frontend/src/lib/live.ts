@@ -46,6 +46,7 @@ export interface LiveReading {
     spatial: Record<string, number | string | boolean | null>;
   };
   explanation: { text: string | null; features: Array<Record<string, unknown>> };
+  spatial_decision?: Record<string, string | null> | null;
 }
 
 export interface LiveAlert {
@@ -62,6 +63,7 @@ export interface LiveAlert {
   root_cause: string | null;
   confidence: number | null;
   runner_up: string | null;
+  spatial_decision?: Record<string, string | null> | null;
   data_mode: string;
   summary: string;
 }

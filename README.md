@@ -129,6 +129,9 @@ npm run preview
 2. Start Historical Replay (DEL-01, OOD, 10×) — watch streamed observations.
 3. Open a streamed anomaly — inspect evidence, root cause, confidence.
 4. Open Judge Probe — run a normal observation, then a spike-like one.
+   For DEL-01 the probe also shows the spatial interpretation (base
+   detector result + neighbor agreement → local-sensor vs possible-
+   regional reading). Flags are never cleared by spatial agreement.
 5. Open Evaluation — show held-out OOD, root-cause, and runtime evidence.
 
 Nothing auto-starts; every result is computed by the backend pipeline.

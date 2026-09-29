@@ -299,6 +299,7 @@ class ReplaySession:
                 "multivariate": scored["evidence"]["multivariate"],
                 "spatial": scored["evidence"]["spatial"],
             },
+            "spatial_decision": scored["spatial_decision"],
             "explanation": scored["explanation"],
         }
 
@@ -323,6 +324,7 @@ class ReplaySession:
             "root_cause": rc_class,
             "confidence": rc["confidence"],
             "runner_up": rc["runner_up"],
+            "spatial_decision": scored["spatial_decision"],
             "data_mode": SC.DATA_MODE,
             "summary": (f"{event} on {self._station_id} at {timestamp}: "
                         f"ensemble score {score:.3f} "

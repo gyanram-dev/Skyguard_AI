@@ -1,0 +1,136 @@
+{
+  "policy": {
+    "support_score_max": 2.0,
+    "contradict_score_min": 3.0,
+    "min_scorable_neighbors": 2,
+    "context_stations": [
+      "INI0000VIJP",
+      "INI0000VILK",
+      "INI0000VABP"
+    ],
+    "expected_count": 4,
+    "tolerance": "30 minutes back from target (causal)",
+    "pressure": "altimeter-only; serving pressure always unavailable",
+    "note": "Thresholds are pre-fixed conventions, not fitted to these outcomes."
+  },
+  "splits": {
+    "test_in_distribution": {
+      "rows": 57622,
+      "baseline": {
+        "tp": 203,
+        "fp": 1294,
+        "tn": 52765,
+        "fn": 3360,
+        "precision": 0.13560454241816966,
+        "recall": 0.05697445972495088,
+        "f1": 0.08023715415019762,
+        "fpr": 0.023936809781904957,
+        "fnr": 0.9430255402750491
+      },
+      "spatial_aware": {
+        "tp": 203,
+        "fp": 1294,
+        "tn": 52765,
+        "fn": 3360,
+        "precision": 0.13560454241816966,
+        "recall": 0.05697445972495088,
+        "f1": 0.08023715415019762,
+        "fpr": 0.023936809781904957,
+        "fnr": 0.9430255402750491
+      },
+      "flags_identical": true,
+      "events_baseline": {
+        "events": 120,
+        "events_detected": 62,
+        "event_recall": 0.5166666666666667,
+        "delay_median_min": 0.0
+      },
+      "events_spatial_aware": {
+        "events": 120,
+        "events_detected": 62,
+        "event_recall": 0.5166666666666667,
+        "delay_median_min": 0.0
+      },
+      "contextual_on_true_positives": {
+        "POSSIBLE_REGIONAL_EVENT": 80,
+        "ANOMALY_WITHOUT_SPATIAL_CONFIRMATION": 62,
+        "LOCAL_SENSOR_ANOMALY": 61
+      },
+      "contextual_on_true_negatives": {
+        "NORMAL": 52765,
+        "POSSIBLE_REGIONAL_EVENT": 446,
+        "ANOMALY_WITHOUT_SPATIAL_CONFIRMATION": 434,
+        "LOCAL_SENSOR_ANOMALY": 414
+      },
+      "spatial_temp_status": {
+        "SPATIAL_SUPPORTED": 25192,
+        "SPATIAL_INSUFFICIENT": 18624,
+        "SPATIAL_CONTRADICTED": 13668,
+        "SPATIAL_UNAVAILABLE": 138
+      },
+      "false_alerts_per_station_day": 6.431478125808957
+    },
+    "test_generalization": {
+      "rows": 56786,
+      "baseline": {
+        "tp": 822,
+        "fp": 1813,
+        "tn": 50012,
+        "fn": 4139,
+        "precision": 0.31195445920303605,
+        "recall": 0.16569240072566016,
+        "f1": 0.21642969984202212,
+        "fpr": 0.0349831162566329,
+        "fnr": 0.8343075992743398
+      },
+      "spatial_aware": {
+        "tp": 822,
+        "fp": 1813,
+        "tn": 50012,
+        "fn": 4139,
+        "precision": 0.31195445920303605,
+        "recall": 0.16569240072566016,
+        "f1": 0.21642969984202212,
+        "fpr": 0.0349831162566329,
+        "fnr": 0.8343075992743398
+      },
+      "flags_identical": true,
+      "events_baseline": {
+        "events": 140,
+        "events_detected": 94,
+        "event_recall": 0.6714285714285714,
+        "delay_median_min": 5.0
+      },
+      "events_spatial_aware": {
+        "events": 140,
+        "events_detected": 94,
+        "event_recall": 0.6714285714285714,
+        "delay_median_min": 5.0
+      },
+      "contextual_on_true_positives": {
+        "ANOMALY_WITHOUT_SPATIAL_CONFIRMATION": 381,
+        "LOCAL_SENSOR_ANOMALY": 355,
+        "POSSIBLE_REGIONAL_EVENT": 86
+      },
+      "contextual_on_true_negatives": {
+        "NORMAL": 50012,
+        "ANOMALY_WITHOUT_SPATIAL_CONFIRMATION": 813,
+        "POSSIBLE_REGIONAL_EVENT": 708,
+        "LOCAL_SENSOR_ANOMALY": 292
+      },
+      "spatial_temp_status": {
+        "SPATIAL_SUPPORTED": 23666,
+        "SPATIAL_INSUFFICIENT": 23598,
+        "SPATIAL_CONTRADICTED": 8431,
+        "SPATIAL_UNAVAILABLE": 1091
+      },
+      "false_alerts_per_station_day": 9.011027698679783
+    }
+  },
+  "paired_scenarios": {
+    "spike_local": "LOCAL_SENSOR_ANOMALY",
+    "spike_regional": "POSSIBLE_REGIONAL_EVENT",
+    "moderate_local": "LOCAL_SENSOR_ANOMALY",
+    "moderate_regional": "POSSIBLE_REGIONAL_EVENT"
+  }
+}

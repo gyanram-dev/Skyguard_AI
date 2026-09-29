@@ -33,6 +33,7 @@ from src.data_quality.quality_engine import (
 )
 from src.features.feature_builder import horizons_for_cadence
 from src.isolation_forest.evaluator import prepare_split
+from src.spatial import decision as SD
 
 logger = logging.getLogger("skyguard.upload_analysis")
 
@@ -171,6 +172,18 @@ def _estimate_pattern(feat: pd.Series, dq_freeze: bool) -> tuple[str, str]:
     return "UNKNOWN", "pattern does not match a known fault shape"
 
 
+def _upload_spatial_decision() -> dict:
+    """Shared contextual policy for stations with no neighbor graph.
+
+    Same ``decide_context`` function as probe/replay/batch: with no
+    usable neighbors the interpretation is honestly unconfirmed.
+    """
+    empty = SD.variable_evidence(None, {}, 0)
+    decision = SD.decide_context(SD.BASE_ANOMALOUS, empty)
+    decision["description"] = SD.describe(decision)
+    return decision
+
+
 def _analyze_station(frame: pd.DataFrame, cadence: float, station: str,
                      multi: bool) -> tuple[list, dict, int]:
     """Statistical + DQ + multivariate analysis for one station frame."""
@@ -237,7 +250,8 @@ def _analyze_station(frame: pd.DataFrame, cadence: float, station: str,
                               "reason": "Delhi/Jena-trained detectors are not "
                                         "validated for unseen stations."},
                 "spatial": {"available": False,
-                            "reason": "No neighbor context for an unseen station."},
+                            "reason": "No neighbor context for an unseen station.",
+                            "spatial_decision": _upload_spatial_decision()},
             },
             "explanation": (
                 f"Heuristic pattern estimate ({estimate}): {reason}; "

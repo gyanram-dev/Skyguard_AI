@@ -445,7 +445,26 @@ function ProbeResultView({ result }: { result: ProbeResponse }) {
       )}
 
       <div className="rounded-xl border border-border p-2.5">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">Spatial context</p>
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">
+          Spatial context → interpretation
+        </p>
+        {result.spatial_decision ? (
+          <div className="mt-1 divide-y divide-border">
+            <FactRow
+              label="Base decision"
+              value={String(result.spatial_decision.base_decision ?? "—")}
+            />
+            <FactRow
+              label="Interpretation"
+              value={String(result.spatial_decision.contextual_decision ?? "—")}
+            />
+            {result.spatial_decision.description ? (
+              <p className="py-1 text-[11px] leading-snug text-muted-foreground">
+                {result.spatial_decision.description}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {spatialAvailable ? (
           <div className="mt-1 divide-y divide-border">
             <FactRow label="Neighbors" value={String(spatial["neighbor_count"] ?? "—")} />
