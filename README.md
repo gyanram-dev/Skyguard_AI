@@ -136,6 +136,18 @@ npm run preview
 
 Nothing auto-starts; every result is computed by the backend pipeline.
 
+## Live ingestion (Phase 23)
+
+- Judge-safe path (no credentials): open the **Live** page → **Start
+  controlled live demo** (`POST /api/v1/live/demo/start`). Shows
+  `CONTROLLED LIVE` for scripted PATNA-TEST-01 traffic — never IMD data.
+- Authorized IMD polling: `IMD_SOURCE_MODE=LIVE_IMD` (+ allowlist,
+  poll interval, `IMD_CA_BUNDLE` for the emSign/CCA chain), then
+  `POST /api/v1/live/start`. Status: `GET /api/v1/live/status`;
+  stations, episodes, and observations under `/api/v1/live/*`.
+- Live alerts persist in SQLite (`Backend/data/live/`, git-ignored)
+  and are separate from historical replay alerts.
+
 ## Testing
 
 Backend (from `Backend/`):

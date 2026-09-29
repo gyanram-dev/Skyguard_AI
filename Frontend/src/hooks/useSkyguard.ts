@@ -6,11 +6,16 @@ import {
   getDemoReadiness,
   getEvaluationSummary,
   getHealth,
+  getLiveAlerts,
+  getLiveStations,
+  getLiveStatus,
   getNetworkSummary,
   getStation,
   getStations,
   getStationHistory,
   probeObservation,
+  startLiveDemo,
+  stopLive,
   type HistoryVariable,
   type ProbePayload,
 } from "@/lib/api";
@@ -128,5 +133,53 @@ export function useReadiness() {
     staleTime: 60_000,
     retry: 1,
     refetchOnWindowFocus: false,
+  });
+}
+
+/** Live ingestion state (polled while the page is open). */
+export function useLiveStatus() {
+  return useQuery({
+    queryKey: ["live-status"],
+    queryFn: getLiveStatus,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useLiveStations() {
+  return useQuery({
+    queryKey: ["live-stations"],
+    queryFn: getLiveStations,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useLiveAlerts() {
+  return useQuery({
+    queryKey: ["live-alerts"],
+    queryFn: () => getLiveAlerts(),
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useStartLiveDemo() {
+  return useMutation({
+    mutationFn: startLiveDemo,
+    retry: false,
+  });
+}
+
+export function useStopLive() {
+  return useMutation({
+    mutationFn: stopLive,
+    retry: false,
   });
 }

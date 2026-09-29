@@ -330,6 +330,71 @@ export function getNetworkSummary(): Promise<NetworkSummary> {
 }
 
 // ---------------------------------------------------------------------------
+// Live ingestion types mirroring the backend live service (Phase 23).
+// ---------------------------------------------------------------------------
+
+export interface LiveStatus {
+  state: string;
+  mode: string;
+  detail?: string | null;
+  source: string | null;
+  stations: string[];
+  last_attempt: string | null;
+  last_success: string | null;
+  last_error: string;
+  open_episodes: number;
+  inference_latency: Record<string, number>;
+}
+
+export interface LiveStationState {
+  station_id: string;
+  history_rows: number;
+  warm_state: string;
+  latest_timestamp: string | null;
+  latest: Record<string, number | null> | null;
+}
+
+export interface LiveEpisode {
+  alert_id: string;
+  station_id: string;
+  episode_key: string;
+  interpretation: string;
+  started_at: string;
+  last_seen_at: string;
+  detection_count: number;
+  status: string;
+  resolved_at: string | null;
+  score: number | null;
+}
+
+export function getLiveStatus(): Promise<LiveStatus> {
+  return request<LiveStatus>("/api/v1/live/status");
+}
+
+export function getLiveStations(): Promise<{ mode: string; stations: LiveStationState[] }> {
+  return request<{ mode: string; stations: LiveStationState[] }>("/api/v1/live/stations");
+}
+
+export function getLiveAlerts(
+  stationId?: string,
+): Promise<{ mode: string; episodes: LiveEpisode[] }> {
+  const query = stationId ? `?station_id=${encodeURIComponent(stationId)}` : "";
+  return request<{ mode: string; episodes: LiveEpisode[] }>(`/api/v1/live/alerts${query}`);
+}
+
+export function startLive(): Promise<LiveStatus> {
+  return request<LiveStatus>("/api/v1/live/start", { method: "POST" });
+}
+
+export function stopLive(): Promise<LiveStatus> {
+  return request<LiveStatus>("/api/v1/live/stop", { method: "POST" });
+}
+
+export function startLiveDemo(): Promise<LiveStatus> {
+  return request<LiveStatus>("/api/v1/live/demo/start", { method: "POST" });
+}
+
+// ---------------------------------------------------------------------------
 // Judge probe types mirroring Backend/src/api/schemas.py (Phase 15).
 // ---------------------------------------------------------------------------
 

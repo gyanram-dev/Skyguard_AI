@@ -1,0 +1,37 @@
+{
+  "label": "CONTROLLED LIVE DEMO (scripted, not IMD data)",
+  "station": "PATNA-TEST-01",
+  "cadence_min": 5.0,
+  "observations_ingested": 34,
+  "script_length": 34,
+  "episodes": [
+    {
+      "alert_id": "live-1b0c57fbf3ea19cb",
+      "station_id": "PATNA-TEST-01",
+      "episode_key": "PATNA-TEST-01|ANOMALY",
+      "interpretation": "ANOMALY_WITHOUT_SPATIAL_CONFIRMATION",
+      "started_at": "2026-09-29T08:01:00+00:00",
+      "last_seen_at": "2026-09-29T08:01:00+00:00",
+      "detection_count": 1,
+      "status": "RESOLVED",
+      "resolved_at": "2026-09-29T08:11:00+00:00",
+      "score": 112.3827
+    }
+  ],
+  "episodes_before_duplicates": 1,
+  "episodes_after_duplicates": 1,
+  "silence_flagged": [
+    "STALE-STATION"
+  ],
+  "restart_restored_open": [],
+  "inference_latency_ms": {
+    "n": 35,
+    "p50": 54.09,
+    "p95": 87.33,
+    "max": 89.1
+  },
+  "fetch_latency_ms": {
+    "note": "controlled feed: no network fetch"
+  },
+  "generated_utc": "2026-09-29T05:26:28.753102+00:00"
+}

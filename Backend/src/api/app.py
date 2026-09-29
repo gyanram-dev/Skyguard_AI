@@ -334,6 +334,100 @@ def analyze_result(session_id: str) -> dict:
         return _upload_error(exc)
 
 
+@app.get("/api/v1/live/status")
+def live_status() -> dict:
+    """Live ingestion state (mode, source, fetch times, episodes)."""
+    get_store()
+    from src.api.services import live_service as LV
+
+    manager = LV.get_manager()
+    snap = manager.snapshot()
+    if snap["state"] == "LIVE_UNAVAILABLE" and manager.status == "IDLE":
+        return {"state": "LIVE_UNAVAILABLE", "mode": manager.config.mode,
+                "detail": ("Live ingestion is idle. Start CONTROLLED_LIVE "
+                           "for the scripted demo or configure LIVE_IMD."),
+                "source": None, "stations": [], "last_attempt": None,
+                "last_success": None, "last_error": "",
+                "open_episodes": 0, "inference_latency": {}}
+    return snap
+
+
+@app.get("/api/v1/live/stations")
+def live_stations() -> dict:
+    """Per-station live state (history depth, latest observation, quality)."""
+    get_store()
+    from src.api.services import live_service as LV
+
+    manager = LV.get_manager()
+    stations = []
+    for sid, hist in manager.histories.items():
+        latest = hist.latest()
+        stations.append({"station_id": sid, "history_rows": len(hist),
+                         "warm_state": hist.warm_state(),
+                         "latest_timestamp": latest.timestamp.isoformat()
+                         if latest else None,
+                         "latest": {"temperature_c": latest.temperature_c,
+                                    "pressure_hpa": latest.pressure_hpa,
+                                    "relative_humidity_pct":
+                                        latest.relative_humidity_pct}
+                         if latest else None})
+    return {"mode": manager.config.mode, "stations": stations}
+
+
+@app.get("/api/v1/live/alerts")
+def live_alerts(station_id: str | None = Query(None),
+                limit: int = Query(100, ge=1, le=1000)) -> dict:
+    """Persisted live alert episodes (operational, never replay alerts)."""
+    get_store()
+    from src.api.services import live_service as LV
+
+    return {"mode": LV.get_manager().config.mode,
+            "episodes": LV.get_manager().store.episodes(station_id, limit)}
+
+
+@app.get("/api/v1/live/observations/{station_id}")
+def live_observations(station_id: str,
+                      limit: int = Query(200, ge=1, le=1000)) -> dict:
+    """Persisted live observations for one station (newest first)."""
+    get_store()
+    from src.api.services import live_service as LV
+
+    return {"station_id": station_id, "mode": LV.get_manager().config.mode,
+            "observations": LV.get_manager().store.observations(
+                station_id, limit)}
+
+
+@app.post("/api/v1/live/start")
+async def live_start() -> dict:
+    """Start live ingestion from server configuration (allowlist only)."""
+    get_store()
+    from src.api.services import live_service as LV
+    from src.live import config as LC
+
+    manager = LV.get_manager()
+    if manager.config.mode == LC.CONTROLLED_LIVE:
+        return await LV.start_controlled_demo()
+    return await manager.start()
+
+
+@app.post("/api/v1/live/stop")
+async def live_stop() -> dict:
+    """Stop the live ingestion loop gracefully."""
+    get_store()
+    from src.api.services import live_service as LV
+
+    return await LV.get_manager().stop()
+
+
+@app.post("/api/v1/live/demo/start")
+async def live_demo_start() -> dict:
+    """Start the CONTROLLED LIVE DEMO (scripted, never IMD data)."""
+    get_store()
+    from src.api.services import live_service as LV
+
+    return await LV.start_controlled_demo()
+
+
 @app.websocket("/api/v1/live")
 async def live_replay(websocket: WebSocket) -> None:
     """Accelerated historical replay over WebSocket (no live sensors)."""
