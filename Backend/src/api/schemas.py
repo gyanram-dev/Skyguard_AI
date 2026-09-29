@@ -29,6 +29,8 @@ class StationSummary(BaseModel):
     longitude: float | None
     status: str
     data_available: bool = True
+    operational_scope: str = "indian_operational"
+    capability_notes: list[str] = Field(default_factory=list)
     data_mode: str = "historical_replay"
     temperature: float | None = None
     humidity: float | None = None
@@ -53,6 +55,8 @@ class StationInfo(BaseModel):
     city: str
     coordinates: Coordinates | None = None
     status: str
+    operational_scope: str = "indian_operational"
+    capability_notes: list[str] = Field(default_factory=list)
     data_mode: str = "historical_replay"
     last_updated: str | None = None
 
@@ -156,6 +160,8 @@ class NetworkSummary(BaseModel):
     anomaly: int
     offline: int
     network_health_pct: float
+    indian_operational_monitored: int = 0
+    indian_operational_healthy: int = 0
     data_mode: str = "historical_replay"
     last_updated: str | None = None
 

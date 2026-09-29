@@ -140,6 +140,21 @@ function StationDetailPage() {
               Data mode: {summaryRow.data_mode} · Last updated:{" "}
               {formatDateTime(summaryRow.last_updated)}
             </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Scope:{" "}
+              {summaryRow.operational_scope === "benchmark_internal"
+                ? "Internal benchmark (not an Indian operational station)"
+                : summaryRow.operational_scope === "offline"
+                  ? "Offline placeholder"
+                  : "Indian operational network"}
+            </p>
+            {(detail?.station.capability_notes ?? summaryRow.capability_notes ?? []).map(
+              (note) => (
+                <p key={note} className="mt-0.5 text-[10px] text-muted-foreground">
+                  {note}
+                </p>
+              ),
+            )}
           </div>
           <StatusBadge status={status} />
         </div>

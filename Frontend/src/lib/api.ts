@@ -149,6 +149,8 @@ export interface StationSummary {
   longitude: number | null;
   status: string;
   data_available: boolean;
+  operational_scope: string;
+  capability_notes: string[];
   data_mode: string;
   temperature: number | null;
   humidity: number | null;
@@ -168,6 +170,8 @@ export interface StationInfo {
   city: string;
   coordinates: { latitude: number; longitude: number } | null;
   status: string;
+  operational_scope: string;
+  capability_notes: string[];
   data_mode: string;
   last_updated: string | null;
 }
@@ -270,6 +274,8 @@ export interface NetworkSummary {
   anomaly: number;
   offline: number;
   network_health_pct: number;
+  indian_operational_monitored: number;
+  indian_operational_healthy: number;
   data_mode: string;
   last_updated: string | null;
 }

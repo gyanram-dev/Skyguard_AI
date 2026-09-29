@@ -127,6 +127,8 @@ def list_stations() -> dict:
                          "latitude": entry.get("latitude"), "longitude": entry.get("longitude"),
                          "status": state["status"],
                          "data_available": state["data_available"],
+                         "operational_scope": SS.operational_scope(entry),
+                         "capability_notes": SS.capability_notes(entry),
                          "data_mode": OS.DATA_MODE, "last_updated": state["last_updated"]}
         if snap is not None and entry["source_dataset"] != "noaa_ghcnh":
             obs, ens = snap["obs"], snap["ens"]
@@ -159,6 +161,8 @@ def station_detail(station_id: str) -> dict:
     if not state["data_available"]:
         raise HTTPException(status_code=404, detail=f"No backend data for '{station_id}'")
     info: dict = {"station_id": station_id, "city": entry["city"], "status": state["status"],
+                  "operational_scope": SS.operational_scope(entry),
+                  "capability_notes": SS.capability_notes(entry),
                   "data_mode": OS.DATA_MODE, "last_updated": state["last_updated"]}
     if entry.get("latitude") is not None:
         info["coordinates"] = {"latitude": entry["latitude"], "longitude": entry["longitude"]}

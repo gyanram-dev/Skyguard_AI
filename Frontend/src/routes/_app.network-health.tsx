@@ -96,6 +96,13 @@ function NetworkHealthPage() {
             Last updated:{" "}
             {networkQuery.data ? formatDateTime(networkQuery.data.last_updated) : "Not available"}
           </p>
+          {networkQuery.data ? (
+            <p className="text-[10px] text-muted-foreground">
+              Indian operational network: {networkQuery.data.indian_operational_healthy}/
+              {networkQuery.data.indian_operational_monitored} healthy (benchmark stations
+              excluded).
+            </p>
+          ) : null}
         </div>
         {stationsQuery.isPending ? (
           <p className="mt-3 text-[11px] text-muted-foreground" role="status">

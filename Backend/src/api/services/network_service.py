@@ -24,6 +24,13 @@ def summarize(store, states: list[dict]) -> dict:
     monitored = len(store.mapping)
     denominator = monitored - counts["offline"]
     health_pct = round(100.0 * counts["healthy"] / denominator, 2) if denominator else 0.0
+    indian = sum(1 for entry in store.mapping
+                 if SS.operational_scope(entry) == SS.INDIAN_OPERATIONAL)
+    indian_healthy = sum(1 for entry, state in zip(store.mapping, states)
+                         if SS.operational_scope(entry) == SS.INDIAN_OPERATIONAL
+                         and state["status"] == "healthy")
     return {"stations_monitored": monitored, **counts,
             "network_health_pct": health_pct, "data_mode": "historical_replay",
+            "indian_operational_monitored": indian,
+            "indian_operational_healthy": indian_healthy,
             "last_updated": latest}

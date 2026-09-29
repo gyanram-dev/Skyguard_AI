@@ -23,6 +23,32 @@ def get_mapping(store, frontend_id: str) -> dict | None:
     return None
 
 
+INDIAN_OPERATIONAL = "indian_operational"
+BENCHMARK_INTERNAL = "benchmark_internal"
+OFFLINE_SCOPE = "offline"
+
+
+def operational_scope(entry: dict) -> str:
+    """Explicit scope: Jena is benchmark-only, never Indian-operational."""
+    if not entry.get("backend_station_id"):
+        return OFFLINE_SCOPE
+    if entry.get("backend_station_id") == "jena":
+        return BENCHMARK_INTERNAL
+    return INDIAN_OPERATIONAL
+
+
+def capability_notes(entry: dict) -> list[str]:
+    """Honest capability limitations for display (no fake health)."""
+    notes: list[str] = []
+    if operational_scope(entry) == BENCHMARK_INTERNAL:
+        notes.append("Internal benchmark only; not an Indian operational station.")
+    if entry.get("source_dataset") == "noaa_ghcnh":
+        notes.append("Historical context observations; no detector models cover it.")
+    if not entry.get("backend_station_id"):
+        notes.append("No backend data; offline placeholder.")
+    return notes
+
+
 def _num(value) -> float | None:
     try:
         number = float(value)
