@@ -89,13 +89,14 @@ def test_6_invalid_input(client):
     assert S.ErrorResponse.model_validate(response.json()).code == "invalid_input"
 
 
-# 7. Spatial unavailable is explicit (Jena has no NOAA neighbors).
-def test_7_spatial_unavailable(client):
-    body = S.ProbeResponse.model_validate(client.post(
+# 7. Jena is benchmark-internal and cannot enter the operational probe.
+def test_7_jena_is_not_probeable(client):
+    response = client.post(
         "/api/v1/demo/probe",
         json={"station_id": "JENA-01", "temperature": 15.0,
-              "pressure": 1000.0, "humidity": 60.0}).json())
-    assert body.evidence.spatial["available"] is False
+              "pressure": 1000.0, "humidity": 60.0})
+    assert response.status_code == 404
+    assert S.ErrorResponse.model_validate(response.json()).code == "unknown_station"
 
 
 # 8. Partial detector availability: coverage grade reflects components.

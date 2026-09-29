@@ -4,7 +4,7 @@ Dataset: **Global Historical Climatology Network hourly (GHCNh) 1.1.0 (updated 2
 
 Access: Bulk download of per-station per-year Apache Parquet files from the NOAA Open Data Dissemination (NODD) S3 bucket s3://noaa-ghcnh-pds (https://noaa-ghcnh-pds.s3.amazonaws.com), prefix hourly/access/by-year/{year}/parquet/GHCNh_{station_id}_{year}.parquet, fetched over HTTPS with urllib (read-only).
 
-Access date: 2026-09-25.
+Access date: 2026-09-29.
 
 ## Why GHCNh and not ISD
 
@@ -22,9 +22,12 @@ The blueprint names NOAA ISD, but NCEI has superseded ISD with GHCNh: the GHCNh 
 - `INI0000VOMM` CHENNAI INTL (Southeast) 12.9944, 80.1805, median 30.0 min, 52,022 rows.
 - `INI0000VOBL` BANGALURU INTL AIRPORT (South) 13.2, 77.7, median 30.0 min, 52,289 rows.
 - `INI0000VOTV` THIRUVANANTHAPURAM INTL (Far south) 8.4821, 76.9201, median 30.0 min, 51,710 rows.
+- `INI0000VICG` CHANDIGARH (North) 30.6735, 76.7885, median 30.0 min, 2,764 rows.
+- `INI0000VAPO` PUNE (West) 18.5821, 73.9197, median 30.0 min, 3,488 rows.
+- `INI0000VOHS` HYDERABAD INTL AIRPORT (South-central) 17.2333, 78.4167, median 30.0 min, 49,747 rows.
 
-Common overlap: 2022-01-01T00:00:00+00:00 → 2024-12-31T21:00:00+00:00 (26,302 hours).
-Hourly temperature coverage: ≥2 stations 99.6%, ≥5 stations 99.4%, all stations 34.0% of common hours.
+Common overlap: 2022-08-17T08:30:00+00:00 → 2024-12-30T21:00:00+00:00 (20,798 hours).
+Hourly temperature coverage: ≥2 stations 99.5%, ≥5 stations 99.3%, all stations 2.9% of common hours.
 
 ## Quality notes (audit, not faults)
 
@@ -38,20 +41,26 @@ Hourly temperature coverage: ≥2 stations 99.6%, ≥5 stations 99.4%, all stati
 - `INI0000VOMM`: 2 dewpoint>temperature rows.
 - `INI0000VOBL`: no integrity issues.
 - `INI0000VOTV`: no integrity issues.
+- `INI0000VICG`: 1 candidate temperature discontinuities (>15C per step, for review).
+- `INI0000VAPO`: 4 candidate temperature discontinuities (>15C per step, for review).
+- `INI0000VOHS`: no integrity issues.
 
 No meteorological extremes were deleted; all rows are preserved. No spatial score, neighbor claim, or capability claim is made here.
 
 ## Artifacts
 
-- `data/noaa/processed/INI0000VIDD_2022_2024.csv` sha256 `3e634b91e1fd1d15…`
-- `data/noaa/processed/INI0000VIJP_2022_2024.csv` sha256 `d05d7522cadacfb9…`
-- `data/noaa/processed/INI0000VILK_2022_2024.csv` sha256 `d446b778e333598d…`
-- `data/noaa/processed/INI0000VABB_2022_2024.csv` sha256 `999e8e8cb709a692…`
-- `data/noaa/processed/INI0000VABP_2022_2024.csv` sha256 `aab707f561292a7e…`
-- `data/noaa/processed/INU042809-1_2022_2024.csv` sha256 `59628283bc847dfe…`
-- `data/noaa/processed/INU042410-1_2022_2024.csv` sha256 `07aa78c6656038cc…`
-- `data/noaa/processed/INI0000VOMM_2022_2024.csv` sha256 `5a00616d0443294c…`
-- `data/noaa/processed/INI0000VOBL_2022_2024.csv` sha256 `bda3fbd2f5c97266…`
-- `data/noaa/processed/INI0000VOTV_2022_2024.csv` sha256 `9f8857996a2157c8…`
+- `data/noaa/processed/INI0000VIDD_2022_2024.csv` sha256 `f893a811503fbd59…`
+- `data/noaa/processed/INI0000VIJP_2022_2024.csv` sha256 `f02256df64398019…`
+- `data/noaa/processed/INI0000VILK_2022_2024.csv` sha256 `ad7259226f038d0e…`
+- `data/noaa/processed/INI0000VABB_2022_2024.csv` sha256 `dcdd1e401da492a3…`
+- `data/noaa/processed/INI0000VABP_2022_2024.csv` sha256 `59184b9034ee679e…`
+- `data/noaa/processed/INU042809-1_2022_2024.csv` sha256 `d6d094e3933d8dce…`
+- `data/noaa/processed/INU042410-1_2022_2024.csv` sha256 `6d73587deeb14c12…`
+- `data/noaa/processed/INI0000VOMM_2022_2024.csv` sha256 `b4ebade21a271d08…`
+- `data/noaa/processed/INI0000VOBL_2022_2024.csv` sha256 `fe0425e277de6eb1…`
+- `data/noaa/processed/INI0000VOTV_2022_2024.csv` sha256 `105478491eda1a56…`
+- `data/noaa/processed/INI0000VICG_2022_2024.csv` sha256 `8c9759b79a0f3284…`
+- `data/noaa/processed/INI0000VAPO_2022_2024.csv` sha256 `bc2a5373756d23e0…`
+- `data/noaa/processed/INI0000VOHS_2022_2024.csv` sha256 `a124f6205aa76fc8…`
 
 Manifest: `data/noaa/metadata/station_manifest.json`. Reproduce: `python -m src.noaa.run`.

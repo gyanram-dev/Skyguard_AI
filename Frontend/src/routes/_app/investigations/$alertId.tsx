@@ -65,6 +65,8 @@ function InvestigationDetailPage() {
   const status = normalizeStatus(alert.status, true);
   const observations = detail.observations;
   const rootCause = cleanText(detail.root_cause.class) ?? cleanText(alert.root_cause);
+  const sourceMode = alert.source_mode ?? "HISTORICAL_ALERT";
+  const durationMinutes = Math.round((alert.duration_seconds ?? 0) / 60);
 
   return (
     <>
@@ -72,9 +74,12 @@ function InvestigationDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="section-kicker">
-              {alert.station_id} · {formatDateTime(alert.timestamp)}
+              {sourceMode} · {alert.station_id}
             </p>
             <h2 className="mt-1 text-lg font-extrabold">{alert.event}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Detected {formatDateTime(alert.timestamp)}
+            </p>
             <p className="mt-0.5 break-all text-[10px] text-muted-foreground">{alert.alert_id}</p>
           </div>
           <StatusBadge status={status} />
@@ -117,6 +122,13 @@ function InvestigationDetailPage() {
           <div className="mt-2.5 divide-y divide-border rounded-xl border border-border px-2.5">
             <FactRow label="Method" value={detail.ensemble_method} />
             <FactRow label="Anomaly score" value={formatScore(alert.anomaly_score)} />
+            <FactRow label="Source mode" value={sourceMode} />
+            <FactRow label="Data quality" value={detail.data_quality?.status ?? "Not retained"} />
+            <FactRow
+              label="Evaluation eligible"
+              value={detail.data_quality?.evaluation_eligible ? "Yes" : "No"}
+            />
+            <FactRow label="Sensor scope" value={alert.sensor ?? "Not isolated"} />
             <FactRow
               label="Root-cause confidence"
               value={formatConfidence(detail.root_cause.confidence)}
@@ -159,18 +171,31 @@ function InvestigationDetailPage() {
         </section>
       </div>
 
+      <section className="panel p-4" aria-label="Episode timeline and provenance">
+        <p className="section-kicker">Episode timeline & provenance</p>
+        <div className="mt-1 divide-y divide-border">
+          <FactRow label="First detected" value={formatDateTime(alert.timestamp)} />
+          <FactRow
+            label="Duration"
+            value={durationMinutes === 0 ? "1 sample" : `${durationMinutes} min`}
+          />
+          <FactRow label="Source" value="Historical Indian validation data" />
+          <FactRow label="Persistence" value="Frozen historical detector payload" />
+        </div>
+      </section>
+
+      <section className="panel p-4" aria-label="Recommended operator action">
+        <p className="section-kicker">Recommended operator action</p>
+        <p className="mt-1 text-sm">
+          {cleanText(detail.recommended_action) ??
+            "Preserve the observation, review sensor quality and nearby station context, then verify the instrument before making a field adjustment."}
+        </p>
+      </section>
+
       <section className="flex flex-wrap gap-2" aria-label="Investigation actions">
-        <Button variant="outline" size="sm" onClick={() => navigate({ to: "/investigations" })}>
+        <Button variant="outline" size="sm" onClick={() => navigate({ to: "/alerts" })}>
           <ArrowLeft />
-          Back to investigations
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate({ to: "/alerts/$alertId", params: { alertId: alert.alert_id } })}
-        >
-          <Bell />
-          Back to alert
+          Back to Alerts
         </Button>
         <Button
           size="sm"

@@ -1,13 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
-import { EmptyState, ErrorState, FactRow, LoadingState, StatusBadge } from "@/components/common";
-import { normalizeStatus } from "@/lib/api";
+import { EmptyState, ErrorState, FactRow, LoadingState } from "@/components/common";
 import { errorMessage, formatDateTime } from "@/lib/format";
 import {
   useLiveAlerts,
   useLiveStations,
   useLiveStatus,
+  useStartLive,
   useStartLiveDemo,
   useStopLive,
 } from "@/hooks/useSkyguard";
@@ -30,6 +30,7 @@ function LivePage() {
   const status = useLiveStatus();
   const stations = useLiveStations();
   const alerts = useLiveAlerts();
+  const startProvider = useStartLive();
   const startDemo = useStartLiveDemo();
   const stop = useStopLive();
 
@@ -38,15 +39,15 @@ function LivePage() {
     return <ErrorState message={errorMessage(status.error)} onRetry={() => status.refetch()} />;
 
   const state = status.data;
-  const live = state.state === "RUNNING";
-
   return (
     <div className="space-y-3">
       <div className="panel p-4">
         <p className="section-kicker">Live ingestion</p>
         <div className="mt-1 flex items-center gap-2">
           <h1 className="text-lg font-extrabold">{modeLabel(state.mode)}</h1>
-          <StatusBadge status={normalizeStatus(live ? "healthy" : "offline", true)} />
+          <span className="text-[10px] font-bold uppercase text-muted-foreground">
+            {state.provider_status}
+          </span>
         </div>
         {state.state === "LIVE_UNAVAILABLE" ? (
           <p className="mt-1.5 text-[11px] text-muted-foreground">
@@ -61,6 +62,13 @@ function LivePage() {
           </div>
         )}
         <div className="mt-2 flex gap-2">
+          <Button
+            size="sm"
+            disabled={state.mode !== "LIVE_IMD" || startProvider.isPending}
+            onClick={() => startProvider.mutate(undefined, { onSuccess: () => status.refetch() })}
+          >
+            Start configured provider
+          </Button>
           <Button
             size="sm"
             disabled={startDemo.isPending}
@@ -91,7 +99,16 @@ function LivePage() {
         ) : stations.isError || !stations.data ? (
           <ErrorState message={errorMessage(stations.error)} onRetry={() => stations.refetch()} />
         ) : stations.data.stations.length === 0 ? (
-          <EmptyState title="No live stations yet" message="Start the controlled live demo." />
+          <EmptyState
+            title={state.status === "NOT_CONFIGURED" ? "LIVE UNAVAILABLE" : "No observations yet"}
+            message={
+              state.status === "NOT_CONFIGURED"
+                ? "Configure the provider endpoint before starting live ingestion."
+                : state.status === "CONNECTION_FAILED"
+                  ? "The configured provider could not be reached. No readings are synthesized."
+                  : "No live observations have been received."
+            }
+          />
         ) : (
           <div className="mt-1 divide-y divide-border">
             {stations.data.stations.map((station) => (
@@ -116,11 +133,21 @@ function LivePage() {
         ) : (
           <div className="mt-1 divide-y divide-border">
             {alerts.data.episodes.map((episode) => (
-              <FactRow
-                key={episode.alert_id}
-                label={`${episode.station_id} · ${episode.interpretation} · ×${episode.detection_count}`}
-                value={episode.status}
-              />
+              <div key={episode.alert_id} className="flex items-center gap-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <FactRow
+                    label={`${episode.station_id} · ${episode.interpretation} · ×${episode.detection_count}`}
+                    value={episode.status}
+                  />
+                </div>
+                <Link
+                  to="/investigations/live/$alertId"
+                  params={{ alertId: episode.alert_id }}
+                  className="shrink-0 text-xs font-bold text-foreground underline underline-offset-4"
+                >
+                  Open investigation
+                </Link>
+              </div>
             ))}
           </div>
         )}

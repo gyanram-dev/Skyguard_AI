@@ -108,7 +108,10 @@ def _station_state(store: DataStore, entry: dict) -> dict:
         if snap is None:
             return {"status": "offline", "data_available": False, "last_updated": None,
                     "snapshot": None}
-        return {"status": "healthy", "data_available": True,
+        # Context-only station: real historical observations, but no detector
+        # covers it, so it has no health verdict. Reporting "healthy" here
+        # would claim a judgement the backend cannot make.
+        return {"status": "historical_only", "data_available": True,
                 "last_updated": snap["timestamp"], "snapshot": snap}
     snap = SS.pipeline_snapshot(store, backend_id)
     return {"status": SS.pipeline_status(snap["ens"]), "data_available": True,
@@ -124,11 +127,16 @@ def list_stations() -> dict:
         state = _station_state(store, entry)
         snap = state["snapshot"]
         summary: dict = {"station_id": entry["frontend_station_id"], "city": entry["city"],
+                 "source_mode": "HISTORICAL",
+                         "source_dataset": entry.get("source_dataset"),
                          "latitude": entry.get("latitude"), "longitude": entry.get("longitude"),
                          "status": state["status"],
                          "data_available": state["data_available"],
                          "operational_scope": SS.operational_scope(entry),
                          "capability_notes": SS.capability_notes(entry),
+                         "available_variables": SS.available_variables(store, entry) if state["data_available"] else [],
+                         "capability": SS.capability_profile(store, entry),
+                         "probe_available": SS.probe_capable(entry),
                          "data_mode": OS.DATA_MODE, "last_updated": state["last_updated"]}
         if snap is not None and entry["source_dataset"] != "noaa_ghcnh":
             obs, ens = snap["obs"], snap["ens"]
@@ -160,9 +168,15 @@ def station_detail(station_id: str) -> dict:
     state = _station_state(store, entry)
     if not state["data_available"]:
         raise HTTPException(status_code=404, detail=f"No backend data for '{station_id}'")
-    info: dict = {"station_id": station_id, "city": entry["city"], "status": state["status"],
+    info: dict = {"station_id": station_id, "city": entry["city"],
+                  "source_mode": "HISTORICAL",
+                  "source_dataset": entry.get("source_dataset"),
+                  "status": state["status"],
                   "operational_scope": SS.operational_scope(entry),
                   "capability_notes": SS.capability_notes(entry),
+                  "available_variables": SS.available_variables(store, entry) if state["data_available"] else [],
+                  "capability": SS.capability_profile(store, entry),
+                  "probe_available": SS.probe_capable(entry),
                   "data_mode": OS.DATA_MODE, "last_updated": state["last_updated"]}
     if entry.get("latitude") is not None:
         info["coordinates"] = {"latitude": entry["latitude"], "longitude": entry["longitude"]}
@@ -180,6 +194,7 @@ def station_detail(station_id: str) -> dict:
                 "anomaly": {"detected": False, "score": score, "method": "spatial",
                             "confidence": None},
                 "root_cause": {"class": None, "confidence": None},
+                "maintenance": SS.maintenance_review(store, entry, False),
                 "spatial_context": {"available": spatial is not None,
                                     "neighbor_count": neighbor_count,
                                     "context_level": context_level}}
@@ -204,6 +219,7 @@ def station_detail(station_id: str) -> dict:
                              "relative_humidity_pct": SS._num(obs["relative_humidity_pct"]),
                              "pressure_hpa": SS._num(obs["pressure_hpa"])},
             "data_quality": quality, "anomaly": anomaly, "root_cause": root_cause,
+            "maintenance": SS.maintenance_review(store, entry, anomaly["detected"]),
             "spatial_context": spatial}
 
 
@@ -225,9 +241,16 @@ def station_history(station_id: str, variable: str = Query("temperature"),
 
 @app.get("/api/v1/alerts", response_model=S.AlertListResponse)
 def list_alerts(limit: int = Query(100, ge=1, le=1000)) -> dict:
-    """Detected anomaly events, timestamp descending (frozen pipeline output)."""
+    """Detected anomaly events, timestamp descending (frozen pipeline output).
+
+    ``total`` is the size of the full operational alert list so callers can
+    tell a capped page from the real count instead of reporting the query
+    limit as if it were a total.
+    """
     store = get_store()
-    return {"data_mode": OS.DATA_MODE, "alerts": store.alerts[:limit]}
+    page = store.alerts[:limit]
+    return {"data_mode": OS.DATA_MODE, "alerts": page,
+            "returned": len(page), "total": len(store.alerts), "limit": limit}
 
 
 @app.get("/api/v1/alerts/{alert_id}", response_model=S.AlertDetailResponse)
@@ -243,10 +266,14 @@ def alert_detail(alert_id: str) -> dict:
         raise HTTPException(status_code=404,
                             detail=f"No evidence row for '{alert_id}'") from None
     return {"alert": {k: alert.get(k) for k in
-                      ("alert_id", "station_id", "timestamp", "status", "event",
-                       "anomaly_score", "root_cause", "root_cause_confidence", "summary")},
+                      ("alert_id", "station_id", "source_mode", "sensor",
+                       "timestamp", "status", "event", "anomaly_score",
+                       "root_cause", "root_cause_confidence",
+                       "duration_seconds", "summary")},
             "observations": bundle["observations"], "evidence": bundle["evidence"],
-            "history": bundle["history"], "root_cause": bundle["root_cause"],
+            "history": bundle["history"], "data_quality": bundle["data_quality"],
+            "root_cause": bundle["root_cause"],
+            "recommended_action": bundle["recommended_action"],
             "explanation": bundle["explanation"], "ensemble_method": "ens_median"}
 
 
@@ -257,7 +284,8 @@ def network_summary() -> dict:
     states = []
     for entry in store.mapping:
         state = _station_state(store, entry)
-        states.append({"status": state["status"], "last_updated": state["last_updated"]})
+        states.append({"status": state["status"], "last_updated": state["last_updated"],
+                       "data_available": state["data_available"]})
     return NS.summarize(store, states)
 
 
@@ -345,15 +373,7 @@ def live_status() -> dict:
     from src.api.services import live_service as LV
 
     manager = LV.get_manager()
-    snap = manager.snapshot()
-    if snap["state"] == "LIVE_UNAVAILABLE" and manager.status == "IDLE":
-        return {"state": "LIVE_UNAVAILABLE", "mode": manager.config.mode,
-                "detail": ("Live ingestion is idle. Start CONTROLLED_LIVE "
-                           "for the scripted demo or configure LIVE_IMD."),
-                "source": None, "stations": [], "last_attempt": None,
-                "last_success": None, "last_error": "",
-                "open_episodes": 0, "inference_latency": {}}
-    return snap
+    return manager.snapshot()
 
 
 @app.get("/api/v1/live/stations")
@@ -387,6 +407,19 @@ def live_alerts(station_id: str | None = Query(None),
 
     return {"mode": LV.get_manager().config.mode,
             "episodes": LV.get_manager().store.episodes(station_id, limit)}
+
+
+@app.get("/api/v1/live/alerts/{alert_id}")
+def live_alert_detail(alert_id: str) -> dict:
+    """Persisted live episode plus exact stored evidence and causal history."""
+    get_store()
+    from src.api.services import live_service as LV
+
+    manager = LV.get_manager()
+    detail = manager.store.episode_detail(alert_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Live alert not found")
+    return {**detail, "source_mode": "LIVE_ALERT"}
 
 
 @app.get("/api/v1/live/observations/{station_id}")

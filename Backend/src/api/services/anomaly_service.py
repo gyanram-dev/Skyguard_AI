@@ -17,7 +17,7 @@ import pandas as pd
 def build_alerts(store) -> list[dict]:
     """Detector-driven alerts, timestamp descending (frozen outputs)."""
     alerts: list[dict] = []
-    for ds in ("jena", "delhi"):
+    for ds in ("delhi",):
         bundle = store.pipeline[ds]
         frame = bundle["ens"].sort_values("timestamp").reset_index(drop=True)
         rc_index = _diagnosis_index(bundle["rc"])
@@ -68,15 +68,21 @@ def _event_alert(store, ds: str, frontend: str, frame: pd.DataFrame,
     else:
         status, event = "anomaly", predicted
     rows = int(end - start + 1)
+    stamps = pd.to_datetime(window["timestamp"], errors="coerce").dropna()
+    duration_s = (float((stamps.max() - stamps.min()).total_seconds())
+                  if len(stamps) > 1 else 0.0)
     return {
         "alert_id": f"{ds}:op:{stamp}",
         "station_id": frontend,
+        "source_mode": "HISTORICAL_ALERT",
+        "sensor": "Multi-variable ensemble",
         "backend_id": ds,
         "timestamp": stamp,
         "status": status,
         "event": event,
         "anomaly_score": score,
         "detection_rows": str(rows),
+        "duration_seconds": duration_s,
         "root_cause": predicted,
         "root_cause_confidence": confidence,
         "summary": (f"{event} on {frontend}: {rows} flagged rows from {stamp}; "

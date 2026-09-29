@@ -1,13 +1,29 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Bell, CloudSun, Droplets, Gauge, Thermometer } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  ArrowRight,
+  Bell,
+  Database,
+  Droplets,
+  FlaskConical,
+  Gauge,
+  GitBranch,
+  Network,
+  Radio,
+  ShieldAlert,
+  ShieldCheck,
+  Snowflake,
+  Thermometer,
+  TrendingUp,
+  Waves,
+} from "lucide-react";
 import { ResponsiveContainer } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StatusBadge, DetailStat, FactRow } from "@/components/common";
 import { SensorSpark } from "@/components/charts";
-import { KpiRow } from "@/components/kpi";
 import { ReplayControls } from "@/components/replay/ReplayControls";
 import { LiveEventFeed } from "@/components/replay/LiveEventFeed";
 import { ReplayIntelligence } from "@/components/replay/ReplayIntelligence";
@@ -17,15 +33,21 @@ import { normalizeStatus, type AlertSummary, type StationDetailResponse } from "
 import {
   errorMessage,
   cleanText,
+  formatCompactCount,
   formatConfidence,
-  formatDateTime,
+  formatDisplayTerm,
   formatHumidity,
   formatPressure,
   formatScore,
   formatTemp,
   formatTime,
 } from "@/lib/format";
-import { mergeStations, stationMapMeta, type MergedStation } from "@/lib/mapMeta";
+import {
+  mergeStations,
+  stationMapCapability,
+  stationMapMeta,
+  type MergedStation,
+} from "@/lib/mapMeta";
 import {
   useAlerts,
   useNetworkSummary,
@@ -33,23 +55,24 @@ import {
   useStationHistory,
   useStations,
 } from "@/hooks/useSkyguard";
-import type { HistoryVariable } from "@/lib/api";
+import type { HistoryVariable, NetworkSummary } from "@/lib/api";
 
 const indiaAsset = { url: "/assets/india.png" };
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({
     meta: [
-      { title: "Live Overview | SkyGuard AI" },
+      { title: "SkyGuard AI | AI-Powered AWS Anomaly Detection" },
       {
         name: "description",
-        content: "National weather station monitoring and anomaly intelligence from SkyGuard AI.",
+        content:
+          "Detect faulty weather sensors without mistaking genuine extreme weather for sensor failure. Context-aware quality control for Temperature, Pressure and Relative Humidity.",
       },
-      { property: "og:title", content: "SkyGuard AI — Live Overview" },
+      { property: "og:title", content: "SkyGuard AI — AI-Powered AWS Anomaly Detection" },
       {
         property: "og:description",
         content:
-          "Historical replay of trusted weather observations across India's station network.",
+          "Context-aware quality control for Temperature, Pressure and Relative Humidity observations across India's station network.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -104,14 +127,10 @@ function LiveOverview() {
     [liveSummaries],
   );
 
-  // Replay covers the detector-backed pipeline datasets only (DEL-01, JENA-01);
-  // the server rejects anything else with a structured error shown in the UI.
+  // Historical replay is limited to the deployed Indian detector station.
   const replayStations = useMemo(() => {
     const delhi = mergedStations.find((station) => station.id === "DEL-01");
-    return [
-      { id: "DEL-01", city: delhi?.city ?? "New Delhi" },
-      { id: "JENA-01", city: "Jena (backend)" },
-    ];
+    return [{ id: "DEL-01", city: delhi?.city ?? "New Delhi" }];
   }, [mergedStations]);
 
   const liveStations = useMemo<(MergedStation & { live?: LiveReading })[]>(
@@ -207,17 +226,77 @@ function LiveOverview() {
     }
   };
 
+  const spatial = stationDetailQuery.data?.spatial_context ?? null;
+
   return (
     <>
-      <KpiRow
+      <Hero
+        summary={networkQuery.data}
+        loading={networkQuery.isPending}
+        error={networkQuery.isError ? errorMessage(networkQuery.error) : null}
+        onTestObservation={() => navigate({ to: "/judge-probe" })}
+        onViewAlerts={() => navigate({ to: "/alerts" })}
+      >
+        <MapLab
+          stations={liveStations}
+          selectedStation={selectedStation}
+          stationsLoading={stationsQuery.isPending}
+          stationsError={stationsQuery.isError ? errorMessage(stationsQuery.error) : null}
+          stationCount={networkQuery.data?.indian_operational_monitored ?? null}
+          onSelectStation={selectStation}
+        />
+      </Hero>
+
+      <NetworkMetricStrip
         summary={networkQuery.data}
         loading={networkQuery.isPending}
         error={networkQuery.isError ? errorMessage(networkQuery.error) : null}
       />
-      <section className="panel shrink-0 p-3" aria-label="Live historical replay">
+
+      <SelectedStationIntelligence
+        station={selectedStation}
+        detail={stationDetailQuery.data}
+        loading={stationDetailQuery.isPending && detailStationId !== null}
+        error={stationDetailQuery.isError ? errorMessage(stationDetailQuery.error) : null}
+      />
+
+      <BottomInsights
+        stationId={detailStationId}
+        stationLabel={selectedStation ? `${selectedStation.id} · ${selectedStation.city}` : null}
+        dataAvailable={selectedStation?.api?.data_available === true}
+        liveReading={selectedLive}
+        liveSeries={liveSeries}
+        liveActive={liveActive}
+      />
+
+      <HowSkyGuardDecides />
+      <WhatSkyGuardDetects />
+      <RealWeatherOrFault
+        spatial={spatial}
+        stationLabel={selectedStation ? `${selectedStation.id} · ${selectedStation.city}` : null}
+      />
+
+      <section className="panel shrink-0 p-4" aria-label="Historical replay">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <div>
+            <p className="section-kicker">Historical replay</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Historical observations processed through the real-time detection pipeline.
+            </p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <ReplayControls live={live} stations={replayStations} />
-          <LiveEventFeed readings={live.recentReadings} limit={6} />
+          <div className="min-w-0">
+            <CurrentReplayCard
+              status={live.replay.status}
+              processed={live.replay.processed}
+              split={live.replay.split}
+              latest={live.recentReadings.at(-1) ?? null}
+              alertId={latestLiveAlertId}
+            />
+            <LiveEventFeed readings={live.recentReadings} limit={6} />
+          </div>
         </div>
         <div className="mt-2 border-t border-border pt-2">
           <ReplaySummary
@@ -232,34 +311,9 @@ function LiveOverview() {
             onReview={(alert) => selectAlert(alert, true)}
           />
         </div>
+        <ReplayIntelligence live={live} />
       </section>
-      <div className="grid min-h-[500px] shrink-0 grid-cols-1 gap-3 xl:h-[520px] xl:min-h-0 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] 2xl:h-[600px]">
-        <MapLab
-          stations={liveStations}
-          selectedStation={selectedStation}
-          detail={stationDetailQuery.data}
-          detailLoading={stationDetailQuery.isPending && detailStationId !== null}
-          detailError={stationDetailQuery.isError}
-          stationsLoading={stationsQuery.isPending}
-          stationsError={stationsQuery.isError ? errorMessage(stationsQuery.error) : null}
-          liveActive={liveActive}
-          onSelectStation={selectStation}
-        />
-        <div
-          className="flex min-h-0 flex-col gap-3 overflow-y-auto xl:min-h-0"
-          aria-label="Replay intelligence"
-        >
-          <CurrentReplayCard
-            status={live.replay.status}
-            split={live.replay.split}
-            latest={
-              liveActive ? (live.recentReadings[live.recentReadings.length - 1] ?? null) : null
-            }
-            alertId={latestLiveAlertId}
-          />
-          <ReplayIntelligence live={live} />
-        </div>
-      </div>
+
       <RecentAlerts
         alerts={recentAlerts}
         liveAlerts={liveSummaries}
@@ -268,19 +322,431 @@ function LiveOverview() {
         onSelectAlert={selectAlert}
         loading={alertsQuery.isPending}
         error={alertsQuery.isError ? errorMessage(alertsQuery.error) : null}
-        healthyCount={networkQuery.data?.healthy ?? null}
-        networkUpdated={networkQuery.data?.last_updated ?? null}
-        networkLoading={networkQuery.isPending}
-      />
-      <BottomInsights
-        stationId={detailStationId}
-        stationLabel={selectedStation ? `${selectedStation.id} · ${selectedStation.city}` : null}
-        dataAvailable={selectedStation?.api?.data_available === true}
-        liveReading={selectedLive}
-        liveSeries={liveSeries}
-        liveActive={liveActive}
       />
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Product-facing sections. Every number rendered below comes from the backend
+// responses already loaded on this page; missing values render as honest
+// unavailable states, never as fabricated completeness.
+// ---------------------------------------------------------------------------
+
+function Hero({
+  summary,
+  loading,
+  error,
+  onTestObservation,
+  onViewAlerts,
+  children,
+}: {
+  summary: NetworkSummary | undefined;
+  loading: boolean;
+  error: string | null;
+  onTestObservation: () => void;
+  onViewAlerts: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="grid shrink-0 grid-cols-1 items-center gap-2 xl:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] xl:gap-4"
+      aria-label="SkyGuard India AWS network"
+    >
+      <div className="flex min-w-0 flex-col justify-center py-0.5 xl:py-1">
+        <p className="text-[12px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          SkyGuard AI
+        </p>
+        <h2 className="mt-3 text-[2.75rem] font-bold leading-[1.05] tracking-[-0.035em] text-foreground xl:text-[3rem]">
+          Can this weather observation
+          <br />
+          <span className="text-[#20D7F5]">be trusted?</span>
+        </h2>
+        <p className="mt-2.5 max-w-[42ch] text-base leading-snug text-muted-foreground">
+          SkyGuard evaluates Temperature, Pressure and Relative Humidity using temporal,
+          multivariate and spatial context.
+        </p>
+        <p className="mt-2 max-w-[42ch] text-base leading-snug text-muted-foreground">
+          Detect sensor anomalies without confusing them with genuine weather events.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center text-[13px] font-medium text-muted-foreground">
+          <span className="flex items-center gap-2 pr-4">
+            <Thermometer className="size-4 text-[#20D7F5]" strokeWidth={1.8} />
+            Temperature
+          </span>
+          <span aria-hidden="true" className="h-[18px] w-px bg-border" />
+          <span className="flex items-center gap-2 px-4">
+            <Gauge className="size-4 text-sky" strokeWidth={1.8} />
+            Pressure
+          </span>
+          <span aria-hidden="true" className="h-[18px] w-px bg-border" />
+          <span className="flex items-center gap-2 pl-4">
+            <Droplets className="size-4 text-[#20D7F5]" strokeWidth={1.8} />
+            Relative Humidity
+          </span>
+        </div>
+        <div className="mt-7 flex flex-wrap items-center gap-4">
+          <Button
+            className="h-[54px] w-[248px] rounded-lg bg-[#22CFEA] text-[14px] font-semibold text-[#06131C] hover:bg-[#4FD8F2]"
+            onClick={onTestObservation}
+          >
+            <FlaskConical />
+            Test an Observation →
+          </Button>
+          <Button
+            variant="outline"
+            className="h-[54px] w-[170px] rounded-lg border-border bg-transparent text-[14px] text-foreground"
+            onClick={onViewAlerts}
+          >
+            <Bell />
+            View Alerts
+          </Button>
+        </div>
+        <p className="mt-2 max-w-[48ch] text-[11px] leading-snug text-muted-foreground">
+          Real Indian historical observations; detector verdicts are shown only where detector
+          coverage exists.
+          {error ? ` Network summary unavailable: ${error}` : ""}
+        </p>
+      </div>
+      <div className="relative min-h-[360px] min-w-0 xl:min-h-[430px]">{children}</div>
+    </section>
+  );
+}
+
+function NetworkMetricStrip({
+  summary,
+  loading,
+  error,
+}: {
+  summary: NetworkSummary | undefined;
+  loading: boolean;
+  error: string | null;
+}) {
+  const exact = (count: number | undefined) => {
+    if (loading) return "…";
+    if (error || count === undefined) return "—";
+    return count.toLocaleString();
+  };
+  const stations = summary?.indian_operational_monitored;
+  const cells: Array<{ label: string; value: string; icon: typeof Radio; tone: string }> = [
+    { label: "Indian stations", value: exact(stations), icon: Radio, tone: "text-[#20D7F5]" },
+    {
+      label: "Historical observations",
+      value: exact(summary?.observations_indexed),
+      icon: Database,
+      tone: "text-[#20D7F5]",
+    },
+    {
+      label: "Detector coverage",
+      value: `${exact(summary?.detector_covered)} / ${exact(stations)}`,
+      icon: ShieldAlert,
+      tone: "text-[#F4B400]",
+    },
+    {
+      label: "Live-capable",
+      value: exact(summary?.live_capable_stations),
+      icon: Activity,
+      tone: "text-[#20D7F5]",
+    },
+  ];
+  return (
+    <section
+      className="mt-3 grid shrink-0 grid-cols-2 rounded-xl border border-border bg-card px-2 py-4 sm:grid-cols-4"
+      aria-label="Network metrics"
+    >
+      {error && (
+        <p className="col-span-full mb-1 px-3 text-[9px] font-semibold text-offline-deep">
+          {error}
+        </p>
+      )}
+      {cells.map((cell, index) => (
+        <div
+          key={cell.label}
+          className={
+            index === 0
+              ? "flex min-w-0 items-center gap-3 px-5"
+              : "flex min-w-0 items-center gap-3 border-l border-border px-5"
+          }
+        >
+          <cell.icon className={`size-6 shrink-0 ${cell.tone}`} strokeWidth={1.8} />
+          <div className="min-w-0">
+            <p className="truncate text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight text-foreground">
+              {cell.value}
+            </p>
+            <p className="mt-1 text-[12px] leading-tight text-muted-foreground">{cell.label}</p>
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function SpatialContextCard({
+  station,
+  spatial,
+}: {
+  station: (MergedStation & { live?: LiveReading }) | null;
+  spatial: StationDetailResponse["spatial_context"] | null;
+}) {
+  const level = (spatial?.context_level ?? "UNAVAILABLE").toUpperCase();
+  // The backend can report available=true with an UNAVAILABLE level when the
+  // station has no compatible neighbours; that must not read as evidence.
+  const available = spatial?.available === true && level !== "UNAVAILABLE";
+  const interpretation = !available
+    ? "SPATIAL CONTEXT UNAVAILABLE"
+    : (spatial?.context_level ?? "UNAVAILABLE");
+  const label = !available
+    ? "Spatial context unavailable for this station — no neighbour values are invented."
+    : interpretation.toUpperCase().includes("REGIONAL")
+      ? "Compatible neighbouring stations behave similarly → possible regional event."
+      : "Target differs from compatible nearby stations → local sensor anomaly.";
+  return (
+    <aside className="panel min-h-0 p-3.5" aria-label="Spatial context">
+      <div className="flex items-center justify-between gap-2">
+        <p className="section-kicker">Spatial context</p>
+        <Network className="size-4 text-sky" />
+      </div>
+      <h2 className="mt-0.5 text-sm font-extrabold">
+        {station ? `${station.id} · ${station.city}` : "No station selected"}
+      </h2>
+      <p
+        className={cn(
+          "mt-1.5 rounded-lg px-2 py-1 text-[10px] font-extrabold",
+          available ? "bg-info-soft text-info" : "bg-warning-soft text-warning-deep",
+        )}
+        role="status"
+      >
+        {interpretation}
+      </p>
+      <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">{label}</p>
+      {available && (
+        <div className="mt-1.5 divide-y divide-border border-t border-border pt-1">
+          <FactRow label="Compatible neighbours" value={String(spatial?.neighbor_count ?? 0)} />
+          <FactRow label="Phase-22 context level" value={interpretation} />
+        </div>
+      )}
+      <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">
+        Uses the existing Phase-22 spatial decision. Thresholds and policy are unchanged.
+      </p>
+    </aside>
+  );
+}
+
+function HowSkyGuardDecides() {
+  const steps: Array<{ title: string; detail: string; icon: typeof Activity }> = [
+    {
+      title: "AWS observation",
+      detail: "Temperature · Pressure · Relative Humidity",
+      icon: Activity,
+    },
+    {
+      title: "Data quality",
+      detail: "Staleness, ranges, frozen runs, missingness",
+      icon: ShieldCheck,
+    },
+    {
+      title: "Temporal intelligence",
+      detail: "Causal deltas, trends and window behaviour",
+      icon: GitBranch,
+    },
+    {
+      title: "AI detection",
+      detail: "Statistical · Isolation Forest · LSTM Autoencoder · Ensemble",
+      icon: Activity,
+    },
+    {
+      title: "Multivariate consistency",
+      detail: "Do T, P and RH agree with each other?",
+      icon: Waves,
+    },
+    {
+      title: "Spatial context",
+      detail: "Do compatible nearby stations behave the same way?",
+      icon: Network,
+    },
+    {
+      title: "Explainable decision",
+      detail: "Anomaly score, confidence, root cause, SHAP contributions",
+      icon: ShieldCheck,
+    },
+    { title: "Alert / investigation", detail: "Triage queue and evidence workspace", icon: Bell },
+  ];
+  return (
+    <section className="panel shrink-0 p-4" aria-label="How SkyGuard decides">
+      <p className="section-kicker">Architecture</p>
+      <h2 className="mt-1 text-lg font-extrabold">How SkyGuard Decides</h2>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Every observation follows the same pipeline. Component availability is reported per station
+        — a component that cannot run is shown as unavailable, never as a pass.
+      </p>
+      <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {steps.map((step, index) => (
+          <li key={step.title} className="rounded-xl border border-border bg-card p-2.5">
+            <div className="flex items-center gap-2">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-info-soft text-info">
+                <step.icon className="size-3.5" />
+              </span>
+              <span className="text-[9px] font-extrabold text-muted-foreground">
+                STEP {index + 1}
+              </span>
+            </div>
+            <p className="mt-1.5 text-[11px] font-extrabold leading-tight">{step.title}</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{step.detail}</p>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        The full ensemble runs on the server; only the streaming/edge subset is lightweight. No card
+        here claims the entire ensemble runs on a microcontroller.
+      </p>
+    </section>
+  );
+}
+
+function WhatSkyGuardDetects() {
+  const detections: Array<{
+    title: string;
+    verb: string;
+    detail: string;
+    icon: typeof Activity;
+    tone: string;
+  }> = [
+    {
+      title: "Spike",
+      verb: "Detects",
+      detail: "Sudden abnormal sensor change beyond the calibrated threshold.",
+      icon: Activity,
+      tone: "bg-anomaly-soft text-anomaly",
+    },
+    {
+      title: "Frozen sensor",
+      verb: "Detects",
+      detail: "Repeated / stuck sensor behaviour flagged by run-length quality checks.",
+      icon: Snowflake,
+      tone: "bg-info-soft text-info",
+    },
+    {
+      title: "Drift",
+      verb: "Monitors",
+      detail: "Persistent gradual deviation relative to the sensor's own history.",
+      icon: TrendingUp,
+      tone: "bg-warning-soft text-warning-deep",
+    },
+    {
+      title: "Cross-variable",
+      verb: "Detects",
+      detail: "Temperature / pressure / humidity relationships that no longer hold together.",
+      icon: Waves,
+      tone: "bg-info-soft text-info",
+    },
+    {
+      title: "Communication",
+      verb: "Detects",
+      detail: "Missing, stale or failed source delivery, kept separate from physical faults.",
+      icon: Radio,
+      tone: "bg-offline-soft text-offline-deep",
+    },
+  ];
+  return (
+    <section className="panel shrink-0 p-4" aria-label="What SkyGuard detects">
+      <p className="section-kicker">Fault taxonomy</p>
+      <h2 className="mt-1 text-lg font-extrabold">What SkyGuard Detects</h2>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Fault classes are grouped by the evidence that supports them. Detection strength varies by
+        class; per-class benchmark numbers live on the Evaluation page.
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        {detections.map((entry) => (
+          <article key={entry.title} className="rounded-xl border border-border bg-card p-2.5">
+            <span className={cn("flex size-8 items-center justify-center rounded-xl", entry.tone)}>
+              <entry.icon className="size-4" />
+            </span>
+            <p className="mt-1.5 text-[11px] font-extrabold leading-tight">{entry.title}</p>
+            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+              {entry.verb}
+            </p>
+            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{entry.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** The central PS story: a genuine regional event vs a local sensor fault. */
+function RealWeatherOrFault({
+  spatial,
+  stationLabel,
+}: {
+  spatial: StationDetailResponse["spatial_context"] | null;
+  stationLabel: string | null;
+}) {
+  const states: Array<{ title: string; interpretation: string; detail: string; tone: string }> = [
+    {
+      title: "State A",
+      interpretation: "POSSIBLE REGIONAL EVENT",
+      detail: "Compatible neighbouring stations support a regional meteorological change.",
+      tone: "bg-info-soft text-info",
+    },
+    {
+      title: "State B",
+      interpretation: "LOCAL SENSOR ANOMALY",
+      detail: "The target observation differs from compatible nearby station behaviour.",
+      tone: "bg-anomaly-soft text-anomaly",
+    },
+  ];
+  const measured =
+    spatial?.available === true &&
+    (spatial?.context_level ?? "UNAVAILABLE").toUpperCase() !== "UNAVAILABLE";
+  return (
+    <section className="panel shrink-0 p-4" aria-label="Real weather or sensor fault">
+      <p className="section-kicker">The central question</p>
+      <h2 className="mt-1 text-lg font-extrabold">Real Weather or Sensor Fault?</h2>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        The Phase-22 spatial decision separates a genuine regional event from an isolated sensor
+        fault by comparing the target station against compatible neighbours.
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {states.map((state) => (
+          <article key={state.title} className="rounded-xl border border-border bg-card p-3">
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.08em] text-muted-foreground">
+              {state.title}
+            </p>
+            <p
+              className={cn(
+                "mt-1 inline-block rounded-lg px-2 py-0.5 text-[11px] font-extrabold",
+                state.tone,
+              )}
+            >
+              {state.interpretation}
+            </p>
+            <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">{state.detail}</p>
+          </article>
+        ))}
+      </div>
+      <div className="mt-2 rounded-xl border border-border p-2.5">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">
+          Measured spatial context
+        </p>
+        {measured ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {stationLabel ?? "Selected station"} — context level{" "}
+            <strong className="text-foreground">{spatial?.context_level}</strong> with{" "}
+            {spatial?.neighbor_count ?? 0} compatible neighbour(s). Interpretation follows the
+            Phase-22 policy.
+          </p>
+        ) : (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Spatial context unavailable for the current selection. Open a station or run a probe to
+            see the measured interpretation — no neighbour values are invented.
+          </p>
+        )}
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
+          These states are conceptual; the system never labels real historical data as a confirmed
+          heatwave. Controlled or replay demonstrations are labelled as such.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -388,11 +854,13 @@ function ReplayAnomalies({
 
 function CurrentReplayCard({
   status,
+  processed,
   split,
   latest,
   alertId,
 }: {
   status: string;
+  processed: number;
   split: string | null;
   latest: LiveReading | null;
   alertId: string | null;
@@ -403,9 +871,20 @@ function CurrentReplayCard({
       <p className="section-kicker">Current Replay</p>
       {!latest ? (
         <>
-          <h2 className="mt-0.5 text-sm font-extrabold">Replay idle</h2>
+          <h2 className="mt-0.5 text-sm font-extrabold">
+            {status === "running" ? "Replay starting" :
+              status === "preparing" ? "Preparing replay" :
+                status === "paused" ? "Replay paused" :
+                  status === "completed" ? "Replay complete" : "Replay ready"}
+          </h2>
           <p className="mt-2 text-[10px] text-muted-foreground" role="status">
-            No streamed observations yet. Start a historical replay to generate observations.
+            {status === "running" && processed === 0
+              ? "Historical replay is running and waiting for its first observation (0 processed)."
+              : status === "paused"
+                ? `Replay paused · ${processed} observations processed.`
+                : status === "completed"
+                  ? `Replay complete · ${processed} observations processed.`
+                  : "No replay observations yet. Start a historical replay to generate observations."}
           </p>
         </>
       ) : (
@@ -496,55 +975,43 @@ function CurrentReplayCard({
 function MapLab({
   stations,
   selectedStation,
-  detail,
-  detailLoading,
-  detailError,
   stationsLoading,
   stationsError,
-  liveActive,
+  stationCount,
   onSelectStation,
 }: {
   stations: (MergedStation & { live?: LiveReading })[];
   selectedStation: (MergedStation & { live?: LiveReading }) | null;
-  detail: StationDetailResponse | undefined;
-  detailLoading: boolean;
-  detailError: boolean;
   stationsLoading: boolean;
   stationsError: string | null;
-  liveActive: boolean;
+  stationCount: number | null;
   onSelectStation: (stationId: string) => void;
 }) {
-  const available = selectedStation?.api?.data_available === true;
-  const liveReading = liveActive ? (selectedStation?.live ?? null) : null;
   return (
     <section
-      className="map-card relative min-h-[440px] overflow-hidden xl:min-h-0"
+      className="map-hero relative h-full min-h-[360px] overflow-visible xl:min-h-[430px]"
       aria-label="India weather station network"
     >
-      <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-soft backdrop-blur-sm">
-        <CloudSun className="size-4 text-sky" />
-        <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.08em]">
-            India Climate Network
+      <div className="absolute right-1 top-1 z-20 flex w-[190px] items-center gap-2.5 rounded-[10px] border border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm">
+        <Radio className="size-5 shrink-0 text-[#20D7F5]" strokeWidth={1.8} />
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase leading-tight tracking-[0.08em] text-muted-foreground">
+            Historical network
           </p>
-          <p className="text-[9px] text-muted-foreground">Live station confidence layer</p>
+          <p className="text-[15px] font-semibold leading-tight text-foreground">
+            {stationCount === null ? "…" : `${stationCount} stations`}
+          </p>
         </div>
       </div>
 
       {stationsError && (
-        <div
-          className="absolute left-4 top-[68px] z-20 max-w-[280px] rounded-xl border border-offline/30 bg-card/95 px-3 py-2 shadow-soft backdrop-blur-sm"
-          role="alert"
-        >
+        <div className="absolute left-1 top-1 z-20 max-w-[280px]" role="alert">
           <p className="text-[10px] font-extrabold text-offline-deep">Station feed unavailable</p>
           <p className="text-[9px] text-muted-foreground">{stationsError}</p>
         </div>
       )}
       {stationsLoading && (
-        <div
-          className="absolute left-4 top-[68px] z-20 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-soft backdrop-blur-sm"
-          role="status"
-        >
+        <div className="absolute left-1 top-1 z-20" role="status">
           <p className="text-[9px] font-semibold text-muted-foreground">Loading station feed…</p>
         </div>
       )}
@@ -565,81 +1032,197 @@ function MapLab({
               title={`${station.city} · ${station.id}`}
               onClick={() => onSelectStation(station.id)}
               data-status={station.status}
+              data-capability={stationMapCapability(station.api)}
               data-selected={selectedStation?.id === station.id ? "true" : "false"}
               className="station-hotspot absolute z-10"
               style={{ left: `${station.x}%`, top: `${station.y}%` }}
             >
               <span className="sr-only">{station.city}</span>
+              <span className="station-name">{station.city}</span>
             </Button>
           ))}
         </div>
       </div>
+    </section>
+  );
+}
 
-      {selectedStation && (
-        <div className="absolute bottom-3 right-4 z-20 w-[205px] rounded-xl border border-border bg-card/95 p-3 shadow-soft backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-extrabold">{selectedStation.id}</p>
-            <StatusBadge status={selectedStation.status} />
-          </div>
-          <p className="mt-1 text-[10px] text-muted-foreground">{selectedStation.city} station</p>
-          {liveReading && (
-            <p className="mt-1 text-[9px] font-bold text-success-deep" role="status">
-              Streamed {formatTime(liveReading.timestamp)} · score{" "}
-              {formatScore(liveReading.anomaly.score)}
+function SelectedStationIntelligence({
+  station,
+  detail,
+  loading,
+  error,
+}: {
+  station: (MergedStation & { live?: LiveReading }) | null;
+  detail: StationDetailResponse | undefined;
+  loading: boolean;
+  error: string | null;
+}) {
+  const api = station?.api;
+  const capability = stationMapCapability(api);
+  const measurements = detail?.observations;
+  const detected = detail?.anomaly?.detected === true;
+  const sourceLabel =
+    api?.source_dataset === "delhi_clean"
+      ? "Historical AWS"
+      : api?.source_dataset === "noaa_ghcnh"
+        ? "Historical GHCNh"
+        : "Historical observations";
+  const capabilityLabel =
+    capability === "full-tpr"
+      ? "Full T/P/RH Detection"
+      : capability === "partial"
+        ? "Partial detection"
+        : api?.data_available === false
+          ? "Data Unavailable"
+          : "Context Only";
+  const noVerdict = capability !== "full-tpr";
+
+  const hasVerdict = detail?.data_quality?.ml_eligible === true;
+  const variables = [
+    measurements?.temperature_c ?? api?.temperature,
+    measurements?.pressure_hpa ?? api?.pressure,
+    measurements?.relative_humidity_pct ?? api?.humidity,
+  ];
+  const variableLabels = ["T", "P", "RH"].filter((_, index) => variables[index] != null);
+  const detectorDot =
+    capability === "partial"
+      ? "bg-[#F4B400]"
+      : capability === "full-tpr"
+        ? "bg-sky"
+        : "bg-muted-foreground";
+  const detectorTone =
+    capability === "partial"
+      ? "text-[#F4C343]"
+      : capability === "full-tpr"
+        ? "text-foreground"
+        : "text-muted-foreground";
+  return (
+    <section
+      className="mt-4 rounded-xl border border-border bg-card p-6"
+      aria-label="Selected station intelligence"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Selected station
+          </p>
+          <h2 className="mt-1 text-[24px] font-semibold leading-tight tracking-tight text-foreground">
+            {station ? `${station.id} · ${station.city}` : "Select a station on the map"}
+          </h2>
+          {station && (
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              {sourceLabel} · {formatDisplayTerm(api?.data_mode ?? "historical_replay")}
             </p>
           )}
-          {available ? (
-            <>
-              <div className="mt-2 flex items-end justify-between">
-                <span className="text-[10px] text-muted-foreground">Current reading</span>
-                <strong className="text-base">{selectedStation.temperature}</strong>
-              </div>
-              {detailLoading && (
-                <p className="mt-1 text-[9px] text-muted-foreground" role="status">
-                  Loading station detail…
-                </p>
-              )}
-              {detailError && (
-                <p className="mt-1 text-[9px] font-semibold text-offline-deep">
-                  Station detail unavailable.
-                </p>
-              )}
-              {detail && (
-                <div className="mt-1.5 space-y-0.5 border-t border-border pt-1.5 text-[9px] text-muted-foreground">
-                  <p className="flex justify-between">
-                    <span>Anomaly score</span>
-                    <strong className="text-foreground">{formatScore(detail.anomaly.score)}</strong>
-                  </p>
-                  <p className="flex justify-between">
-                    <span>Data quality</span>
-                    <strong className="text-foreground">{detail.data_quality.status}</strong>
-                  </p>
-                  <p className="flex justify-between">
-                    <span>Updated</span>
-                    <strong className="text-foreground">
-                      {formatDateTime(detail.station.last_updated)}
-                    </strong>
-                  </p>
-                </div>
-              )}
-              <Link
-                to="/stations/$stationId"
-                params={{ stationId: selectedStation.id }}
-                className="mt-2 block text-center text-[10px] font-extrabold text-info hover:underline"
-              >
-                Open station detail →
+        </div>
+        <div className="flex items-center gap-3">
+          {station &&
+            (loading ? (
+              <span className="text-[12px] text-muted-foreground">Loading detector state…</span>
+            ) : error || !detail ? (
+              <span className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground">
+                Detector verdict unavailable
+              </span>
+            ) : detected ? (
+              <span className="flex items-center gap-2 rounded-full border border-anomaly/30 bg-anomaly-soft px-3 py-1.5 text-[12px] font-medium text-anomaly-deep">
+                <span className="size-[7px] rounded-full bg-anomaly" />
+                Anomaly Detected
+              </span>
+            ) : hasVerdict ? (
+              <span className="flex items-center gap-2 rounded-full border border-success/20 bg-success-soft px-3 py-1.5 text-[12px] font-medium text-success-deep">
+                <span className="size-[7px] rounded-full bg-success" />
+                No Active Anomaly
+              </span>
+            ) : (
+              <span className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground">
+                Detector verdict unavailable
+              </span>
+            ))}
+          {station && (
+            <Button
+              asChild
+              variant="outline"
+              className="h-[38px] rounded-lg border-border bg-transparent px-4 text-[13px] text-foreground"
+            >
+              <Link to="/stations/$stationId" params={{ stationId: station.id }}>
+                Station detail
+                <ArrowRight className="size-4 text-[#20D7F5]" />
               </Link>
-            </>
-          ) : (
-            <div className="mt-2">
-              <p className="text-[10px] font-bold text-offline-deep">Station unavailable</p>
-              <p className="text-[9px] text-muted-foreground">
-                No backend data for this station in historical replay.
-              </p>
-            </div>
+            </Button>
           )}
         </div>
-      )}
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
+        <div className="grid min-w-0 grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="min-h-[116px] rounded-[9px] border border-border bg-muted/40 p-[18px]">
+            <div className="flex items-center gap-2">
+              <Thermometer className="size-4 text-[#20D7F5]" strokeWidth={1.8} />
+              <p className="text-[12px] text-muted-foreground">Temperature</p>
+            </div>
+            <p className="mt-2 text-[22px] font-semibold tabular-nums text-foreground">
+              {formatTemp(measurements?.temperature_c ?? api?.temperature)}
+            </p>
+            {detected && (
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-anomaly">
+                Anomalous
+              </p>
+            )}
+          </div>
+          <div className="min-h-[116px] rounded-[9px] border border-border bg-muted/40 p-[18px]">
+            <div className="flex items-center gap-2">
+              <Gauge className="size-4 text-sky" strokeWidth={1.8} />
+              <p className="text-[12px] text-muted-foreground">Pressure</p>
+            </div>
+            <p className="mt-2 text-[22px] font-semibold tabular-nums text-foreground">
+              {formatPressure(measurements?.pressure_hpa ?? api?.pressure)}
+            </p>
+          </div>
+          <div className="min-h-[116px] rounded-[9px] border border-border bg-muted/40 p-[18px]">
+            <div className="flex items-center gap-2">
+              <Droplets className="size-4 text-[#20D7F5]" strokeWidth={1.8} />
+              <p className="text-[12px] text-muted-foreground">Humidity</p>
+            </div>
+            <p className="mt-2 text-[22px] font-semibold tabular-nums text-foreground">
+              {formatHumidity(measurements?.relative_humidity_pct ?? api?.humidity)}
+            </p>
+          </div>
+          <div className="min-h-[116px] rounded-[9px] border border-border bg-muted/40 p-[18px]">
+            <p className="text-[12px] text-muted-foreground">Detector</p>
+            <p className={cn("mt-2 flex items-center gap-2 text-[14px] font-medium", detectorTone)}>
+              <span className={cn("size-2 shrink-0 rounded-full", detectorDot)} />
+              {capabilityLabel}
+            </p>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              {loading
+                ? "Loading detector state…"
+                : error
+                  ? "Detector status unavailable"
+                  : detected
+                    ? "Anomalous"
+                    : noVerdict
+                      ? "No detector verdict available for this station."
+                      : "No active anomaly."}
+            </p>
+          </div>
+        </div>
+        <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 content-start xl:grid-cols-1 xl:gap-y-1.5">
+          {[
+            ["State", station?.city ?? "—"],
+            ["Data source", "Historical"],
+            ["Variables", variableLabels.length > 0 ? variableLabels.join(" · ") : "Unavailable"],
+            ["Observations", api?.data_available === true ? "Available" : "Unavailable"],
+            ["Coverage", "Historical period"],
+            ["Mode", formatDisplayTerm(api?.data_mode ?? "historical_replay")],
+          ].map(([term, value]) => (
+            <div key={term}>
+              <dt className="text-[11px] text-muted-foreground">{term}</dt>
+              <dd className="text-[12px] text-foreground">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </section>
   );
 }
@@ -652,9 +1235,6 @@ function RecentAlerts({
   onSelectAlert,
   loading,
   error,
-  healthyCount,
-  networkUpdated,
-  networkLoading,
 }: {
   alerts: AlertSummary[];
   liveAlerts: AlertSummary[];
@@ -663,9 +1243,6 @@ function RecentAlerts({
   onSelectAlert: (alert: AlertSummary, isLive: boolean) => void;
   loading: boolean;
   error: string | null;
-  healthyCount: number | null;
-  networkUpdated: string | null;
-  networkLoading: boolean;
 }) {
   const navigate = useNavigate();
   const openAlert = (alert: AlertSummary) => {
@@ -680,7 +1257,7 @@ function RecentAlerts({
     <section className="panel shrink-0 p-4" aria-label="Recent alerts">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="section-kicker">Attention queue · Historical alerts</p>
+          <p className="section-kicker">Recent activity · Historical and replay alerts</p>
           <h2 className="mt-1 text-lg font-extrabold">Recent Alerts</h2>
         </div>
         <span className="flex size-8 items-center justify-center rounded-xl bg-anomaly-soft text-anomaly">
@@ -746,7 +1323,7 @@ function RecentAlerts({
                     {alert.station_id}
                     {isLive && (
                       <span className="ml-1 rounded bg-success-soft px-1 text-[8px] font-extrabold text-success-deep">
-                        LIVE
+                        REPLAY
                       </span>
                     )}
                   </strong>
@@ -771,25 +1348,6 @@ function RecentAlerts({
           </div>
         </>
       )}
-      <div className="mt-3 rounded-xl bg-success-soft px-3 py-2.5">
-        {networkLoading ? (
-          <p className="text-[10px] font-bold text-success-deep">Loading network status…</p>
-        ) : healthyCount !== null ? (
-          <>
-            <p className="text-[10px] font-bold text-success-deep">
-              {healthyCount} stations are reporting normally
-            </p>
-            <p className="mt-0.5 text-[9px] text-muted-foreground">
-              Last network check: {formatDateTime(networkUpdated)}.{" "}
-              <Link to="/evaluation" className="font-bold text-info hover:underline">
-                View evaluation evidence →
-              </Link>
-            </p>
-          </>
-        ) : (
-          <p className="text-[10px] font-bold text-success-deep">Network status unavailable</p>
-        )}
-      </div>
     </section>
   );
 }
@@ -859,8 +1417,8 @@ function BottomInsights({
       formatValue: (v: number) => `${v.toFixed(1)}°C`,
       formatDelta: (d: number) => `${d >= 0 ? "↑" : "↓"} ${Math.abs(d).toFixed(1)}°C`,
       icon: Thermometer,
-      color: "var(--chart-alert)",
-      tone: "bg-anomaly-soft text-anomaly",
+      color: "var(--chart-context)",
+      tone: "bg-muted text-muted-foreground",
     },
     {
       title: "Pressure",

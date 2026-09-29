@@ -21,7 +21,9 @@ LIVE_CAPABLE = "live_capable"
 
 # Frontend-mapped stations (existing station_mapping.json IDs).
 MAPPED = {"DELHI-AWS", "INI0000VIJP", "INI0000VILK", "INI0000VABB",
-          "INI0000VABP", "INI0000VOBL", "INI0000VOMM", "INU042809-1"}
+          "INI0000VABP", "INI0000VOBL", "INI0000VOMM", "INU042809-1",
+          "INI0000VICG", "INI0000VAPO", "INI0000VOHS",
+          "INI0000VIDD", "INU042410-1", "INI0000VOTV"}
 
 
 def _registry_members(inventory: list[dict]) -> list[dict]:

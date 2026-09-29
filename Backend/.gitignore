@@ -25,6 +25,13 @@ data/*
 !data/noaa/
 !data/noaa/metadata/
 !data/noaa/metadata/**
+# India-expansion bulk outputs (local only; provenance in reports/)
+data/noaa/extended/
+data/noaa/processed/
+data/processed/india_*.csv
+data/processed/india_tpr/
+data/external/
+data/india_station_discovery.csv
 
 models/
 

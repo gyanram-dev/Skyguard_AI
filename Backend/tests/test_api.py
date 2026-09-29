@@ -39,12 +39,93 @@ def test_3_14_16_station_listing(client):
     payload = S.StationListResponse.model_validate(first.json())
     assert payload.data_mode == "historical_replay"
     ids = [s.station_id for s in payload.stations]
-    assert {"DEL-01", "JENA-01", "AMD-06"} <= set(ids)
-    offline = next(s for s in payload.stations if s.station_id == "AMD-06")
-    assert offline.status == "offline" and offline.data_available is False
-    assert offline.temperature is None and offline.anomaly_score is None
+    assert {"DEL-01", "CHD-09", "PUN-10", "HYD-07", "SAF-11", "GAU-12", "TRV-13"} <= set(ids)
+    assert "JENA-01" not in ids
+    assert len(ids) == 14
+    assert all(station.data_available for station in payload.stations)
+    delhi = next(station for station in payload.stations if station.station_id == "DEL-01")
+    assert delhi.source_dataset == "delhi_clean"
+    assert delhi.available_variables == ["temperature", "pressure", "relative_humidity"]
+    assert delhi.probe_available is True
+    context_station = next(station for station in payload.stations if station.station_id == "HYD-07")
+    assert context_station.source_dataset == "noaa_ghcnh"
+    assert context_station.available_variables == [
+        "temperature", "pressure", "relative_humidity"]
+    assert context_station.probe_available is False
+    assert all(station.available_variables == [] for station in payload.stations if not station.data_available)
     second = client.get("/api/v1/stations")
     assert second.json() == first.json()
+
+
+def test_jena_is_not_operational(client):
+    stations = client.get("/api/v1/stations").json()["stations"]
+    alerts = client.get("/api/v1/alerts", params={"limit": 1000}).json()["alerts"]
+    assert all(station["station_id"] != "JENA-01" for station in stations)
+    assert all("jena" not in alert["alert_id"].lower() for alert in alerts)
+    assert client.get("/api/v1/stations/JENA-01").status_code == 404
+
+
+def test_live_api_status_and_episode_detail_are_safe(client, caplog):
+    import asyncio
+    import json
+
+    from src.api.services import live_service as LV
+    from src.live import config as LC
+    from src.live import manager as LM
+    from src.live import obs as LO
+    from src.live import sources as LS
+
+    previous = LV.MANAGER
+    try:
+        missing_config = LC.LiveConfig()
+        missing_config.mode = LC.LIVE_IMD
+        missing_config.base_url = ""
+        LV.MANAGER = LM.LiveManager(config=missing_config, db_path=":memory:")
+        response = client.get("/api/v1/live/status")
+        assert response.json()["status"] == "NOT_CONFIGURED"
+
+        secret = "response-only-mock-secret"
+        configured = LC.LiveConfig()
+        configured.mode = LC.LIVE_IMD
+        configured.base_url = "https://example.invalid/oapi"
+        configured.request_headers = {"Authorization": f"Bearer {secret}"}
+        manager = LM.LiveManager(config=configured, db_path=":memory:")
+
+        class LeakySource(LS.ObservationSource):
+            name = "IMD_WIS2"
+
+            def fetch_new(self):
+                raise LS.SourceError("http_error", f"rejected Bearer {secret}")
+
+        manager.source = LeakySource()
+        manager.source_name = manager.source.name
+        asyncio.run(manager.poll_once())
+        LV.MANAGER = manager
+        response = client.get("/api/v1/live/status")
+        assert response.status_code == 200
+        assert response.json()["status"] == "CONNECTION_FAILED"
+        assert secret not in json.dumps(response.json())
+        assert secret not in caplog.text
+
+        moment = LO.utcnow()
+        observation = LO.CanonicalObservation(
+            station_id="IMD-PATNA", timestamp=moment, temperature_c=31.0,
+            source="IMD_WIS2", source_station_id="0-20000-0-42492",
+            source_observation_id="api-detail-obs", received_at=moment)
+        manager.store.save_observation(observation, LO.VALID, moment.isoformat())
+        manager.store.upsert_episode(
+            {"alert_id": "live-api-detail", "station_id": "IMD-PATNA",
+             "episode_key": "IMD-PATNA|ANOMALY",
+             "interpretation": "LOCAL_SENSOR_ANOMALY",
+             "started_at": moment.isoformat(), "last_seen_at": moment.isoformat(),
+             "detection_count": 1, "status": "OPEN", "resolved_at": None,
+             "score": 0.997}, {"anomaly_score": 0.997, "root_cause": "SPIKE"})
+        detail = client.get("/api/v1/live/alerts/live-api-detail")
+        assert detail.status_code == 200
+        assert detail.json()["source_mode"] == "LIVE_ALERT"
+        assert detail.json()["evidence"]["root_cause"] == "SPIKE"
+    finally:
+        LV.MANAGER = previous
 
 
 # 4+5. Station lookup + not-found behavior.
@@ -56,7 +137,7 @@ def test_4_5_station_lookup(client):
     assert payload.station.data_mode == "historical_replay"
     assert payload.anomaly.method == "ensemble"
     assert client.get("/api/v1/stations/NOPE-99").status_code == 404
-    assert client.get("/api/v1/stations/AMD-06").status_code == 404
+    assert client.get("/api/v1/stations/JENA-01").status_code == 404
 
 
 # 6+7. History endpoint + invalid variable handling.
@@ -68,7 +149,7 @@ def test_6_7_history(client):
     assert payload.data_mode == "historical_replay" and len(payload.points) > 0
     assert client.get("/api/v1/stations/DEL-01/history",
                       params={"variable": "wind"}).status_code == 422
-    assert client.get("/api/v1/stations/AMD-06/history").status_code == 404
+    assert client.get("/api/v1/stations/JENA-01/history").status_code == 404
 
 
 # 8+9+10. Alert listing, lookup, not-found behavior.
@@ -97,9 +178,17 @@ def test_11_12_network_summary(client):
     payload = S.NetworkSummary.model_validate(response.json())
     stations = client.get("/api/v1/stations").json()["stations"]
     assert payload.stations_monitored == len(stations)
+    # Honest accounting: detector-covered verdicts, context-only stations and
+    # offline stations partition the registry exactly.
     assert (payload.healthy + payload.needs_review + payload.anomaly
+            + payload.offline + payload.context_only) == len(stations)
+    assert (payload.detector_covered + payload.context_only
             + payload.offline) == len(stations)
-    assert payload.offline >= 2  # AMD-06, HYD-07
+    assert payload.offline == 0
+    # Stations without detector coverage are never counted as healthy.
+    assert payload.healthy <= payload.detector_covered
+    assert payload.detector_covered == sum(
+        1 for s in stations if s.get("probe_available"))
 
 
 # 13. CORS restricted to development origins (no wildcard).

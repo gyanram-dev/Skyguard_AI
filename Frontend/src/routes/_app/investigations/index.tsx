@@ -1,22 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { ArrowUpRight, FileSearch } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DetailStat, EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
+import { normalizeStatus } from "@/lib/api";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { EmptyState, ErrorState, LoadingState } from "@/components/common";
-import { AlertTable } from "@/components/tables";
-import { cn } from "@/lib/utils";
-import { errorMessage } from "@/lib/format";
-import { alertFilters, filterAlerts, type AlertFilter } from "@/lib/alerts";
-import { useAlerts } from "@/hooks/useSkyguard";
+  cleanText,
+  errorMessage,
+  formatConfidence,
+  formatDateTime,
+  formatScore,
+} from "@/lib/format";
+import { useAlerts, useLiveAlerts } from "@/hooks/useSkyguard";
 
 export const Route = createFileRoute("/_app/investigations/")({
   head: () => ({
@@ -25,115 +21,162 @@ export const Route = createFileRoute("/_app/investigations/")({
   component: InvestigationsPage,
 });
 
+/**
+ * Investigations is the analysis workspace, not a second alert table.
+ * Alerts answers "what needs attention?"; this page answers "why did
+ * SkyGuard make this decision?" and routes into the evidence bundle.
+ */
 function InvestigationsPage() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<AlertFilter>("all");
-  const [stationFilter, setStationFilter] = useState("all");
+  const navigate = useNavigate();
   const alertsQuery = useAlerts(1000);
-
+  const liveAlertsQuery = useLiveAlerts();
   const alerts = useMemo(() => alertsQuery.data?.alerts ?? [], [alertsQuery.data]);
+  const liveEpisodes = useMemo(() => liveAlertsQuery.data?.episodes ?? [], [liveAlertsQuery.data]);
 
-  const stationOptions = useMemo(() => {
-    const ids = new Set(alerts.map((alert) => alert.station_id));
-    return ["all", ...Array.from(ids).sort()];
-  }, [alerts]);
-
-  const filtered = useMemo(
-    () => filterAlerts(alerts, search, statusFilter, stationFilter),
-    [alerts, search, statusFilter, stationFilter],
+  const diagnosed = useMemo(
+    () => alerts.filter((alert) => cleanText(alert.root_cause) !== null).length,
+    [alerts],
   );
+  const latest = alerts[0] ?? null;
+  const latestLive = liveEpisodes[0] ?? null;
 
-  const filtersActive = search.trim() !== "" || statusFilter !== "all" || stationFilter !== "all";
+  const sections = [
+    "Observation & decision",
+    "Root cause & confidence",
+    "Sensor history",
+    "Temporal · statistical · Isolation Forest · LSTM evidence",
+    "Multivariate consistency",
+    "Spatial context",
+    "SHAP contributions",
+    "Data quality & provenance",
+    "Episode timeline",
+    "Operator recommendation",
+  ];
 
   return (
     <>
-      <section
-        className="panel flex flex-wrap items-center gap-2 p-3"
-        aria-label="Investigation summary"
-      >
-        <p className="text-xs font-extrabold">
-          {alertsQuery.isPending ? "…" : alerts.length} investigation candidates
-        </p>
-        <span className="ml-auto text-[10px] text-muted-foreground">
-          Historical replay · each row opens a full explanation workspace
-        </span>
-      </section>
-
-      <section
-        className="panel flex flex-wrap items-center gap-2 p-3"
-        aria-label="Investigation filters"
-      >
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by station, event or root cause…"
-            aria-label="Search investigations"
-            className="pl-8"
-          />
+      <section className="panel p-4" aria-label="Investigation workspace">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="section-kicker">Evidence workspace</p>
+            <h1 className="mt-1 text-lg font-extrabold">Why did SkyGuard decide this?</h1>
+            <p className="mt-1 max-w-3xl text-[11px] text-muted-foreground">
+              Investigations is the analytical view. It renders the full evidence bundle for one
+              decision — only the sections the backend actually supports, never empty placeholders.
+            </p>
+          </div>
+          <FileSearch className="hidden size-6 text-sky sm:block" />
         </div>
-        <Select value={stationFilter} onValueChange={setStationFilter}>
-          <SelectTrigger className="w-[160px]" aria-label="Station filter">
-            <SelectValue placeholder="Station" />
-          </SelectTrigger>
-          <SelectContent>
-            {stationOptions.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option === "all" ? "All stations" : option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Status filter">
-          {alertFilters.map((filter) => (
-            <Button
-              key={filter.value}
-              size="sm"
-              variant={statusFilter === filter.value ? "default" : "outline"}
-              onClick={() => setStatusFilter(filter.value)}
-              aria-pressed={statusFilter === filter.value}
-              className={cn(statusFilter !== filter.value && "bg-card")}
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {sections.map((section) => (
+            <span
+              key={section}
+              className="rounded-full bg-muted px-2.5 py-1 text-[9px] font-bold text-muted-foreground"
             >
-              {filter.label}
-            </Button>
+              {section}
+            </span>
           ))}
         </div>
-        {filtersActive && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setSearch("");
-              setStatusFilter("all");
-              setStationFilter("all");
-            }}
-          >
-            <X />
-            Clear
-          </Button>
-        )}
       </section>
 
-      {alertsQuery.isPending && <LoadingState message="Loading investigation candidates…" />}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-4" aria-label="Investigation summary">
+        <DetailStat
+          label="Historical candidates"
+          value={alertsQuery.isPending ? "…" : String(alerts.length)}
+        />
+        <DetailStat
+          label="With a root cause"
+          value={alertsQuery.isPending ? "…" : String(diagnosed)}
+        />
+        <DetailStat
+          label="Live episodes"
+          value={liveAlertsQuery.isPending ? "…" : String(liveEpisodes.length)}
+        />
+        <DetailStat label="Review state recorded" value="Not recorded" />
+      </div>
+
+      {alertsQuery.isPending && <LoadingState message="Loading analysis candidates…" />}
       {alertsQuery.isError && (
         <ErrorState
           message={errorMessage(alertsQuery.error)}
           onRetry={() => alertsQuery.refetch()}
         />
       )}
-      {!alertsQuery.isPending && !alertsQuery.isError && filtered.length === 0 && (
+      {!alertsQuery.isPending && !alertsQuery.isError && alerts.length === 0 && (
         <EmptyState
-          title="No investigations match"
-          message={
-            alerts.length === 0
-              ? "The API returned no alerts to investigate."
-              : "No investigation candidates match the current search and filters."
-          }
+          title="No historical candidates"
+          message="No stored historical alerts are available for analysis in this operating mode."
         />
       )}
-      {!alertsQuery.isPending && !alertsQuery.isError && filtered.length > 0 && (
-        <AlertTable alerts={filtered} basePath="/investigations/$alertId" />
+
+      {!alertsQuery.isPending && !alertsQuery.isError && latest && (
+        <section className="panel p-4" aria-label="Latest analysis candidate">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="section-kicker">
+                {latest.source_mode ?? "HISTORICAL_ALERT"} · {latest.station_id}
+              </p>
+              <h2 className="mt-1 text-base font-extrabold">{latest.event}</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatDateTime(latest.timestamp)}
+              </p>
+              <div className="mt-1.5">
+                <StatusBadge status={normalizeStatus(latest.status, true)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <DetailStat label="Anomaly score" value={formatScore(latest.anomaly_score)} />
+              <DetailStat
+                label="Root cause confidence"
+                value={formatConfidence(latest.root_cause_confidence)}
+              />
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {cleanText(latest.summary) ?? "No summary available."}
+          </p>
+          <Button
+            className="mt-3"
+            size="sm"
+            onClick={() =>
+              navigate({
+                to: "/investigations/$alertId",
+                params: { alertId: latest.alert_id },
+              })
+            }
+          >
+            <ArrowUpRight />
+            Open evidence workspace
+          </Button>
+        </section>
+      )}
+
+      {latestLive && (
+        <section className="panel p-4" aria-label="Latest live episode">
+          <p className="section-kicker">Latest live episode · LIVE_ALERT</p>
+          <h2 className="mt-1 text-base font-extrabold">
+            {latestLive.station_id} · {latestLive.interpretation}
+          </h2>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {latestLive.detection_count} detections · {latestLive.status} · last seen{" "}
+            {formatDateTime(latestLive.last_seen_at)}
+          </p>
+          <Button
+            className="mt-3"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              navigate({
+                to: "/investigations/live/$alertId",
+                params: { alertId: latestLive.alert_id },
+              })
+            }
+          >
+            <ArrowUpRight />
+            Open live investigation
+          </Button>
+        </section>
       )}
     </>
   );

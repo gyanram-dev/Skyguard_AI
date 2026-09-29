@@ -29,6 +29,11 @@ RUNNING = "RUNNING"
 STOPPED = "STOPPED"
 ERROR = "ERROR"
 LIVE_UNAVAILABLE = "LIVE_UNAVAILABLE"
+NOT_CONFIGURED = "NOT_CONFIGURED"
+CONFIGURED = "CONFIGURED"
+CONNECTION_FAILED = "CONNECTION_FAILED"
+CONNECTED = "CONNECTED"
+CONTROLLED = "CONTROLLED"
 
 
 class LiveManager:
@@ -42,6 +47,7 @@ class LiveManager:
         self.tracker = LA.EpisodeTracker()
         self.tracker.restore(self.store.open_episodes())
         self.status = IDLE
+        self.provider_status = self._initial_provider_status()
         self.source: LS.ObservationSource | None = None
         self.source_name = ""
         self.last_attempt: str | None = None
@@ -61,13 +67,26 @@ class LiveManager:
                 station_id, maxlen=self.config.history_maxlen)
         return self.histories[station_id]
 
+    def _initial_provider_status(self) -> str:
+        if self.config.mode == LC.CONTROLLED_LIVE:
+            return CONTROLLED
+        if self.config.mode == LC.LIVE_IMD:
+            return (CONFIGURED if self.config.provider == "IMD_WIS2"
+                    and self.config.base_url else NOT_CONFIGURED)
+        if self.config.mode == LC.LIVE_ARG:
+            return (CONFIGURED if self.config.describe()["arg_configured"]
+                    else NOT_CONFIGURED)
+        return NOT_CONFIGURED
+
     async def start(self, source: LS.ObservationSource | None = None) -> dict:
         """Start the loop (idempotent). Returns a safe status snapshot."""
         if self._task is not None and not self._task.done():
             return self.snapshot()
         source = source or self._default_source()
         if source is None:
-            return {"state": LIVE_UNAVAILABLE,
+            self.provider_status = self._initial_provider_status()
+            return {"state": LIVE_UNAVAILABLE, "status": self.provider_status,
+                    "provider_status": self.provider_status,
                     "detail": _unavailable_detail(self.config)}
         self.source = source
         self.source_name = source.name
@@ -93,7 +112,15 @@ class LiveManager:
         if mode == LC.CONTROLLED_LIVE:
             return None  # caller injects the scripted source
         if mode == LC.LIVE_IMD:
-            return LS.IMDWIS2Source(stations=self.config.stations or None)
+            if self.provider_status == NOT_CONFIGURED:
+                return None
+            return LS.IMDWIS2Adapter(
+                stations=self.config.stations or None,
+                timeout_s=self.config.timeout_s, base_url=self.config.base_url,
+                ca_bundle=self.config.ca_bundle,
+                headers=self.config.request_headers,
+                client_cert=self.config.client_certificate,
+                client_key=self.config.client_key)
         if mode == LC.LIVE_ARG:
             return LS.IMDArgSource()
         return None
@@ -134,6 +161,10 @@ class LiveManager:
         except LS.SourceError as exc:
             return self._record_failure(exc.code, exc.detail)
         self.consecutive_failures = 0
+        self.provider_status = (
+            CONNECTED if self.config.mode == LC.LIVE_IMD else
+            CONTROLLED if self.source.name == "CONTROLLED" else
+            NOT_CONFIGURED)
         self.last_success = LO.utcnow().isoformat()
         self.last_error = ""
         processed = 0
@@ -162,7 +193,9 @@ class LiveManager:
 
     def _record_failure(self, code: str, detail: str) -> dict:
         self.consecutive_failures += 1
-        self.last_error = f"{code}: {detail}"
+        self.provider_status = CONNECTION_FAILED
+        safe_detail = self.config.redact(detail)
+        self.last_error = f"{code}: {safe_detail}"
         logger.warning("Live fetch failed (%s)", code)
         self.store.set_source_status(
             self.source_name or "unknown", ERROR, self.last_success,
@@ -237,11 +270,18 @@ class LiveManager:
         return {
             "state": self.status if self.source is not None else LIVE_UNAVAILABLE,
             "mode": self.config.mode,
+            "status": self.provider_status,
+            "provider_status": self.provider_status,
             "source": self.source_name or None,
             "stations": sorted(self.histories),
             "last_attempt": self.last_attempt,
             "last_success": self.last_success,
             "last_error": self.last_error,
+            "detail": (_unavailable_detail(self.config)
+                       if self.source is None
+                       and self.provider_status == NOT_CONFIGURED
+                       else "Provider configured; live ingestion has not been started."
+                       if self.source is None else None),
             "open_episodes": len(self.tracker.open_episodes()),
             "inference_latency": perf,
         }
@@ -249,11 +289,11 @@ class LiveManager:
 
 def _unavailable_detail(config: LC.LiveConfig) -> str:
     if config.mode == LC.DISABLED:
-        return ("Live ingestion is disabled (IMD_SOURCE_MODE=DISABLED). "
+        return ("Live ingestion is disabled (LIVE_SOURCE_MODE=DISABLED). "
                 "Enable CONTROLLED_LIVE for the scripted demo or LIVE_IMD "
-                "for authorized WIS2 polling.")
+                "with IMD_BASE_URL for configured WIS2 polling.")
     if config.mode == LC.CONTROLLED_LIVE:
         return ("CONTROLLED_LIVE needs an injected scripted source; start it "
                 "from the controlled-live demo.")
-    return ("Live IMD is not reachable from this deployment "
-            "(credentials/network/allowlist). Nothing is synthesized.")
+    return ("Live provider configuration is missing. Set LIVE_PROVIDER and "
+            "IMD_BASE_URL before starting live ingestion.")

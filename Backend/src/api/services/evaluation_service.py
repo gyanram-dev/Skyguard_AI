@@ -77,7 +77,8 @@ def load_evidence(root) -> dict:
                       .read_text(encoding="utf-8"))
 
     det_overall = det[(det["scope"] == "overall") & (det["group"] == "all")
-                      & (det["method"] == "ens_median")]
+                      & (det["method"] == "ens_median")
+                      & (det["dataset"] == "delhi")]
     detection = []
     for _, row in det_overall.iterrows():
         ev = events[(events["dataset"] == row["dataset"])
@@ -100,7 +101,8 @@ def load_evidence(root) -> dict:
         })
 
     comp_overall = comp[(comp["scope"] == "overall")
-                        & (comp["ensemble_method"] == "ens_median")]
+                        & (comp["ensemble_method"] == "ens_median")
+                        & (comp["dataset"] == "delhi")]
     model_comparison = []
     for _, row in comp_overall.iterrows():
         entry = {"dataset": str(row["dataset"]), "split": str(row["split"]),
@@ -122,7 +124,9 @@ def load_evidence(root) -> dict:
             "fpr": item["fpr"]})
 
     generalization = []
-    for _, row in ood[ood["method"] == "ens_median"].iterrows():
+    ood_overall = ood[(ood["method"] == "ens_median")
+                      & (ood["dataset"] == "delhi")]
+    for _, row in ood_overall.iterrows():
         ev_id = events[(events["dataset"] == row["dataset"])
                        & (events["split"] == "test_in_distribution")
                        & (events["method"] == "ens_median")
@@ -144,7 +148,8 @@ def load_evidence(root) -> dict:
             if len(ev_ood) else None,
         })
 
-    rc_operating = rc[rc["scope"] == "classifier_operating"]
+    rc_operating = rc[(rc["scope"] == "classifier_operating")
+                      & (rc["dataset"] == "delhi")]
     root_cause = []
     for _, row in rc_operating.iterrows():
         root_cause.append({

@@ -25,6 +25,7 @@ const statusFilters: Array<{ value: StatusFilter; label: string }> = [
   { value: "healthy", label: "Healthy" },
   { value: "review", label: "Needs review" },
   { value: "anomaly", label: "Anomaly" },
+  { value: "historical", label: "Historical only" },
   { value: "offline", label: "Offline" },
 ];
 
@@ -36,7 +37,13 @@ function StationsPage() {
   const stations = useMemo(() => stationsQuery.data?.stations ?? [], [stationsQuery.data]);
 
   const counts = useMemo(() => {
-    const result: Record<DisplayStatus, number> = { healthy: 0, review: 0, anomaly: 0, offline: 0 };
+    const result: Record<DisplayStatus, number> = {
+      healthy: 0,
+      review: 0,
+      anomaly: 0,
+      offline: 0,
+      historical: 0,
+    };
     for (const station of stations) {
       result[normalizeStatus(station.status, station.data_available)] += 1;
     }

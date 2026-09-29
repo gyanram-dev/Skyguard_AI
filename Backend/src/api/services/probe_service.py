@@ -11,6 +11,7 @@ import math
 
 import pandas as pd
 
+from src.api.services import operator_actions as OA
 from src.api.services import scoring as SC
 from src.ensemble.aggregation import INSUFFICIENT_EVIDENCE
 from src.features.feature_builder import CADENCE_HORIZONS
@@ -74,7 +75,7 @@ def resolve_dataset(store, station_id: str | None) -> tuple[dict, str]:
                          f"Station '{station_id}' has contextual observations only; "
                          "no detector models cover it, so probe inference is unavailable.")
     ds = entry["backend_station_id"]
-    if ds not in ("jena", "delhi"):
+    if ds != "delhi":
         raise ProbeError(404, UNKNOWN_STATION,
                          f"Station '{station_id}' is not available for probing.")
     return entry, ds
@@ -140,9 +141,14 @@ def run_probe(store, station_id: str | None,
             "lstm": scored["evidence"]["lstm"],
             "multivariate": scored["evidence"]["multivariate"],
             "spatial": scored["evidence"]["spatial"],
+            "seasonal": scored["evidence"]["seasonal"],
             "data_quality": scored["data_quality"],
         },
         "root_cause": scored["root_cause"],
         "explanation": scored["explanation"],
         "spatial_decision": scored["spatial_decision"],
+        "recommended_action": OA.for_verdict(True)
+        if not ens["is_anomalous"] else OA.for_root_cause(
+            scored["root_cause"]["class"],
+            scored["spatial_decision"]["contextual_decision"]),
     }

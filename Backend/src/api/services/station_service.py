@@ -37,6 +37,67 @@ def operational_scope(entry: dict) -> str:
     return INDIAN_OPERATIONAL
 
 
+def probe_capable(entry: dict) -> bool:
+    """True only for stations the interactive probe can actually score.
+
+    Mirrors probe_service.resolve_dataset: contextual-only GHCNh stations
+    have no detector models, so probing them would dead-end. The UI uses
+    this flag to keep the demo reliable instead of discovering a 422.
+    """
+    from src.api.dependencies import PIPELINE_DATASETS
+
+    backend_id = entry.get("backend_station_id")
+    return (bool(backend_id)
+            and entry.get("source_dataset") != "noaa_ghcnh"
+            and backend_id in PIPELINE_DATASETS)
+
+
+def maintenance_review(store, entry: dict, current_anomalous: bool) -> dict:
+    """Evidence-based maintenance signal (longitudinal, no prediction).
+
+    Counts operational alert episodes for the station in the trailing 30
+    days: >=3 (or a current anomaly with prior episodes) recommends a
+    review; 1-2 is an elevated watch; 0 needs no action. Stations with
+    no detector coverage report NOT_APPLICABLE. Conventions are fixed
+    and documented, not fitted. This is NOT a failure prediction.
+    """
+    backend_id = entry.get("backend_station_id")
+    if not backend_id or entry.get("source_dataset") == "noaa_ghcnh":
+        return {"state": "NOT_APPLICABLE",
+                "reason": "No detector-covered history for this station.",
+                "episodes_30d": 0, "currently_anomalous": bool(current_anomalous)}
+    frontend = entry.get("frontend_station_id", "")
+    cutoff = None
+    recent = 0
+    for alert in getattr(store, "alerts", []):
+        if alert.get("station_id") != frontend:
+            continue
+        try:
+            import pandas as pd
+
+            stamp = pd.Timestamp(str(alert.get("timestamp")))
+            if cutoff is None:
+                latest = max(pd.Timestamp(str(a.get("timestamp")))
+                             for a in store.alerts
+                             if a.get("station_id") == frontend)
+                cutoff = latest - pd.Timedelta(days=30)
+            if stamp >= cutoff:
+                recent += 1
+        except (TypeError, ValueError):
+            continue
+    if recent >= 3 or (current_anomalous and recent >= 1):
+        state = "MAINTENANCE_REVIEW_RECOMMENDED"
+    elif recent >= 1 or current_anomalous:
+        state = "ELEVATED_WATCH"
+    else:
+        state = "NO_ACTION_INDICATED"
+    return {"state": state,
+            "reason": ("Evidence-based review flag from trailing alert "
+                       "history; not a failure prediction."),
+            "episodes_30d": int(recent),
+            "currently_anomalous": bool(current_anomalous)}
+
+
 def capability_notes(entry: dict) -> list[str]:
     """Honest capability limitations for display (no fake health)."""
     notes: list[str] = []
@@ -47,6 +108,28 @@ def capability_notes(entry: dict) -> list[str]:
     if not entry.get("backend_station_id"):
         notes.append("No backend data; offline placeholder.")
     return notes
+
+
+def available_variables(store, entry: dict) -> list[str]:
+    """Variables with at least one measured value in the loaded station data."""
+    backend_id = entry.get("backend_station_id")
+    if not backend_id:
+        return []
+    if entry.get("source_dataset") == "noaa_ghcnh":
+        frame = store.noaa_obs.get(backend_id)
+        columns = {"temperature": "temperature_c",
+                   "pressure": "altimeter_setting_hpa",
+                   "relative_humidity": "relative_humidity_pct"}
+    else:
+        bundle = store.pipeline.get(backend_id)
+        frame = bundle["obs"] if bundle else None
+        columns = {"temperature": "temperature_c",
+                   "pressure": "pressure_hpa",
+                   "relative_humidity": "relative_humidity_pct"}
+    if frame is None:
+        return []
+    return [name for name, column in columns.items()
+            if column in frame and pd.to_numeric(frame[column], errors="coerce").notna().any()]
 
 
 def _num(value) -> float | None:
@@ -150,3 +233,150 @@ def history_range(store, mapping: dict, variable: str, end: str,
     for stamp, value in zip(frame.loc[mask, ts_col].astype(str), frame.loc[mask, col]):
         points.append({"timestamp": stamp, variable: _num(value)})
     return points
+
+
+# ---------------------------------------------------------------------------
+# Phase 25 — explicit station data-capability model.
+#
+# detector_capability:
+#   FULL_TPR      T + P + RH genuinely available AND the frozen detector
+#                 pipeline covers the station (Delhi only).
+#   PARTIAL       detector-covered but some T/P/RH variables are missing.
+#   CONTEXT_ONLY  real observations carried for network/spatial context;
+#                 no detector models cover the station, so NO anomaly
+#                 verdict exists for it (GHCNh stations today).
+#   UNAVAILABLE   no usable observation stream.
+#
+# data_mode is REPORTED, never inferred from provider configuration: the
+# serving mode is historical_replay, and live connectivity is a separate
+# measured fact (see network_service.live_connected_count).
+# ---------------------------------------------------------------------------
+DETECTOR_CAPABILITY_FULL_TPR = "FULL_TPR"
+DETECTOR_CAPABILITY_PARTIAL = "PARTIAL"
+DETECTOR_CAPABILITY_CONTEXT_ONLY = "CONTEXT_ONLY"
+DETECTOR_CAPABILITY_UNAVAILABLE = "UNAVAILABLE"
+
+# Serving truth: one historical dataset is instrumented as replay for the
+# detector pipeline; the network layer as a whole serves historical data.
+DATA_MODE_HISTORICAL = "HISTORICAL"
+DATA_MODE_REPLAY = "REPLAY"
+DATA_MODE_UNAVAILABLE = "LIVE_UNAVAILABLE"
+
+
+def observation_counts(store, entry: dict) -> int:
+    """Rows actually loaded for the station (measured, never claimed)."""
+    backend_id = entry.get("backend_station_id")
+    if not backend_id:
+        return 0
+    if entry.get("source_dataset") == "noaa_ghcnh":
+        frame = store.noaa_obs.get(backend_id)
+        return int(len(frame)) if frame is not None else 0
+    bundle = store.pipeline.get(backend_id)
+    return int(len(bundle["obs"])) if bundle else 0
+
+
+def observation_period(store, entry: dict) -> dict:
+    """Measured first/last timestamps for the station (None when no data)."""
+    backend_id = entry.get("backend_station_id")
+    if not backend_id:
+        return {"start_time": None, "end_time": None}
+    if entry.get("source_dataset") == "noaa_ghcnh":
+        frame = store.noaa_obs.get(backend_id)
+        ts_col = "timestamp_utc"
+    else:
+        bundle = store.pipeline.get(backend_id)
+        frame = bundle["obs"] if bundle else None
+        ts_col = "timestamp"
+    if frame is None or len(frame) == 0:
+        return {"start_time": None, "end_time": None}
+    stamps = frame[ts_col].astype(str)
+    return {"start_time": str(stamps.iloc[0]), "end_time": str(stamps.iloc[-1])}
+
+
+def station_state_name(entry: dict, city: str) -> str | None:
+    """Indian state/UT for the station city (display metadata only)."""
+    states = {
+        "Delhi": "Delhi", "Delhi (Safdarjung)": "Delhi",
+        "Jaipur": "Rajasthan", "Lucknow": "Uttar Pradesh",
+        "Mumbai": "Maharashtra", "Bhopal": "Madhya Pradesh",
+        "Bengaluru": "Karnataka", "Chennai": "Tamil Nadu",
+        "Kolkata": "West Bengal", "Guwahati": "Assam",
+        "Chandigarh": "Chandigarh", "Pune": "Maharashtra",
+        "Hyderabad": "Telangana", "Thiruvananthapuram": "Kerala",
+    }
+    return states.get(city)
+
+
+def data_source_label(entry: dict) -> str:
+    """Visible provenance label (Phase 12); never generic 'real-time data'."""
+    dataset = entry.get("source_dataset")
+    if dataset == "delhi_clean":
+        return "Historical AWS dataset (repository bulk)"
+    if dataset == "noaa_ghcnh":
+        return "NOAA GHCNh (doi:10.25921/jp3d-3v19)"
+    return "Controlled demonstration"
+
+
+def pressure_basis(entry: dict) -> str | None:
+    """Documented pressure basis so GHCNh is never conflated with AWS."""
+    if entry.get("source_dataset") == "delhi_clean":
+        return "station_level_hpa"
+    if entry.get("source_dataset") == "noaa_ghcnh":
+        return "altimeter_qnh_hpa"
+    return None
+
+
+def detector_capability(store, entry: dict, variables: list[str]) -> str:
+    """Classify the station per the explicit capability rules."""
+    if not entry.get("backend_station_id"):
+        return DETECTOR_CAPABILITY_UNAVAILABLE
+    variables_set = set(variables)
+    if probe_capable(entry):
+        if {"temperature", "pressure", "relative_humidity"} <= variables_set:
+            return DETECTOR_CAPABILITY_FULL_TPR
+        return DETECTOR_CAPABILITY_PARTIAL
+    if entry.get("source_dataset") == "noaa_ghcnh":
+        # Real observations carried for context; spatial evidence is the
+        # neighbour layer's job, not a station-level detector verdict.
+        return DETECTOR_CAPABILITY_CONTEXT_ONLY
+    return DETECTOR_CAPABILITY_UNAVAILABLE
+
+
+def spatial_context_capability(entry: dict) -> str:
+    """Whether the station can contribute spatial/context evidence."""
+    if entry.get("backend_station_id") == "delhi":
+        # Delhi aligns mapped GHCNh neighbours causally (scoring._serving_neighbors).
+        return "AVAILABLE"
+    if entry.get("source_dataset") == "noaa_ghcnh":
+        return "CONTEXT_NEIGHBOR"
+    return "UNAVAILABLE"
+
+
+def station_data_mode(store, entry: dict) -> str:
+    """Reported data mode (never inferred from a configured provider)."""
+    if not entry.get("backend_station_id"):
+        return DATA_MODE_UNAVAILABLE
+    if probe_capable(entry):
+        return DATA_MODE_REPLAY
+    return DATA_MODE_HISTORICAL
+
+
+def capability_profile(store, entry: dict) -> dict:
+    """One additive capability block per station (Phase 2 contract)."""
+    variables = available_variables(store, entry)
+    return {
+        "station_name": entry.get("station_name")
+        or ("Delhi-NCR AWS" if entry.get("source_dataset") == "delhi_clean"
+            else entry.get("city")),
+        "city": entry.get("city"),
+        "state": station_state_name(entry, entry.get("city", "")),
+        "country": "India",
+        "data_source": data_source_label(entry),
+        "pressure_basis": pressure_basis(entry),
+        "data_mode": station_data_mode(store, entry),
+        "observation_count": observation_counts(store, entry),
+        **observation_period(store, entry),
+        "variables_available": variables,
+        "detector_capability": detector_capability(store, entry, variables),
+        "spatial_context_capability": spatial_context_capability(entry),
+    }

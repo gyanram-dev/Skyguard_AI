@@ -7,8 +7,38 @@
  * - Never returns fabricated values: failures throw ApiError for callers to render.
  */
 
-/** Frontend status domain used across the dashboard map, badges, and queues. */
-export type DisplayStatus = "healthy" | "review" | "anomaly" | "offline";
+/**
+ * Frontend status domain used across the dashboard map, badges, and queues.
+ *
+ * `historical` means the station carries real historical observations but has
+ * no detector coverage, so no health verdict exists for it. It is deliberately
+ * NOT reported as healthy.
+ */
+export type DisplayStatus = "healthy" | "review" | "anomaly" | "offline" | "historical";
+
+/** Phase-25 detector capability classes (mirrors backend station_service). */
+export type DetectorCapability = "FULL_TPR" | "PARTIAL" | "CONTEXT_ONLY" | "UNAVAILABLE";
+
+/**
+ * Phase-25 capability block served additively by /api/v1/stations.
+ * `observation_count` is measured from loaded rows; missing variables stay
+ * absent from `variables_available` — never fabricated.
+ */
+export interface StationCapability {
+  station_name: string | null;
+  city: string | null;
+  state: string | null;
+  country: string;
+  data_source: string;
+  pressure_basis: string | null;
+  data_mode: string;
+  observation_count: number;
+  start_time: string | null;
+  end_time: string | null;
+  variables_available: string[];
+  detector_capability: DetectorCapability;
+  spatial_context_capability: string;
+}
 
 /**
  * The ONE status normalization function. Backend status strings
@@ -23,6 +53,14 @@ export function normalizeStatus(
   const value = (raw ?? "").toLowerCase().trim();
   if (value === "healthy" || value === "normal" || value === "ok" || value === "pass") {
     return "healthy";
+  }
+  if (
+    value === "historical_only" ||
+    value === "historical" ||
+    value === "context_only" ||
+    value === "historical."
+  ) {
+    return "historical";
   }
   if (value === "anomaly" || value === "anomalous" || value === "critical" || value === "fault") {
     return "anomaly";
@@ -145,12 +183,19 @@ export interface HealthResponse {
 export interface StationSummary {
   station_id: string;
   city: string;
+  source_mode: string;
+  source_dataset: string | null;
   latitude: number | null;
   longitude: number | null;
   status: string;
   data_available: boolean;
   operational_scope: string;
   capability_notes: string[];
+  /** Detector coverage: whether the interactive probe can score this station. */
+  probe_available: boolean;
+  available_variables: string[];
+  /** Explicit Phase-25 capability block (null on older backends). */
+  capability: StationCapability | null;
   data_mode: string;
   temperature: number | null;
   humidity: number | null;
@@ -168,10 +213,16 @@ export interface StationListResponse {
 export interface StationInfo {
   station_id: string;
   city: string;
+  source_mode: string;
+  source_dataset: string | null;
   coordinates: { latitude: number; longitude: number } | null;
   status: string;
   operational_scope: string;
   capability_notes: string[];
+  probe_available: boolean;
+  available_variables: string[];
+  /** Explicit Phase-25 capability block (null on older backends). */
+  capability: StationCapability | null;
   data_mode: string;
   last_updated: string | null;
 }
@@ -212,24 +263,32 @@ export interface StationDetailResponse {
   data_quality: DataQuality;
   anomaly: Anomaly;
   root_cause: RootCause;
+  maintenance?: Record<string, string | number | boolean | null>;
   spatial_context: SpatialContext;
 }
 
 export interface AlertSummary {
   alert_id: string;
   station_id: string;
+  source_mode?: string;
+  sensor?: string | null;
   timestamp: string;
   status: string;
   event: string;
   anomaly_score: number | null;
   root_cause: string | null;
   root_cause_confidence: number | null;
+  duration_seconds?: number;
   summary: string;
 }
 
 export interface AlertListResponse {
   data_mode: string;
   alerts: AlertSummary[];
+  /** Paging metadata so a capped page is never reported as a total. */
+  returned: number;
+  total: number;
+  limit: number;
 }
 
 export interface EvidenceItem {
@@ -262,7 +321,9 @@ export interface AlertDetailResponse {
   observations: Observations;
   evidence: EvidenceItem[];
   history: HistorySeries;
+  data_quality?: { status: string; evaluation_eligible: boolean };
   root_cause: RootCause;
+  recommended_action?: string | null;
   explanation: Explanation;
   ensemble_method: string;
 }
@@ -276,6 +337,23 @@ export interface NetworkSummary {
   network_health_pct: number;
   indian_operational_monitored: number;
   indian_operational_healthy: number;
+  /** Stations with detector coverage (the only ones with a health verdict). */
+  detector_covered?: number;
+  /** Stations with historical observations but no detector. */
+  context_only?: number;
+  indian_operational_context_only?: number;
+  /** Rows actually loaded from frozen datasets (measured, never hardcoded). */
+  observations_indexed?: number;
+  /** Audited IMD WIS2 capability registry size (no bulk rows). */
+  live_capable_stations?: number;
+  /** Phase-25 capability counts; live_connected is measured, 0 when disabled. */
+  total_stations?: number;
+  historical_stations?: number;
+  full_tpr_stations?: number;
+  partial_stations?: number;
+  context_only_stations?: number;
+  total_observations?: number;
+  live_connected_stations?: number;
   data_mode: string;
   last_updated: string | null;
 }
@@ -341,6 +419,8 @@ export function getNetworkSummary(): Promise<NetworkSummary> {
 
 export interface LiveStatus {
   state: string;
+  status: string;
+  provider_status: string;
   mode: string;
   detail?: string | null;
   source: string | null;
@@ -373,6 +453,26 @@ export interface LiveEpisode {
   score: number | null;
 }
 
+export interface LiveInvestigationObservation {
+  obs_id: string;
+  station_id: string;
+  timestamp: string;
+  temperature_c: number | null;
+  pressure_hpa: number | null;
+  relative_humidity_pct: number | null;
+  source: string;
+  pressure_basis: string;
+  dq_state: string;
+  received_at: string;
+}
+
+export interface LiveAlertInvestigation {
+  source_mode: "LIVE_ALERT";
+  episode: LiveEpisode;
+  evidence: Record<string, unknown>;
+  observations: LiveInvestigationObservation[];
+}
+
 export function getLiveStatus(): Promise<LiveStatus> {
   return request<LiveStatus>("/api/v1/live/status");
 }
@@ -386,6 +486,10 @@ export function getLiveAlerts(
 ): Promise<{ mode: string; episodes: LiveEpisode[] }> {
   const query = stationId ? `?station_id=${encodeURIComponent(stationId)}` : "";
   return request<{ mode: string; episodes: LiveEpisode[] }>(`/api/v1/live/alerts${query}`);
+}
+
+export function getLiveAlert(alertId: string): Promise<LiveAlertInvestigation> {
+  return request<LiveAlertInvestigation>(`/api/v1/live/alerts/${encodeURIComponent(alertId)}`);
 }
 
 export function startLive(): Promise<LiveStatus> {
@@ -447,6 +551,7 @@ export interface ProbeEvidence {
   lstm: ProbeComponentEvidence;
   multivariate: Record<string, number | null>;
   spatial: Record<string, number | string | boolean | null>;
+  seasonal?: Record<string, number | string | boolean | null> | null;
   data_quality: Record<string, number | string | boolean | null>;
 }
 
@@ -473,6 +578,7 @@ export interface ProbeResponse {
   root_cause: ProbeRootCause;
   explanation: Explanation;
   spatial_decision?: SpatialDecision | null;
+  recommended_action?: string | null;
 }
 
 export function probeObservation(payload: ProbePayload): Promise<ProbeResponse> {

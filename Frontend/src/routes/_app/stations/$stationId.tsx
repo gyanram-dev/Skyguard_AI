@@ -98,10 +98,11 @@ function StationDetailPage() {
   const hasBackendData = summaryRow?.data_available === true;
   const detailQuery = useStation(hasBackendData ? stationId : null);
 
-  const relatedAlert = useMemo(
-    () => (alertsQuery.data?.alerts ?? []).find((alert) => alert.station_id === stationId),
+  const relatedAlerts = useMemo(
+    () => (alertsQuery.data?.alerts ?? []).filter((alert) => alert.station_id === stationId),
     [alertsQuery.data, stationId],
   );
+  const relatedAlert = relatedAlerts[0] ?? null;
 
   if (stationsQuery.isPending) {
     return <LoadingState message={`Loading ${stationId}…`} />;
@@ -126,6 +127,36 @@ function StationDetailPage() {
   const city = cityForStationId(stationId, stationsQuery.data?.stations ?? []) ?? summaryRow.city;
   const status = normalizeStatus(summaryRow.status, summaryRow.data_available);
   const detail = detailQuery.data;
+  // Phase-25 explicit capability block (falls back to derived fields).
+  const capability = summaryRow.capability;
+  const variables = new Set(capability?.variables_available ?? summaryRow.available_variables ?? []);
+  const variableRow = (label: string, key: string, present: boolean) => (
+    <FactRow
+      label={label}
+      value={
+        present ? (
+          <span className="text-success-deep">✓ available</span>
+        ) : (
+          <span className="text-muted-foreground">— not in source data</span>
+        )
+      }
+    />
+  );
+  const detectorLabel =
+    capability?.detector_capability === "FULL_TPR"
+      ? "FULL T/P/RH"
+      : capability?.detector_capability === "PARTIAL"
+        ? "PARTIAL"
+        : capability?.detector_capability === "CONTEXT_ONLY"
+          ? "CONTEXT ONLY — no detector verdict"
+          : capability?.detector_capability === "UNAVAILABLE"
+            ? "UNAVAILABLE"
+            : summaryRow.probe_available
+              ? "FULL T/P/RH"
+              : "CONTEXT ONLY — no detector verdict";
+  const anomalyAllowed =
+    (capability?.detector_capability ?? (summaryRow.probe_available ? "FULL_TPR" : "CONTEXT_ONLY")) ===
+    "FULL_TPR";
 
   return (
     <>
@@ -137,9 +168,20 @@ function StationDetailPage() {
               {stationId} · {city}
             </h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Data mode: {summaryRow.data_mode} · Last updated:{" "}
-              {formatDateTime(summaryRow.last_updated)}
+              Data: {capability?.data_source ?? summaryRow.source_mode} ·{" "}
+              {capability?.data_mode === "REPLAY" ? "Historical Replay" : "Historical"} ·{" "}
+              {capability?.country ?? "India"}
+              {capability?.state ? ` · ${capability.state}` : ""}
             </p>
+            {capability && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Observation period: {capability.start_time ?? "—"} → {capability.end_time ?? "—"} ·{" "}
+                {capability.observation_count.toLocaleString()} observations
+                {capability.pressure_basis
+                  ? ` · pressure basis: ${capability.pressure_basis.replace(/_/g, " ")}`
+                  : ""}
+              </p>
+            )}
             <p className="mt-0.5 text-[11px] text-muted-foreground">
               Scope:{" "}
               {summaryRow.operational_scope === "benchmark_internal"
@@ -148,15 +190,23 @@ function StationDetailPage() {
                   ? "Offline placeholder"
                   : "Indian operational network"}
             </p>
-            {(detail?.station.capability_notes ?? summaryRow.capability_notes ?? []).map(
-              (note) => (
-                <p key={note} className="mt-0.5 text-[10px] text-muted-foreground">
-                  {note}
-                </p>
-              ),
+            {(detail?.station.capability_notes ?? summaryRow.capability_notes ?? []).map((note) => (
+              <p key={note} className="mt-0.5 text-[10px] text-muted-foreground">
+                {note}
+              </p>
+            ))}
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <StatusBadge status={status} />
+            {!anomalyAllowed && (
+              <span
+                className="rounded-md bg-warning-soft px-1.5 py-0.5 text-[9px] font-extrabold text-warning-deep"
+                title="No detector models cover this station; historical observations are served as network context."
+              >
+                NO DETECTOR VERDICT
+              </span>
             )}
           </div>
-          <StatusBadge status={status} />
         </div>
         {!hasBackendData && (
           <div className="mt-3">
@@ -164,6 +214,52 @@ function StationDetailPage() {
               title="Station unavailable"
               message="No backend data exists for this station in historical replay. No readings are fabricated."
             />
+          </div>
+        )}
+        {hasBackendData && (
+          <div className="mt-3 grid grid-cols-1 gap-x-6 border-t border-border pt-2 sm:grid-cols-2">
+            <div aria-label="Available variables">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-muted-foreground">
+                Available variables (source data)
+              </p>
+              {variableRow("Temperature", "temperature", variables.has("temperature"))}
+              {variableRow(
+                "Relative Humidity",
+                "relative_humidity",
+                variables.has("relative_humidity"),
+              )}
+              {variableRow("Pressure", "pressure", variables.has("pressure"))}
+            </div>
+            <div aria-label="Detector capability">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-muted-foreground">
+                AI detection
+              </p>
+              <FactRow label="Capability" value={detectorLabel} />
+              <FactRow
+                label="Anomaly status"
+                value={
+                  anomalyAllowed ? (
+                    status === "anomaly" ? (
+                      "Anomaly detected"
+                    ) : status === "review" ? (
+                      "Needs review"
+                    ) : (
+                      "Normal (detector evaluated)"
+                    )
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Not evaluated — detector does not cover this station
+                    </span>
+                  )
+                }
+              />
+              {capability?.spatial_context_capability && (
+                <FactRow
+                  label="Spatial context"
+                  value={capability.spatial_context_capability.replace(/_/g, " ")}
+                />
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -262,6 +358,91 @@ function StationDetailPage() {
                 </section>
               )}
 
+              <section className="grid grid-cols-1 gap-3 xl:grid-cols-2" aria-label="Sensor health">
+                <div className="panel p-4" aria-label="Station trust factors">
+                  <p className="section-kicker">Sensor health</p>
+                  <h3 className="mt-1 text-sm font-extrabold">Can I trust this station?</h3>
+                  <div className="mt-2 divide-y divide-border">
+                    <FactRow label="Data quality" value={detail.data_quality.status} />
+                    <FactRow
+                      label="Recent anomalies"
+                      value={
+                        relatedAlerts.length > 0
+                          ? `${relatedAlerts.length} in the stored window`
+                          : "None in the stored window"
+                      }
+                    />
+                    <FactRow
+                      label="Freeze evidence"
+                      value={
+                        detail.data_quality.flags.length > 0
+                          ? detail.data_quality.flags.join(", ")
+                          : "Unavailable"
+                      }
+                    />
+                    <FactRow label="Drift evidence" value="Unavailable" />
+                    <FactRow
+                      label="Communication status"
+                      value="Historical replay — no live link"
+                    />
+                    <FactRow
+                      label="Spatial context"
+                      value={
+                        detail.spatial_context.available
+                          ? detail.spatial_context.context_level
+                          : "Unavailable"
+                      }
+                    />
+                    <FactRow
+                      label="Maintenance review"
+                      value={
+                        typeof detail.maintenance?.["state"] === "string"
+                          ? `${String(detail.maintenance["state"]).replace(/_/g, " ")} (${String(detail.maintenance["episodes_30d"] ?? 0)} episodes / 30d)`
+                          : "Unavailable"
+                      }
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">
+                    Factors the backend does not expose are shown as Unavailable — a missing
+                    measurement is never treated as healthy.
+                  </p>
+                </div>
+                <div className="panel p-4" aria-label="Recent station alerts">
+                  <p className="section-kicker">Recent alerts</p>
+                  <h3 className="mt-1 text-sm font-extrabold">Station anomaly history</h3>
+                  {alertsQuery.isPending ? (
+                    <p className="mt-2 text-[11px] text-muted-foreground" role="status">
+                      Loading alerts…
+                    </p>
+                  ) : relatedAlerts.length === 0 ? (
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      No stored alerts for this station in the current window.
+                    </p>
+                  ) : (
+                    <div className="mt-2 space-y-1.5">
+                      {relatedAlerts.slice(0, 5).map((alert) => (
+                        <div
+                          key={alert.alert_id}
+                          className="rounded-xl border border-border bg-card p-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-[11px] font-extrabold">{alert.event}</p>
+                            <span className="shrink-0 text-[11px] font-extrabold tabular-nums">
+                              {formatScore(alert.anomaly_score)}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">
+                            {formatDateTime(alert.timestamp)} ·{" "}
+                            {cleanText(alert.root_cause) ?? "Root cause not diagnosed"} · Source{" "}
+                            {alert.source_mode ?? "HISTORICAL_ALERT"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
               <section className="grid grid-cols-1 gap-3 xl:grid-cols-3" aria-label="Histories">
                 {HISTORY_VARIABLES.map((entry) => (
                   <StationHistoryBlock
@@ -304,6 +485,21 @@ function StationDetailPage() {
             {alertsQuery.isPending ? "Checking for related alerts…" : "No related alert."}
           </span>
         )}
+        {relatedAlert ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              navigate({
+                to: "/alerts/$alertId",
+                params: { alertId: relatedAlert.alert_id },
+              })
+            }
+          >
+            <ArrowUpRight />
+            Review in alerts
+          </Button>
+        ) : null}
       </section>
     </>
   );

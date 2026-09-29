@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.api.services import operator_actions as OA
 from src.api.services import station_service as SS
 
 
@@ -40,6 +41,9 @@ def build_investigation(store, alert: dict) -> dict:
          "detail": f"mean={SS._num(focus['ens_mean'])}, median={SS._num(focus['ens_median'])}; "
                    f"availability={focus['availability']}; quality={focus['data_quality_status']}.",
          "source": "quality"},
+        {"title": "Multivariate consistency",
+         "detail": "A separate multivariate consistency payload is not retained for this historical alert.",
+         "source": "multivariate"},
     ]
     if ds == "delhi":
         evidence.append({"title": "NOAA spatial context",
@@ -63,7 +67,10 @@ def build_investigation(store, alert: dict) -> dict:
                     "pressure_hpa": SS._num(focus["pressure_hpa"])}
     return {"alert": alert, "observations": observations, "evidence": evidence,
             "history": {"variable": "temperature", "hours": 24, "series": history},
+            "data_quality": {"status": str(focus["data_quality_status"]),
+                             "evaluation_eligible": bool(focus["evaluation_eligible"])},
             "root_cause": {"class": root_class, "confidence": confidence},
+            "recommended_action": OA.for_root_cause(root_class),
             "explanation": {"text": explanation, "features": features}}
 
 

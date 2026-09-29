@@ -100,6 +100,10 @@ def test_4_5_invalid_start(client):
                       "split": "OOD", "speed": 10})
         error = collect_until(ws, "error")[0]
         assert error["code"] == "unknown_station"
+        ws.send_json({"action": "start", "station_id": "JENA-01",
+                  "split": "OOD", "speed": 10})
+        error = collect_until(ws, "error")[0]
+        assert error["code"] == "unknown_station"
         ws.send_json({"action": "start", "station_id": "DEL-01",
                       "split": "OOD", "speed": 99999})
         error = collect_until(ws, "error")[0]

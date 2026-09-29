@@ -638,7 +638,7 @@ function AnomalyDetail({ anomaly, onBack }: { anomaly: UploadAnomalyRecord; onBa
         evidence.ml_models?.available === true
           ? "Trained-model evidence available."
           : (evidence.ml_models?.reason ??
-            "Delhi/Jena-trained detectors are not validated for unseen stations."),
+            "Configured detectors are not validated for unseen stations."),
       source: "ml",
     },
     {

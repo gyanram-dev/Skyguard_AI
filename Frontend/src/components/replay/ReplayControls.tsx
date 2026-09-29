@@ -43,7 +43,9 @@ function statusLabel(live: LiveReplay): string {
     case "preparing":
       return "Preparing replay…";
     case "running":
-      return "Replay running";
+      return live.replay.processed === 0
+        ? "Waiting for first observation"
+        : `Replay running · ${live.replay.processed} processed`;
     case "paused":
       return "Replay paused";
     case "stopped":
@@ -80,7 +82,7 @@ export function ReplayControls({
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5" role="status">
           <span className={cn("status-dot", dot)} />
-          <strong className="text-[11px] font-extrabold">LIVE REPLAY</strong>
+          <strong className="text-[11px] font-extrabold">HISTORICAL REPLAY</strong>
           <span className="text-[10px] text-muted-foreground">{statusLabel(live)}</span>
         </span>
         <ReadinessChip
@@ -162,7 +164,7 @@ export function ReplayControls({
         )}
       </div>
       <p className="mt-1.5 text-[10px] text-muted-foreground">
-        Accelerated historical replay — not a live sensor feed.
+        Historical observations processed through the real-time detection pipeline.
         {live.replay.processed > 0 &&
           ` ${live.replay.processed} events · ${live.replay.anomalies} anomalies`}
         {live.replay.effectiveSpeed != null && ` · effective ${live.replay.effectiveSpeed}×`}

@@ -10,6 +10,7 @@ export const statusLabels: Record<DisplayStatus, string> = {
   review: "Needs review",
   anomaly: "Anomaly",
   offline: "Offline",
+  historical: "Historical only",
 };
 
 export function StatusBadge({ status }: { status: DisplayStatus }) {

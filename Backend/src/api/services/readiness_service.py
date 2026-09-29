@@ -35,7 +35,7 @@ def _dataset_for(store, frontend_id: str) -> str | None:
     if entry is None:
         return None
     backend_id = entry.get("backend_station_id")
-    return backend_id if backend_id in ("jena", "delhi") else None
+    return backend_id if backend_id == "delhi" else None
 
 
 def check(store) -> dict:

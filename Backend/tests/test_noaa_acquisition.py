@@ -37,7 +37,9 @@ def test_manifest_validity_and_fields(manifest):
     for field in REQUIRED_MANIFEST_FIELDS:
         assert field in manifest, field
     assert manifest["source_dataset"] == C.DATASET_NAME
-    assert 5 <= len(manifest["stations"]) <= 10
+    assert 12 <= len(manifest["stations"]) <= 20
+    station_ids = {station["ghcnh_id"] for station in manifest["stations"]}
+    assert {"INI0000VICG", "INI0000VAPO", "INI0000VOHS"} <= station_ids
     for station in manifest["stations"]:
         for field in REQUIRED_STATION_FIELDS:
             assert field in station, (station.get("ghcnh_id"), field)

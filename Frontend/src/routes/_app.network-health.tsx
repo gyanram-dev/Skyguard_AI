@@ -26,6 +26,7 @@ const statusFilters: Array<{ value: StatusFilter; label: string }> = [
   { value: "healthy", label: "Healthy" },
   { value: "review", label: "Needs review" },
   { value: "anomaly", label: "Anomaly" },
+  { value: "historical", label: "Historical only" },
   { value: "offline", label: "Offline" },
 ];
 
@@ -34,6 +35,7 @@ const distributionTone: Record<DisplayStatus, string> = {
   review: "bg-warning",
   anomaly: "bg-anomaly",
   offline: "bg-offline",
+  historical: "bg-muted-foreground/40",
 };
 
 const distributionLabel: Record<DisplayStatus, string> = {
@@ -41,6 +43,7 @@ const distributionLabel: Record<DisplayStatus, string> = {
   review: "Needs review",
   anomaly: "Anomaly",
   offline: "Offline",
+  historical: "Historical only",
 };
 
 function NetworkHealthPage() {
@@ -52,7 +55,13 @@ function NetworkHealthPage() {
   const stations = useMemo(() => stationsQuery.data?.stations ?? [], [stationsQuery.data]);
 
   const distribution = useMemo(() => {
-    const counts: Record<DisplayStatus, number> = { healthy: 0, review: 0, anomaly: 0, offline: 0 };
+    const counts: Record<DisplayStatus, number> = {
+      healthy: 0,
+      review: 0,
+      anomaly: 0,
+      offline: 0,
+      historical: 0,
+    };
     for (const station of stations) {
       counts[normalizeStatus(station.status, station.data_available)] += 1;
     }
@@ -98,9 +107,10 @@ function NetworkHealthPage() {
           </p>
           {networkQuery.data ? (
             <p className="text-[10px] text-muted-foreground">
-              Indian operational network: {networkQuery.data.indian_operational_healthy}/
-              {networkQuery.data.indian_operational_monitored} healthy (benchmark stations
-              excluded).
+              Indian operational network: {networkQuery.data.detector_covered} station(s) with
+              detector coverage ({networkQuery.data.indian_operational_healthy} healthy);{" "}
+              {networkQuery.data.indian_operational_context_only} historical-only station(s) carry
+              observations but have no detector. Benchmark stations excluded.
             </p>
           ) : null}
         </div>

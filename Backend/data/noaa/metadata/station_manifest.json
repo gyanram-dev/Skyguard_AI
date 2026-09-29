@@ -8,20 +8,20 @@
     "https://www.ncei.noaa.gov/metadata/geoportal/rest/metadata/item/gov.noaa.ncdc:C01688/html"
   ],
   "access_method": "Bulk download of per-station per-year Apache Parquet files from the NOAA Open Data Dissemination (NODD) S3 bucket s3://noaa-ghcnh-pds (https://noaa-ghcnh-pds.s3.amazonaws.com), prefix hourly/access/by-year/{year}/parquet/GHCNh_{station_id}_{year}.parquet, fetched over HTTPS with urllib (read-only).",
-  "access_date": "2026-09-25",
+  "access_date": "2026-09-29",
   "inventory": [
     {
       "kind": "inventory",
-      "path": "D:/Sky/data/noaa/metadata/ghcnh-station-list.txt",
+      "path": "D:/Skyguard_AI/Backend/data/noaa/metadata/ghcnh-station-list.txt",
       "url": "https://www.ncei.noaa.gov/oa/global-historical-climatology-network/hourly/doc/ghcnh-station-list.txt",
       "file": "ghcnh-station-list.txt",
-      "bytes": 3459429,
-      "sha256": "ff451fafc8f251560029e9ed31ebf0f4d12a2ddd492516c0b166c3744cad182a",
+      "bytes": 3498298,
+      "sha256": "0045960461ac71bb626679205808506342fb41e37f562cd4659d4b6f906ac5d2",
       "reused": true
     },
     {
       "kind": "documentation",
-      "path": "D:/Sky/data/noaa/metadata/ghcnh_DOCUMENTATION.pdf",
+      "path": "D:/Skyguard_AI/Backend/data/noaa/metadata/ghcnh_DOCUMENTATION.pdf",
       "url": "https://www.ncei.noaa.gov/oa/global-historical-climatology-network/hourly/doc/ghcnh_DOCUMENTATION.pdf",
       "file": "ghcnh_DOCUMENTATION.pdf",
       "bytes": 423879,
@@ -50,7 +50,7 @@
       "rows": 9879,
       "median_cadence_minutes": 180.0,
       "processed_file": "data/noaa/processed/INI0000VIDD_2022_2024.csv",
-      "processed_sha256": "3e634b91e1fd1d15921b3038c9e98d8c195bcb81ee19bef741801014de4fd614"
+      "processed_sha256": "f893a811503fbd59fcbc8fda83da71b0a54e8a028bc32b527610686901a39fb0"
     },
     {
       "ghcnh_id": "INI0000VIJP",
@@ -67,7 +67,7 @@
       "rows": 52046,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INI0000VIJP_2022_2024.csv",
-      "processed_sha256": "d05d7522cadacfb96776f157dfc1a4eae3340f82c6aaee8d194c34ac02b9b6e0"
+      "processed_sha256": "f02256df6439801917d0bda5e29ca37d5e7bd431f9fbaa01953ba828bb9192d4"
     },
     {
       "ghcnh_id": "INI0000VILK",
@@ -84,7 +84,7 @@
       "rows": 48669,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INI0000VILK_2022_2024.csv",
-      "processed_sha256": "d446b778e333598d6634bdc6b307f8f5f8425c603595a125ab73549dcbe4ac9e"
+      "processed_sha256": "ad7259226f038d0e738a618a3d0dd82f35d599ac950d3521abb6e173912eb3e0"
     },
     {
       "ghcnh_id": "INI0000VABB",
@@ -101,7 +101,7 @@
       "rows": 51882,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INI0000VABB_2022_2024.csv",
-      "processed_sha256": "999e8e8cb709a692457b605526d1a44bc10c91d9290f6aa6a4b8109f4f0a739f"
+      "processed_sha256": "dcdd1e401da492a34b20f8d78cc02e52327f15ef77362d42043a506f090b1964"
     },
     {
       "ghcnh_id": "INI0000VABP",
@@ -118,7 +118,7 @@
       "rows": 28405,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INI0000VABP_2022_2024.csv",
-      "processed_sha256": "aab707f561292a7ec72381787ce481078ecadda136e7579e357b6a076712da47"
+      "processed_sha256": "59184b9034ee679e625ed4e87390bc51186667d083886610351711e3251742e1"
     },
     {
       "ghcnh_id": "INU042809-1",
@@ -135,7 +135,7 @@
       "rows": 52435,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INU042809-1_2022_2024.csv",
-      "processed_sha256": "59628283bc847dfe465ab3973d8fa289c643ec26f78e646ca9641a0cc14d612c"
+      "processed_sha256": "d6d094e3933d8dce443c8ed68dbce0a89950b9007ab432f8ecd85e98ed901807"
     },
     {
       "ghcnh_id": "INU042410-1",
@@ -152,7 +152,7 @@
       "rows": 48808,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INU042410-1_2022_2024.csv",
-      "processed_sha256": "07aa78c6656038ccd119fd38eba05952cd3faef19aab7bf52b90f16d4eb8bf69"
+      "processed_sha256": "6d73587deeb14c124c0e179b37e55474dfff6a0159b7dd9a91b4a2f4366a8ca9"
     },
     {
       "ghcnh_id": "INI0000VOMM",
@@ -169,7 +169,7 @@
       "rows": 52022,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INI0000VOMM_2022_2024.csv",
-      "processed_sha256": "5a00616d0443294cf998fee2d5f77a39c34a4c2c84c12be0d822e5dd08b3ea89"
+      "processed_sha256": "b4ebade21a271d0896f2211318dbaf007d123e70b2a24374806f72a40bdcb747"
     },
     {
       "ghcnh_id": "INI0000VOBL",
@@ -186,7 +186,7 @@
       "rows": 52289,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INI0000VOBL_2022_2024.csv",
-      "processed_sha256": "bda3fbd2f5c97266bf3e6b2691a75cac998f21044692882e0ce6674269d027ca"
+      "processed_sha256": "fe0425e277de6eb1e8445a9be219b0334c67ad1ca5ae7e0863e80e643a928a01"
     },
     {
       "ghcnh_id": "INI0000VOTV",
@@ -203,7 +203,58 @@
       "rows": 51710,
       "median_cadence_minutes": 30.0,
       "processed_file": "data/noaa/processed/INI0000VOTV_2022_2024.csv",
-      "processed_sha256": "9f8857996a2157c87f4531bfeadeb52c41505a0fa1963c49ab22bd5b01da35c3"
+      "processed_sha256": "105478491eda1a5604c07c54ce7dcc8db49c634e863bb26ed2ffb238e6ba58a4"
+    },
+    {
+      "ghcnh_id": "INI0000VICG",
+      "name": "CHANDIGARH",
+      "region": "North",
+      "lat": 30.6735,
+      "lon": 76.7885,
+      "elev_m": 308.5,
+      "note": "",
+      "observation_period": [
+        "2022-06-20 20:30:00+00:00",
+        "2024-12-30 21:00:00+00:00"
+      ],
+      "rows": 2764,
+      "median_cadence_minutes": 30.0,
+      "processed_file": "data/noaa/processed/INI0000VICG_2022_2024.csv",
+      "processed_sha256": "8c9759b79a0f32844789e71438191cc0d43ce3e5f535f10b849b037f27be0903"
+    },
+    {
+      "ghcnh_id": "INI0000VAPO",
+      "name": "PUNE",
+      "region": "West",
+      "lat": 18.5821,
+      "lon": 73.9197,
+      "elev_m": 591.9,
+      "note": "",
+      "observation_period": [
+        "2022-08-17 08:30:00+00:00",
+        "2024-12-31 13:30:00+00:00"
+      ],
+      "rows": 3488,
+      "median_cadence_minutes": 30.0,
+      "processed_file": "data/noaa/processed/INI0000VAPO_2022_2024.csv",
+      "processed_sha256": "bc2a5373756d23e09bc738260a1d89d5c2bd456631def5ff96fe94eaaa515a13"
+    },
+    {
+      "ghcnh_id": "INI0000VOHS",
+      "name": "HYDERABAD INTL AIRPORT",
+      "region": "South-central",
+      "lat": 17.2333,
+      "lon": 78.4167,
+      "elev_m": 617.0,
+      "note": "",
+      "observation_period": [
+        "2022-01-01 00:30:00+00:00",
+        "2024-12-31 23:30:00+00:00"
+      ],
+      "rows": 49747,
+      "median_cadence_minutes": 30.0,
+      "processed_file": "data/noaa/processed/INI0000VOHS_2022_2024.csv",
+      "processed_sha256": "a124f6205aa76fc881117653b063b38721ce46fd0f2ca00e6b3d798a2c9d0bef"
     }
   ],
   "variables": [
@@ -257,15 +308,15 @@
     }
   ],
   "common_overlap": {
-    "common_start": "2022-01-01T00:00:00+00:00",
-    "common_end": "2024-12-31T21:00:00+00:00",
-    "common_hours": 26302,
-    "hours_with_ge2_stations_temp": 26185,
-    "hours_with_ge5_stations_temp": 26148,
-    "hours_with_all_stations_temp": 8948,
-    "fraction_ge2": 0.9956,
-    "fraction_ge5": 0.9941,
-    "fraction_all": 0.3402
+    "common_start": "2022-08-17T08:30:00+00:00",
+    "common_end": "2024-12-30T21:00:00+00:00",
+    "common_hours": 20798,
+    "hours_with_ge2_stations_temp": 20688,
+    "hours_with_ge5_stations_temp": 20658,
+    "hours_with_all_stations_temp": 610,
+    "fraction_ge2": 0.9947,
+    "fraction_ge5": 0.9933,
+    "fraction_all": 0.0293
   },
   "raw_files": [
     {
@@ -477,6 +528,69 @@
       "path": "data/noaa/raw/by-year/2024/GHCNh_INI0000VOTV_2024.parquet",
       "bytes": 712176,
       "sha256": "e0414d7b71648b9d9ef70fcaaf241878d4bf050b879d0182c4be1e08ee53f6fb"
+    },
+    {
+      "station_id": "INI0000VICG",
+      "year": 2022,
+      "path": "data/noaa/raw/by-year/2022/GHCNh_INI0000VICG_2022.parquet",
+      "bytes": 103171,
+      "sha256": "d3b7c320ff6ed2f856c7a1597a1b81d892a047ea534099479d26473a203b575b"
+    },
+    {
+      "station_id": "INI0000VICG",
+      "year": 2023,
+      "path": "data/noaa/raw/by-year/2023/GHCNh_INI0000VICG_2023.parquet",
+      "bytes": 126561,
+      "sha256": "bbdc0120884fc74ae33a303aabc5743b19a98fa52e4e4b8b2d62d38969c611f3"
+    },
+    {
+      "station_id": "INI0000VICG",
+      "year": 2024,
+      "path": "data/noaa/raw/by-year/2024/GHCNh_INI0000VICG_2024.parquet",
+      "bytes": 177221,
+      "sha256": "79800db03e7b21dce2d5544f9e587c1abb505c5c2a4e5f875cc8e4c6cca5539a"
+    },
+    {
+      "station_id": "INI0000VAPO",
+      "year": 2022,
+      "path": "data/noaa/raw/by-year/2022/GHCNh_INI0000VAPO_2022.parquet",
+      "bytes": 106155,
+      "sha256": "a7333f813e7a77dea42404bc4f9c551be2e7b1a82878660c0c994586a9dda372"
+    },
+    {
+      "station_id": "INI0000VAPO",
+      "year": 2023,
+      "path": "data/noaa/raw/by-year/2023/GHCNh_INI0000VAPO_2023.parquet",
+      "bytes": 136799,
+      "sha256": "0a57ac3fc4779ba6b5dd167ec5b516dd72578875b8820a15ba77728b94d476c7"
+    },
+    {
+      "station_id": "INI0000VAPO",
+      "year": 2024,
+      "path": "data/noaa/raw/by-year/2024/GHCNh_INI0000VAPO_2024.parquet",
+      "bytes": 186447,
+      "sha256": "156a833301bbfa18820c546cfa64379a23155295da4a3530f63d423e797a6c7d"
+    },
+    {
+      "station_id": "INI0000VOHS",
+      "year": 2022,
+      "path": "data/noaa/raw/by-year/2022/GHCNh_INI0000VOHS_2022.parquet",
+      "bytes": 568946,
+      "sha256": "f9804bf577e7853fc6f219cd43e0cdee124230b05411c20b57ffe7f206b04542"
+    },
+    {
+      "station_id": "INI0000VOHS",
+      "year": 2023,
+      "path": "data/noaa/raw/by-year/2023/GHCNh_INI0000VOHS_2023.parquet",
+      "bytes": 541566,
+      "sha256": "c948bd3644be9fcb47ac4695128e58640bf0d3247a25f498980924527c588bfc"
+    },
+    {
+      "station_id": "INI0000VOHS",
+      "year": 2024,
+      "path": "data/noaa/raw/by-year/2024/GHCNh_INI0000VOHS_2024.parquet",
+      "bytes": 549728,
+      "sha256": "0ee39092dc6d71599b6a0bd665fd54d1e8768c984734fb5c498140b19208d878"
     }
   ],
   "software": {

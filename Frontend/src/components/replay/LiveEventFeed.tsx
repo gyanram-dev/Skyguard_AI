@@ -15,12 +15,12 @@ export function LiveEventFeed({
   if (rows.length === 0) {
     return (
       <p className="text-[10px] text-muted-foreground" role="status">
-        No streamed events yet — press Start to begin the replay.
+        No replay observations yet — press Start to begin the historical replay.
       </p>
     );
   }
   return (
-    <ul className="min-w-0 flex-1 space-y-1" aria-label="Live replay event feed">
+    <ul className="min-w-0 flex-1 space-y-1" aria-label="Historical replay event feed">
       {rows.map((reading) => {
         const anomalous = reading.anomaly.detected;
         const known = !!reading.root_cause.class && reading.root_cause.class !== "UNKNOWN";

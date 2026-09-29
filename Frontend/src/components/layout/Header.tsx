@@ -3,6 +3,7 @@ import { Activity, Moon, Sun } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { DATA_MODE_HISTORICAL_REPLAY } from "@/lib/api";
+import { formatDisplayTerm } from "@/lib/format";
 
 export type Theme = "light" | "dark";
 
@@ -15,8 +16,8 @@ function pageMetaFor(pathname: string): PageMeta {
   switch (root) {
     case "":
       return {
-        title: "Live Overview",
-        subtitle: "National weather station monitoring and anomaly intelligence",
+        title: "Indian AWS Network",
+        subtitle: "Real historical observations · AI-powered quality control",
       };
     case "stations":
       return detail
@@ -32,11 +33,11 @@ function pageMetaFor(pathname: string): PageMeta {
       return detail
         ? {
             title: "Alert Detail",
-            subtitle: "Evidence, observations and history for one alert",
+            subtitle: "Triage review for one alert",
           }
         : {
             title: "Alerts",
-            subtitle: "Review detected anomalies and data availability events",
+            subtitle: "Triage queue — what needs attention, and where to look next",
           };
     case "investigations":
       if (detail === "replay") {
@@ -48,11 +49,11 @@ function pageMetaFor(pathname: string): PageMeta {
       return detail
         ? {
             title: "Investigation",
-            subtitle: "Deep explanation workspace for one flagged observation",
+            subtitle: "Evidence workspace — why SkyGuard made this decision",
           }
         : {
             title: "Investigations",
-            subtitle: "Understand why observations were flagged",
+            subtitle: "Evidence workspace — why SkyGuard made a decision",
           };
     case "network-health":
       return {
@@ -61,8 +62,13 @@ function pageMetaFor(pathname: string): PageMeta {
       };
     case "judge-probe":
       return {
-        title: "Judge Probe",
-        subtitle: "Test a weather observation through SkyGuard",
+        title: "Test an Observation",
+        subtitle: "Score one observation through the SkyGuard pipeline",
+      };
+    case "live":
+      return {
+        title: "Live & Replay",
+        subtitle: "Source state, controlled live demonstration and historical replay",
       };
     case "evaluation":
       return {
@@ -96,36 +102,46 @@ export function Header({
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const meta = pageMetaFor(pathname);
   const replay = dataMode === DATA_MODE_HISTORICAL_REPLAY;
+  const overview = pathname === "/" || pathname === "";
   return (
-    <header className="flex h-[72px] shrink-0 items-center justify-between px-5">
+    <header className="flex h-14 shrink-0 items-center justify-between px-5">
       <div>
-        <h1 className="text-[25px] font-extrabold leading-tight text-foreground">{meta.title}</h1>
-        <p className="text-xs font-medium text-muted-foreground">{meta.subtitle}</p>
+        <h1
+          className={cn(
+            "font-extrabold leading-tight text-foreground",
+            overview ? "text-[15px] tracking-tight" : "text-xl",
+          )}
+        >
+          {meta.title}
+        </h1>
+        <p className={cn("font-medium text-muted-foreground", overview ? "text-[11px]" : "text-xs")}>
+          {meta.subtitle}
+        </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {online ? (
-          <span className="status-pill bg-success-soft text-success-deep">
+          <span className="status-pill px-2.5 py-1 text-[10px] font-semibold bg-success-soft text-success-deep">
             <span className="status-dot bg-success" />
             System Online
           </span>
         ) : (
-          <span className="status-pill bg-offline-soft text-offline-deep">
+          <span className="status-pill px-2.5 py-1 text-[10px] font-semibold bg-offline-soft text-offline-deep">
             <span className="status-dot bg-offline" />
             Backend Unreachable
           </span>
         )}
         {replay ? (
           <span
-            className="status-pill bg-info-soft text-info"
-            title="API data_mode: historical_replay — observations are replayed history, not a live sensor feed."
+            className="status-pill px-2.5 py-1 text-[10px] font-semibold bg-info-soft text-info"
+            title="Observations are replayed history, not a live sensor feed."
           >
-            <Activity className="size-3.5" />
+            <Activity className="size-3" />
             Historical Replay
           </span>
         ) : (
-          <span className="status-pill bg-info-soft text-info">
-            <Activity className="size-3.5" />
-            {dataMode ?? "Connecting…"}
+          <span className="status-pill px-2.5 py-1 text-[10px] font-semibold bg-info-soft text-info">
+            <Activity className="size-3" />
+            {dataMode ? formatDisplayTerm(dataMode) : "Connecting…"}
           </span>
         )}
         <div

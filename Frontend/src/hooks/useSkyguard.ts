@@ -7,6 +7,7 @@ import {
   getEvaluationSummary,
   getHealth,
   getLiveAlerts,
+  getLiveAlert,
   getLiveStations,
   getLiveStatus,
   getNetworkSummary,
@@ -14,6 +15,7 @@ import {
   getStations,
   getStationHistory,
   probeObservation,
+  startLive,
   startLiveDemo,
   stopLive,
   type HistoryVariable,
@@ -170,9 +172,39 @@ export function useLiveAlerts() {
   });
 }
 
+/**
+ * Count of open live alert episodes for the sidebar badge. Only active
+ * (OPEN) episodes count — historical totals are never shown as a badge.
+ */
+export function useOpenLiveEpisodes(): number {
+  const query = useLiveAlerts();
+  const episodes = query.data?.episodes ?? [];
+  let open = 0;
+  for (const episode of episodes) {
+    if (episode.status === "OPEN") open += 1;
+  }
+  return open;
+}
+
+export function useLiveAlert(alertId: string) {
+  return useQuery({
+    queryKey: ["live-alert", alertId],
+    queryFn: () => getLiveAlert(alertId),
+    enabled: alertId !== "",
+    retry: 1,
+  });
+}
+
 export function useStartLiveDemo() {
   return useMutation({
     mutationFn: startLiveDemo,
+    retry: false,
+  });
+}
+
+export function useStartLive() {
+  return useMutation({
+    mutationFn: startLive,
     retry: false,
   });
 }

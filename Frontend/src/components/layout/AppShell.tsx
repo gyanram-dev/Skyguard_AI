@@ -5,25 +5,24 @@ import { Header, type Theme } from "@/components/layout/Header";
 import { MobileNav, Sidebar } from "@/components/layout/Sidebar";
 import { ReplaySessionProvider } from "@/components/replay/ReplaySessionContext";
 import { UploadSessionProvider } from "@/components/upload/UploadSessionContext";
-import { useAlerts, useHealth } from "@/hooks/useSkyguard";
+import { useHealth } from "@/hooks/useSkyguard";
 
 /** Shared application shell: sidebar + header + theme, rendered once. */
 export function AppShell() {
   const [theme, setTheme] = useState<Theme>("light");
   const healthQuery = useHealth();
-  const alertsQuery = useAlerts(1000);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  const dataMode = healthQuery.data?.data_mode ?? alertsQuery.data?.data_mode ?? null;
-  const backendFailed = healthQuery.isError && alertsQuery.isError;
+  const dataMode = healthQuery.data?.data_mode ?? null;
+  const backendFailed = healthQuery.isError;
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground lg:h-screen lg:overflow-hidden">
       <div className="dashboard-shell flex min-h-[876px] flex-1 overflow-hidden bg-surface lg:h-full lg:min-h-0">
-        <Sidebar alertCount={alertsQuery.data ? String(alertsQuery.data.alerts.length) : null} />
+        <Sidebar />
 
         <section className="flex min-w-0 flex-1 flex-col">
           <Header
@@ -33,7 +32,7 @@ export function AppShell() {
             dataMode={dataMode}
           />
           <MobileNav />
-          <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 pt-0 lg:overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 p-3 pt-0 lg:overflow-y-auto">
             <ReplaySessionProvider>
               <UploadSessionProvider>
                 <Outlet />

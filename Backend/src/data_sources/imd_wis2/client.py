@@ -36,14 +36,19 @@ class IMDWIS2Error(Exception):
 
 
 def _request(url: str, params: dict, ca_bundle: str | None,
-             timeout_s: int) -> dict:
+             timeout_s: int, headers: dict[str, str] | None = None,
+             client_cert: str | None = None,
+             client_key: str | None = None) -> dict:
     query = urllib.parse.urlencode(params)
     full = f"{url}?{query}" if query else url
-    req = urllib.request.Request(full, headers={"Accept": "application/json"})
+    request_headers = {"Accept": "application/json", **(headers or {})}
+    req = urllib.request.Request(full, headers=request_headers)
     try:
         import ssl
 
-        context = ssl.create_default_context(cafile=ca_bundle) if ca_bundle else None
+        context = ssl.create_default_context(cafile=ca_bundle)
+        if client_cert:
+            context.load_cert_chain(client_cert, keyfile=client_key)
         with urllib.request.urlopen(req, timeout=timeout_s,
                                     context=context) as response:
             try:
@@ -77,19 +82,26 @@ class IMDWIS2Client:
 
     def __init__(self, base_url: str = DEFAULT_BASE_URL,
                  ca_bundle: str | None = None,
-                 timeout_s: int = DEFAULT_TIMEOUT_S) -> None:
+                 timeout_s: int = DEFAULT_TIMEOUT_S,
+                 headers: dict[str, str] | None = None,
+                 client_cert: str | None = None,
+                 client_key: str | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         # Stock certifi lacks the CCA-India/emSign chain; deployments
         # provide it via IMD_CA_BUNDLE (PEM bundle path).
         self.ca_bundle = ca_bundle or os.environ.get("IMD_CA_BUNDLE") or None
         self.timeout_s = timeout_s
+        self.headers = dict(headers or {})
+        self.client_cert = client_cert or os.environ.get("IMD_CLIENT_CERT") or None
+        self.client_key = client_key or os.environ.get("IMD_CLIENT_KEY") or None
 
     def get_stations(self, limit: int = 1000, offset: int = 0) -> dict:
         """One raw station catalogue page."""
         self._check_page(limit, offset)
         return _request(f"{self.base_url}/collections/{STATIONS_COLLECTION}/items",
                         {"limit": limit, "offset": offset},
-                        self.ca_bundle, self.timeout_s)
+                        self.ca_bundle, self.timeout_s, self.headers,
+                        self.client_cert, self.client_key)
 
     def get_observations(self, wigos_id: str, limit: int = 1000,
                          offset: int = 0) -> dict:
@@ -101,7 +113,8 @@ class IMDWIS2Client:
             f"{self.base_url}/collections/{SYNOP_COLLECTION}/items",
             {"wigos_station_identifier": wigos_id.strip(),
              "limit": limit, "offset": offset},
-            self.ca_bundle, self.timeout_s)
+            self.ca_bundle, self.timeout_s, self.headers,
+            self.client_cert, self.client_key)
 
     def iter_observations(self, wigos_id: str, max_records: int = 3000,
                           page_size: int = 1000):

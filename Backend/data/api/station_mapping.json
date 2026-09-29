@@ -1,1 +1,131 @@
-{"data_mode": "historical_replay", "stations": [{"backend_station_id": "delhi", "city": "Delhi", "frontend_station_id": "DEL-01", "latitude": 28.6139, "longitude": 77.209, "note": "Delhi-NCR AWS. Coordinates are city-level (sensor coordinates not recorded); observations are real AWS measurements.", "source_dataset": "delhi_clean"}, {"backend_station_id": "jena", "city": "Jena", "frontend_station_id": "JENA-01", "latitude": 50.9271, "longitude": 11.5892, "note": "Jena climate station (Germany), temporal-pattern dataset. Backend-only ID: no frontend mock counterpart exists.", "source_dataset": "jena_clean"}, {"backend_station_id": "INI0000VIJP", "city": "Jaipur", "frontend_station_id": "JAI-02", "latitude": 26.8242, "longitude": 75.8122, "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).", "source_dataset": "noaa_ghcnh"}, {"backend_station_id": "INI0000VILK", "city": "Lucknow", "frontend_station_id": "LUCK-04", "latitude": 26.7606, "longitude": 80.8893, "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).", "source_dataset": "noaa_ghcnh"}, {"backend_station_id": "INI0000VABB", "city": "Mumbai", "frontend_station_id": "MUM-03", "latitude": 19.0887, "longitude": 72.8679, "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).", "source_dataset": "noaa_ghcnh"}, {"backend_station_id": "INI0000VABP", "city": "Bhopal", "frontend_station_id": "BHO-08", "latitude": 23.2875, "longitude": 77.3374, "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).", "source_dataset": "noaa_ghcnh"}, {"backend_station_id": "INI0000VOBL", "city": "Bengaluru", "frontend_station_id": "BLR-05", "latitude": 13.2, "longitude": 77.7, "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).", "source_dataset": "noaa_ghcnh"}, {"backend_station_id": "INI0000VOMM", "city": "Chennai", "frontend_station_id": "CHE-03", "latitude": 12.9944, "longitude": 80.1805, "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).", "source_dataset": "noaa_ghcnh"}, {"backend_station_id": "INU042809-1", "city": "Kolkata", "frontend_station_id": "KOL-02", "latitude": 22.65, "longitude": 88.45, "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).", "source_dataset": "noaa_ghcnh"}, {"backend_station_id": null, "city": "Ahmedabad", "data_available": false, "frontend_station_id": "AMD-06", "latitude": null, "longitude": null, "note": "Frontend mock ID with no backend dataset mapped. Served as offline; no measurements fabricated.", "source_dataset": null}, {"backend_station_id": null, "city": "Hyderabad", "data_available": false, "frontend_station_id": "HYD-07", "latitude": null, "longitude": null, "note": "Frontend mock ID with no backend dataset mapped. Served as offline; no measurements fabricated.", "source_dataset": null}]}
+{
+  "data_mode": "historical_replay",
+  "stations": [
+    {
+      "backend_station_id": "delhi",
+      "city": "Delhi",
+      "frontend_station_id": "DEL-01",
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "note": "Delhi-NCR AWS. Coordinates are city-level (sensor coordinates not recorded); observations are real AWS measurements.",
+      "source_dataset": "delhi_clean"
+    },
+    {
+      "backend_station_id": "INI0000VIJP",
+      "city": "Jaipur",
+      "frontend_station_id": "JAI-02",
+      "latitude": 26.8242,
+      "longitude": 75.8122,
+      "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VILK",
+      "city": "Lucknow",
+      "frontend_station_id": "LUCK-04",
+      "latitude": 26.7606,
+      "longitude": 80.8893,
+      "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VABB",
+      "city": "Mumbai",
+      "frontend_station_id": "MUM-03",
+      "latitude": 19.0887,
+      "longitude": 72.8679,
+      "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VABP",
+      "city": "Bhopal",
+      "frontend_station_id": "BHO-08",
+      "latitude": 23.2875,
+      "longitude": 77.3374,
+      "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VOBL",
+      "city": "Bengaluru",
+      "frontend_station_id": "BLR-05",
+      "latitude": 13.2,
+      "longitude": 77.7,
+      "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VOMM",
+      "city": "Chennai",
+      "frontend_station_id": "CHE-03",
+      "latitude": 12.9944,
+      "longitude": 80.1805,
+      "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INU042809-1",
+      "city": "Kolkata",
+      "frontend_station_id": "KOL-02",
+      "latitude": 22.65,
+      "longitude": 88.45,
+      "note": "NOAA GHCNh station (contextual observations + spatial evidence only; no ensemble detector).",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VIDD",
+      "city": "Delhi (Safdarjung)",
+      "frontend_station_id": "SAF-11",
+      "latitude": 28.5845,
+      "longitude": 77.2058,
+      "note": "NOAA GHCNh historical observations.",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INU042410-1",
+      "city": "Guwahati",
+      "frontend_station_id": "GAU-12",
+      "latitude": 26.1,
+      "longitude": 91.58,
+      "note": "NOAA GHCNh historical observations.",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VOTV",
+      "city": "Thiruvananthapuram",
+      "frontend_station_id": "TRV-13",
+      "latitude": 8.4821,
+      "longitude": 76.9201,
+      "note": "NOAA GHCNh historical observations.",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VICG",
+      "city": "Chandigarh",
+      "frontend_station_id": "CHD-09",
+      "latitude": 30.6735,
+      "longitude": 76.7885,
+      "note": "NOAA GHCNh historical observations.",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VAPO",
+      "city": "Pune",
+      "frontend_station_id": "PUN-10",
+      "latitude": 18.5821,
+      "longitude": 73.9197,
+      "note": "NOAA GHCNh historical observations.",
+      "source_dataset": "noaa_ghcnh"
+    },
+    {
+      "backend_station_id": "INI0000VOHS",
+      "city": "Hyderabad",
+      "frontend_station_id": "HYD-07",
+      "latitude": 17.2333,
+      "longitude": 78.4167,
+      "note": "NOAA GHCNh historical observations.",
+      "source_dataset": "noaa_ghcnh"
+    }
+  ]
+}

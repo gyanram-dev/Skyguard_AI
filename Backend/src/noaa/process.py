@@ -53,8 +53,13 @@ def standardize_station_frame(raw: pd.DataFrame, station_id: str,
     ids = raw["STATION"].astype(str).unique().tolist()
     if ids != [station_id]:
         raise ValueError(f"{station_id}: file mixes station IDs {ids}")
+    try:
+        parsed_ts = pd.to_datetime(raw["DATE"], format="mixed", utc=True)
+    except (ValueError, TypeError) as exc:
+        bad = pd.Series(raw["DATE"].astype(str)).unique().tolist()
+        raise ValueError(f"{station_id}: unparseable timestamps {bad[:5]}") from exc
     out = pd.DataFrame({
-        "timestamp_utc": pd.to_datetime(raw["DATE"], format="mixed", utc=True),
+        "timestamp_utc": parsed_ts,
         "ghcnh_station_id": station_id,
         "station_name": raw["Station_name"].astype(str),
         "temperature_c": _numeric(raw["temperature"]),

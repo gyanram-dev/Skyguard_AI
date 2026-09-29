@@ -1,0 +1,871 @@
+{
+  "version": "phase24-v1",
+  "stations": [
+    {
+      "station_id": "DELHI-AWS",
+      "name": "Delhi-NCR AWS",
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "region": "North",
+      "source": "Delhi-AWS",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "station_level_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-04-01 00:00:00",
+        "end": "2024-12-31 23:55:00",
+        "records": 289728,
+        "cadence_min": 5.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "IMD-DELHI",
+          "distance_km": 0.0,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VIDD",
+          "distance_km": 3.28,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VICG",
+          "distance_km": 232.59,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "IMD-BENGALURU",
+      "name": "IMD Bengaluru (SYNOP)",
+      "latitude": 12.9716,
+      "longitude": 77.5946,
+      "region": "South",
+      "source": "IMD_WIS2",
+      "available_variables": [
+        "pressure",
+        "temperature"
+      ],
+      "pressure_basis": "station_level_hpa",
+      "operational_status": "live_capable",
+      "data_coverage": {
+        "start": null,
+        "end": null,
+        "records": 0,
+        "cadence_min": 180.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INI0000VOBL",
+          "distance_km": 27.84,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VOMM",
+          "distance_km": 280.2,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VOHS",
+          "distance_km": 482.02,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "IMD-DELHI",
+      "name": "IMD Delhi (SYNOP)",
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "region": "North",
+      "source": "IMD_WIS2",
+      "available_variables": [
+        "temperature"
+      ],
+      "pressure_basis": "unavailable",
+      "operational_status": "live_capable",
+      "data_coverage": {
+        "start": null,
+        "end": null,
+        "records": 0,
+        "cadence_min": 180.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "DELHI-AWS",
+          "distance_km": 0.0,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VIDD",
+          "distance_km": 3.28,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VICG",
+          "distance_km": 232.59,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "IMD-KOLKATA",
+      "name": "IMD Kolkata (SYNOP)",
+      "latitude": 22.5726,
+      "longitude": 88.3639,
+      "region": "East",
+      "source": "IMD_WIS2",
+      "available_variables": [
+        "temperature"
+      ],
+      "pressure_basis": "unavailable",
+      "operational_status": "live_capable",
+      "data_coverage": {
+        "start": null,
+        "end": null,
+        "records": 0,
+        "cadence_min": 180.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INU042809-1",
+          "distance_km": 12.34,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "IMD-PATNA",
+          "distance_km": 467.56,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INU042410-1",
+          "distance_km": 509.86,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "IMD-PATNA",
+      "name": "IMD Patna (SYNOP)",
+      "latitude": 25.6,
+      "longitude": 85.1667,
+      "region": "East",
+      "source": "IMD_WIS2",
+      "available_variables": [
+        "temperature"
+      ],
+      "pressure_basis": "unavailable",
+      "operational_status": "live_capable",
+      "data_coverage": {
+        "start": null,
+        "end": null,
+        "records": 0,
+        "cadence_min": 180.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INI0000VILK",
+          "distance_km": 445.88,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INU042809-1",
+          "distance_km": 467.52,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "IMD-KOLKATA",
+          "distance_km": 467.56,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "IMD-PUNE",
+      "name": "IMD Pune (SYNOP)",
+      "latitude": 18.5204,
+      "longitude": 73.8567,
+      "region": "West",
+      "source": "IMD_WIS2",
+      "available_variables": [
+        "pressure",
+        "temperature"
+      ],
+      "pressure_basis": "station_level_hpa",
+      "operational_status": "live_capable",
+      "data_coverage": {
+        "start": null,
+        "end": null,
+        "records": 0,
+        "cadence_min": 180.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INI0000VAPO",
+          "distance_km": 9.55,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VABB",
+          "distance_km": 121.76,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VOHS",
+          "distance_km": 503.32,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VABB",
+      "name": "CHHATRAPATI SHIVAJI INTL",
+      "latitude": 19.0887,
+      "longitude": 72.8679,
+      "region": "West",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 23:30:00+00:00",
+        "records": 51882,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "IMD-PUNE",
+          "distance_km": 121.76,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VAPO",
+          "distance_km": 124.2,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VABP",
+      "name": "BHOPAL",
+      "latitude": 23.2875,
+      "longitude": 77.3374,
+      "region": "Central",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 21:00:00+00:00",
+        "records": 28405,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INI0000VIJP",
+          "distance_km": 422.19,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "INI0000VILK",
+          "distance_km": 526.45,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "INI0000VIDD",
+          "distance_km": 589.15,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VAPO",
+      "name": "PUNE",
+      "latitude": 18.5821,
+      "longitude": 73.9197,
+      "region": "West",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-08-17 08:30:00+00:00",
+        "end": "2024-12-31 13:30:00+00:00",
+        "records": 3488,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "IMD-PUNE",
+          "distance_km": 9.55,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VABB",
+          "distance_km": 124.2,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "INI0000VOHS",
+          "distance_km": 498.87,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VICG",
+      "name": "CHANDIGARH",
+      "latitude": 30.6735,
+      "longitude": 76.7885,
+      "region": "North",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-06-20 20:30:00+00:00",
+        "end": "2024-12-30 21:00:00+00:00",
+        "records": 2764,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "DELHI-AWS",
+          "distance_km": 232.59,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "IMD-DELHI",
+          "distance_km": 232.59,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VIDD",
+          "distance_km": 235.76,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VIDD",
+      "name": "SAFDARJUNG",
+      "latitude": 28.5845,
+      "longitude": 77.2058,
+      "region": "North",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 21:00:00+00:00",
+        "records": 9879,
+        "cadence_min": 180.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "DELHI-AWS",
+          "distance_km": 3.28,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "IMD-DELHI",
+          "distance_km": 3.28,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VICG",
+          "distance_km": 235.76,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VIJP",
+      "name": "JAIPUR",
+      "latitude": 26.8242,
+      "longitude": 75.8122,
+      "region": "Northwest",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 23:30:00+00:00",
+        "records": 52046,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INI0000VIDD",
+          "distance_km": 239.02,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "DELHI-AWS",
+          "distance_km": 241.88,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "IMD-DELHI",
+          "distance_km": 241.88,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VILK",
+      "name": "LUCKNOW",
+      "latitude": 26.7606,
+      "longitude": 80.8893,
+      "region": "North-central",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 22:30:00+00:00",
+        "records": 48669,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INI0000VIDD",
+          "distance_km": 415.55,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "DELHI-AWS",
+          "distance_km": 416.84,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "IMD-DELHI",
+          "distance_km": 416.84,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VOBL",
+      "name": "BANGALURU INTL AIRPORT",
+      "latitude": 13.2,
+      "longitude": 77.7,
+      "region": "South",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 23:30:00+00:00",
+        "records": 52289,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "IMD-BENGALURU",
+          "distance_km": 27.84,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VOMM",
+          "distance_km": 269.61,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "INI0000VOHS",
+          "distance_km": 455.02,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VOHS",
+      "name": "HYDERABAD INTL AIRPORT",
+      "latitude": 17.2333,
+      "longitude": 78.4167,
+      "region": "South-central",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:30:00+00:00",
+        "end": "2024-12-31 23:30:00+00:00",
+        "records": 49747,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INI0000VOBL",
+          "distance_km": 455.02,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "IMD-BENGALURU",
+          "distance_km": 482.02,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VAPO",
+          "distance_km": 498.87,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VOMM",
+      "name": "CHENNAI INTL",
+      "latitude": 12.9944,
+      "longitude": 80.1805,
+      "region": "Southeast",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 23:30:00+00:00",
+        "records": 52022,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INI0000VOBL",
+          "distance_km": 269.61,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "IMD-BENGALURU",
+          "distance_km": 280.2,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VOHS",
+          "distance_km": 507.93,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INI0000VOTV",
+      "name": "THIRUVANANTHAPURAM INTL",
+      "latitude": 8.4821,
+      "longitude": 76.9201,
+      "region": "Far south",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 23:30:00+00:00",
+        "records": 51710,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "IMD-BENGALURU",
+          "distance_km": 504.62,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INI0000VOBL",
+          "distance_km": 531.47,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    },
+    {
+      "station_id": "INU042410-1",
+      "name": "GAUHATI",
+      "latitude": 26.1,
+      "longitude": 91.58,
+      "region": "Northeast",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 23:30:00+00:00",
+        "records": 48808,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "INU042809-1",
+          "distance_km": 497.61,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        },
+        {
+          "neighbor_id": "IMD-KOLKATA",
+          "distance_km": 509.86,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        }
+      ]
+    },
+    {
+      "station_id": "INU042809-1",
+      "name": "CALCUTTA/DUMDUM",
+      "latitude": 22.65,
+      "longitude": 88.45,
+      "region": "East",
+      "source": "GHCNh",
+      "available_variables": [
+        "pressure",
+        "relative_humidity",
+        "temperature"
+      ],
+      "pressure_basis": "altimeter_qnh_hpa",
+      "operational_status": "operational",
+      "data_coverage": {
+        "start": "2022-01-01 00:00:00+00:00",
+        "end": "2024-12-31 23:30:00+00:00",
+        "records": 52435,
+        "cadence_min": 30.0
+      },
+      "spatial_neighbors": [
+        {
+          "neighbor_id": "IMD-KOLKATA",
+          "distance_km": 12.34,
+          "rank": 1,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "IMD-PATNA",
+          "distance_km": 467.52,
+          "rank": 2,
+          "temperature_compatible": true,
+          "humidity_compatible": false,
+          "pressure_compatible": false
+        },
+        {
+          "neighbor_id": "INU042410-1",
+          "distance_km": 497.61,
+          "rank": 3,
+          "temperature_compatible": true,
+          "humidity_compatible": true,
+          "pressure_compatible": true
+        }
+      ]
+    }
+  ],
+  "selection": {
+    "k_maximum": 3,
+    "radius_km": 600.0,
+    "note": "Phase 22 spatial policy, unchanged"
+  }
+}

@@ -85,7 +85,7 @@ def test_5_6_non_finite_rejected(client):
 
 # 7. Unknown stations (and mapped stations without backend data) 404.
 def test_7_unknown_station(client):
-    for station_id in ("NOPE-99", "AMD-06", "HYD-07"):
+    for station_id in ("NOPE-99", "AMD-06", "NOT-A-STATION"):
         response = _probe(client, {"station_id": station_id, "temperature": 20.0,
                                    "pressure": 1000.0, "humidity": 50.0})
         assert response.status_code == 404
@@ -104,11 +104,12 @@ def test_8_station_required(client):
 
 # 9. Stations without detector coverage report insufficient context.
 def test_9_insufficient_context_noaa(client):
-    response = _probe(client, {"station_id": "JAI-02", "temperature": 20.0,
-                               "pressure": 1000.0, "humidity": 50.0})
-    assert response.status_code == 422
-    body = S.ErrorResponse.model_validate(response.json())
-    assert body.code == "insufficient_context"
+    for station_id in ("JAI-02", "HYD-07"):
+        response = _probe(client, {"station_id": station_id, "temperature": 20.0,
+                                   "pressure": 1000.0, "humidity": 50.0})
+        assert response.status_code == 422
+        body = S.ErrorResponse.model_validate(response.json())
+        assert body.code == "insufficient_context"
 
 
 # 11. No nan/None/inf literals leak into user-facing explanation text.
@@ -123,17 +124,9 @@ def test_11_no_bad_text(client):
                 feature.contribution) != float("inf")
 
 
-# 12. Jena has no spatial context: available=false, nothing invented.
-# Phase 22: the spatial dict is schema-stable (keys present, values null)
-# so clients can rely on its shape; unavailable-ness stays explicit.
-def test_12_spatial_unavailable_jena(client):
+# 12. Jena is benchmark-internal and cannot be probed operationally.
+def test_12_jena_is_not_probeable(client):
     response = _probe(client, {"station_id": "JENA-01", "temperature": 15.0,
                                "pressure": 1013.0, "humidity": 60.0})
-    assert response.status_code == 200
-    payload = S.ProbeResponse.model_validate(response.json())
-    assert payload.evidence.spatial["available"] is False
-    assert payload.evidence.spatial["neighbor_count"] == 0
-    assert payload.evidence.spatial["reference_median"] is None
-    assert payload.spatial_decision["contextual_decision"] in (
-        "NORMAL", "ANOMALY_WITHOUT_SPATIAL_CONFIRMATION",
-        "INSUFFICIENT_EVIDENCE")
+    assert response.status_code == 404
+    assert S.ErrorResponse.model_validate(response.json()).code == "unknown_station"

@@ -45,14 +45,22 @@ def _frame_stats(ts: pd.Series, temp: pd.Series, rh: pd.Series,
             gaps = int((diffs > 3.0 * diffs.median()).sum())
     def missing(series: pd.Series) -> int:
         return int(pd.to_numeric(series, errors="coerce").isna().sum())
+    missing_counts = {
+        "temperature": missing(temp),
+        "relative_humidity": missing(rh),
+        "pressure": missing(pres),
+    }
     return {
         "record_count": int(n),
         "coverage_start": str(valid_ts.iloc[0]) if len(valid_ts) else None,
         "coverage_end": str(valid_ts.iloc[-1]) if len(valid_ts) else None,
         "cadence_min": cadence,
-        "missing_temperature": missing(temp),
-        "missing_relative_humidity": missing(rh),
-        "missing_pressure": missing(pres),
+        "missing_temperature": missing_counts["temperature"],
+        "missing_relative_humidity": missing_counts["relative_humidity"],
+        "missing_pressure": missing_counts["pressure"],
+        "missingness": {name: {"count": count,
+                    "fraction": round(count / n, 6) if n else None}
+                for name, count in missing_counts.items()},
         "duplicate_count": dup,
         "out_of_order_count": ooo,
         "gap_count": gaps,
@@ -76,8 +84,10 @@ def _ghcnh_entries(root: Path) -> list[dict]:
                              frame["altimeter_setting_hpa"])
         entries.append({
             "station_id": sid, "station_name": info["name"],
+            "classification": "REAL_HISTORICAL",
             "region": info.get("region", "India"),
             "source": "GHCNh",
+            "source_station_id": sid,
             "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
             "retrieval_date": manifest.get("access_date"),
             "license": "NOAA public domain (U.S. government work)",
@@ -111,7 +121,9 @@ def _delhi_entry(root: Path) -> dict:
                          frame["pressure_hpa"])
     return {
         "station_id": "DELHI-AWS", "station_name": "Delhi-NCR AWS",
+        "classification": "REAL_HISTORICAL",
         "source": "Delhi-AWS",
+        "source_station_id": None,
         "source_identifier": "data/processed/delhi_clean.csv (repository bulk)",
         "retrieval_date": None,
         "license": "repository-bundled research data",
@@ -138,7 +150,9 @@ def _wis2_entries() -> list[dict]:
         entries.append({
             "station_id": f"IMD-{station}",
             "station_name": f"IMD {station.title()} (SYNOP)",
+            "classification": "LIVE_CAPABLE",
             "source": "IMD_WIS2",
+            "source_station_id": caps["wigos_id"],
             "source_identifier": "https://wis2box.imd.gov.in/oapi "
                                  f"(wigos {caps['wigos_id']})",
             "retrieval_date": key.get("end"),
@@ -155,9 +169,10 @@ def _wis2_entries() -> list[dict]:
                            "audit_window": [key.get("start"), key.get("end")],
                            "bulk_rows_in_repo": 0},
             "record_count": 0, "coverage_start": None, "coverage_end": None,
-            "cadence_min": 180.0, "missing_temperature": 0,
-            "missing_relative_humidity": 0, "missing_pressure": 0,
-            "duplicate_count": 0, "out_of_order_count": 0, "gap_count": 0,
+            "cadence_min": 180.0, "missing_temperature": None,
+            "missing_relative_humidity": None, "missing_pressure": None,
+            "missingness": None, "duplicate_count": None,
+            "out_of_order_count": None, "gap_count": None,
         })
     return entries
 
@@ -167,7 +182,9 @@ def build_inventory(root: str | Path = ".") -> list[dict]:
     root = Path(root)
     entries = [_delhi_entry(root), *_ghcnh_entries(root), *_wis2_entries(),
         {"station_id": "JENA", "station_name": "Jena climate station",
+         "classification": "BENCHMARK_INTERNAL",
          "source": "Jena-benchmark", "source_identifier": "repository bulk",
+         "source_station_id": None,
          "retrieval_date": None, "license": "repository-bundled research data",
          "latitude": 50.9271, "longitude": 11.5892, "elevation_m": None,
          "temperature_available": True, "relative_humidity_available": True,

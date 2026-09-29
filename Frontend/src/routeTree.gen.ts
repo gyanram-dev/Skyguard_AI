@@ -22,6 +22,7 @@ import { Route as AppInvestigationsIndexRouteImport } from './routes/_app/invest
 import { Route as AppInvestigationsAlertIdRouteImport } from './routes/_app/investigations/$alertId'
 import { Route as AppStationsIndexRouteImport } from './routes/_app/stations/index'
 import { Route as AppStationsStationIdRouteImport } from './routes/_app/stations/$stationId'
+import { Route as AppInvestigationsLiveAlertIdRouteImport } from './routes/_app.investigations.live.$alertId'
 import { Route as AppInvestigationsReplayAnomalyIdRouteImport } from './routes/_app.investigations.replay.$anomalyId'
 
 const AppRoute = AppRouteImport.update({
@@ -89,6 +90,12 @@ const AppStationsStationIdRoute = AppStationsStationIdRouteImport.update({
   path: '/stations/$stationId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppInvestigationsLiveAlertIdRoute =
+  AppInvestigationsLiveAlertIdRouteImport.update({
+    id: '/investigations/live/$alertId',
+    path: '/investigations/live/$alertId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppInvestigationsReplayAnomalyIdRoute =
   AppInvestigationsReplayAnomalyIdRouteImport.update({
     id: '/investigations/replay/$anomalyId',
@@ -109,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/alerts/': typeof AppAlertsIndexRoute
   '/investigations/': typeof AppInvestigationsIndexRoute
   '/stations/': typeof AppStationsIndexRoute
+  '/investigations/live/$alertId': typeof AppInvestigationsLiveAlertIdRoute
   '/investigations/replay/$anomalyId': typeof AppInvestigationsReplayAnomalyIdRoute
 }
 export interface FileRoutesByTo {
@@ -124,6 +132,7 @@ export interface FileRoutesByTo {
   '/alerts': typeof AppAlertsIndexRoute
   '/investigations': typeof AppInvestigationsIndexRoute
   '/stations': typeof AppStationsIndexRoute
+  '/investigations/live/$alertId': typeof AppInvestigationsLiveAlertIdRoute
   '/investigations/replay/$anomalyId': typeof AppInvestigationsReplayAnomalyIdRoute
 }
 export interface FileRoutesById {
@@ -141,6 +150,7 @@ export interface FileRoutesById {
   '/_app/alerts/': typeof AppAlertsIndexRoute
   '/_app/investigations/': typeof AppInvestigationsIndexRoute
   '/_app/stations/': typeof AppStationsIndexRoute
+  '/_app/investigations/live/$alertId': typeof AppInvestigationsLiveAlertIdRoute
   '/_app/investigations/replay/$anomalyId': typeof AppInvestigationsReplayAnomalyIdRoute
 }
 export interface FileRouteTypes {
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/alerts/'
     | '/investigations/'
     | '/stations/'
+    | '/investigations/live/$alertId'
     | '/investigations/replay/$anomalyId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/investigations'
     | '/stations'
+    | '/investigations/live/$alertId'
     | '/investigations/replay/$anomalyId'
   id:
     | '__root__'
@@ -189,6 +201,7 @@ export interface FileRouteTypes {
     | '/_app/alerts/'
     | '/_app/investigations/'
     | '/_app/stations/'
+    | '/_app/investigations/live/$alertId'
     | '/_app/investigations/replay/$anomalyId'
   fileRoutesById: FileRoutesById
 }
@@ -289,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStationsStationIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/investigations/live/$alertId': {
+      id: '/_app/investigations/live/$alertId'
+      path: '/investigations/live/$alertId'
+      fullPath: '/investigations/live/$alertId'
+      preLoaderRoute: typeof AppInvestigationsLiveAlertIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/investigations/replay/$anomalyId': {
       id: '/_app/investigations/replay/$anomalyId'
       path: '/investigations/replay/$anomalyId'
@@ -312,6 +332,7 @@ interface AppRouteChildren {
   AppAlertsIndexRoute: typeof AppAlertsIndexRoute
   AppInvestigationsIndexRoute: typeof AppInvestigationsIndexRoute
   AppStationsIndexRoute: typeof AppStationsIndexRoute
+  AppInvestigationsLiveAlertIdRoute: typeof AppInvestigationsLiveAlertIdRoute
   AppInvestigationsReplayAnomalyIdRoute: typeof AppInvestigationsReplayAnomalyIdRoute
 }
 
@@ -328,6 +349,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAlertsIndexRoute: AppAlertsIndexRoute,
   AppInvestigationsIndexRoute: AppInvestigationsIndexRoute,
   AppStationsIndexRoute: AppStationsIndexRoute,
+  AppInvestigationsLiveAlertIdRoute: AppInvestigationsLiveAlertIdRoute,
   AppInvestigationsReplayAnomalyIdRoute: AppInvestigationsReplayAnomalyIdRoute,
 }
 

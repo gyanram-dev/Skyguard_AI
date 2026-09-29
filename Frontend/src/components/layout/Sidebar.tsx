@@ -14,6 +14,7 @@ import {
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useOpenLiveEpisodes } from "@/hooks/useSkyguard";
 
 const navItems = [
   { label: "Overview", icon: BarChart3, to: "/" },
@@ -27,30 +28,33 @@ const navItems = [
   { label: "Analyze Data", icon: Upload, to: "/analyze-data" },
 ] as const;
 
-const idleClass = cn(buttonVariants({ variant: "sidebar" }), "w-full justify-start");
-const activeClass = cn(buttonVariants({ variant: "sidebarActive" }), "w-full justify-start");
+const idleClass = cn(
+  buttonVariants({ variant: "sidebar" }),
+  "h-[42px] w-full justify-start gap-3 rounded-lg px-3 text-[15px] font-medium [&_svg]:size-[17px]",
+);
+const activeClass = cn(
+  buttonVariants({ variant: "sidebarActive" }),
+  "nav-active h-[42px] w-full justify-start gap-3 rounded-lg px-3 text-[15px] font-medium [&_svg]:size-[17px]",
+);
 
-export function Sidebar({ alertCount }: { alertCount: string | null }) {
+export function Sidebar() {
+  const openEpisodes = useOpenLiveEpisodes();
   return (
-    <aside className="hidden w-[176px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 text-sidebar-foreground lg:flex">
-      <div className="flex items-center gap-2 px-2">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-logo">
-          <ShieldCheck className="size-6" strokeWidth={2.4} />
+    <aside className="hidden w-[200px] shrink-0 flex-col border-r border-sidebar-border/80 bg-sidebar px-[18px] pb-[18px] pt-[28px] text-sidebar-foreground lg:flex">
+      <div className="flex items-center gap-2 px-[4px]">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-logo">
+          <ShieldCheck className="size-5" strokeWidth={2.2} />
         </div>
         <div>
-          <p className="text-base font-extrabold leading-none text-sidebar-foreground">
+          <p className="text-[17px] font-semibold leading-none text-sidebar-foreground">
             SkyGuard <span className="text-sidebar-highlight">AI</span>
           </p>
-          <p className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-sidebar-muted">
+          <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.14em] text-sidebar-muted">
             Climate intelligence
           </p>
         </div>
       </div>
-      <p className="mt-3 px-2 text-[10px] font-medium text-sidebar-muted">
-        Trusted Data. Safer Tomorrow.
-      </p>
-
-      <nav className="mt-8 space-y-1.5" aria-label="Primary navigation">
+      <nav className="mt-4 space-y-[3px]" aria-label="Primary navigation">
         {navItems.map((item) => (
           <Link
             key={item.label}
@@ -62,14 +66,22 @@ export function Sidebar({ alertCount }: { alertCount: string | null }) {
           >
             <item.icon />
             <span>{item.label}</span>
-            {item.label === "Alerts" && alertCount !== null && (
-              <span className="ml-auto rounded-full bg-anomaly px-1.5 py-0.5 text-[9px] text-anomaly-foreground">
-                {alertCount}
+            {item.label === "Alerts" && openEpisodes > 0 && (
+              <span
+                aria-label={`${openEpisodes} active live alerts`}
+                className="ml-auto flex size-[19px] shrink-0 items-center justify-center rounded-full bg-[#FF4141] text-[10px] font-bold text-white"
+              >
+                {openEpisodes > 99 ? "99+" : openEpisodes}
               </span>
             )}
           </Link>
         ))}
       </nav>
+      <p className="mt-auto px-2 pt-4 text-[10px] font-medium leading-snug text-sidebar-muted/80">
+        Trusted Data.
+        <br />
+        Safer Tomorrow.
+      </p>
     </aside>
   );
 }

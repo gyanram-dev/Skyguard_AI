@@ -50,7 +50,7 @@ class SourceError(Exception):
         self.detail = detail
 
 
-class ObservationSource:
+class LiveSourceAdapter:
     """Adapter contract: fetch new canonical observations, describe self."""
 
     name: str = "base"
@@ -64,7 +64,10 @@ class ObservationSource:
         return {"name": self.name}
 
 
-class IMDWIS2Source(ObservationSource):
+ObservationSource = LiveSourceAdapter
+
+
+class IMDWIS2Adapter(LiveSourceAdapter):
     """Live IMD SYNOP observations via the audited WIS2 adapter.
 
     Polls the allowlisted WIGOS stations; each poll fetches the latest
@@ -76,10 +79,16 @@ class IMDWIS2Source(ObservationSource):
 
     def __init__(self, stations: list[str] | None = None,
                  client: WC.IMDWIS2Client | None = None,
-                 timeout_s: int = 30) -> None:
+                 timeout_s: int = 30, base_url: str = WC.DEFAULT_BASE_URL,
+                 ca_bundle: str | None = None,
+                 headers: dict[str, str] | None = None,
+                 client_cert: str | None = None,
+                 client_key: str | None = None) -> None:
         self.stations = [s for s in (stations or list(STATION_CAPABILITIES))
                          if s in STATION_CAPABILITIES]
-        self.client = client or WC.IMDWIS2Client(timeout_s=timeout_s)
+        self.client = client or WC.IMDWIS2Client(
+            base_url=base_url, ca_bundle=ca_bundle, timeout_s=timeout_s,
+            headers=headers, client_cert=client_cert, client_key=client_key)
         self._seen: dict[str, set[str]] = {}
 
     def fetch_new(self) -> list[LO.CanonicalObservation]:
@@ -139,6 +148,9 @@ class IMDWIS2Source(ObservationSource):
                                  if s in self.stations}}
 
 
+IMDWIS2Source = IMDWIS2Adapter
+
+
 @dataclass
 class IMDArgConfig:
     """AWS/ARG API contract (env-driven; disabled unless configured).
@@ -193,7 +205,7 @@ class IMDArgSource(ObservationSource):
 
 
 @dataclass
-class ControlledLiveSource(ObservationSource):
+class ControlledLiveAdapter(LiveSourceAdapter):
     """Scripted causal feed for tests and the controlled-live demo.
 
     Observations are released one poll at a time in script order (which
@@ -219,3 +231,6 @@ class ControlledLiveSource(ObservationSource):
     def describe(self) -> dict:
         return {"name": self.name, "scripted": len(self.script),
                 "released": self._pos}
+
+
+ControlledLiveSource = ControlledLiveAdapter

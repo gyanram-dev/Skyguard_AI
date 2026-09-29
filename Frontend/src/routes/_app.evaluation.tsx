@@ -100,20 +100,7 @@ function EvaluationPage() {
           Frozen Phase 6/7/9/10/11 reports plus measured Phase 16 runtime — presented verbatim,
           never recomputed.
         </span>
-        <div className="ml-auto flex gap-1.5" role="group" aria-label="Dataset">
-          {(["delhi", "jena"] as const).map((option) => (
-            <Button
-              key={option}
-              size="sm"
-              variant={dataset === option ? "default" : "outline"}
-              onClick={() => setDataset(option)}
-              aria-pressed={dataset === option}
-              className={cn(dataset !== option && "bg-card")}
-            >
-              {option === "delhi" ? "Delhi" : "Jena"}
-            </Button>
-          ))}
-        </div>
+        <p className="ml-auto text-xs font-semibold">Delhi validation</p>
       </section>
 
       <SnapshotSection data={data} dataset={dataset} oodDetection={oodDetection} />
@@ -169,7 +156,7 @@ function SnapshotSection({
   ];
   return (
     <section className="panel p-4" aria-label="System snapshot">
-      <p className="section-kicker">System snapshot · {dataset === "delhi" ? "Delhi" : "Jena"}</p>
+      <p className="section-kicker">System snapshot · Delhi</p>
       <div className="mt-2 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
         {cards.map((card) => (
           <article key={card.label} className="metric-card">
@@ -202,9 +189,7 @@ function DetectionSection({
   const splits = ["test_in_distribution", "test_generalization"];
   return (
     <section className="panel p-4" aria-label="Detection evidence">
-      <p className="section-kicker">
-        Detection evidence · {dataset === "delhi" ? "Delhi" : "Jena"}
-      </p>
+      <p className="section-kicker">Detection evidence · Delhi</p>
       <h2 className="mt-1 text-lg font-extrabold">Approach comparison</h2>
       <p className="mt-0.5 text-[10px] text-muted-foreground">
         Row-level benchmark metrics per approach. Event recall is measured for the ensemble only;
@@ -264,7 +249,7 @@ function GeneralizationSection({
   ];
   return (
     <section className="panel p-4" aria-label="Generalization">
-      <p className="section-kicker">Generalization · {dataset === "delhi" ? "Delhi" : "Jena"}</p>
+      <p className="section-kicker">Generalization · Delhi</p>
       <h2 className="mt-1 text-lg font-extrabold">Held-out OOD behavior</h2>
       <p className="mt-0.5 text-[10px] text-muted-foreground">
         Evaluated on held-out anomaly conditions not used for training. OOD is a benchmark split,
@@ -293,7 +278,7 @@ function RootCauseSection({
 }) {
   return (
     <section className="panel p-4" aria-label="Root cause evidence">
-      <p className="section-kicker">Root cause · {dataset === "delhi" ? "Delhi" : "Jena"}</p>
+      <p className="section-kicker">Root cause · Delhi</p>
       <h2 className="mt-1 text-lg font-extrabold">Diagnosis evidence</h2>
       <p className="mt-0.5 text-[10px] text-muted-foreground">
         Root-cause diagnosis is a model estimate, not certainty — accuracy varies by fault type and
@@ -396,7 +381,7 @@ function LimitationsSection() {
     "Replay is accelerated historical data, not a physical live AWS connection.",
     "Root-cause performance varies by fault type and degrades on OOD conditions.",
     "LSTM/SHAP computation can increase per-reading inference latency.",
-    "Replay currently supports detector-covered stations (DEL-01, JENA-01).",
+    "Replay currently supports DEL-01.",
     "NOAA spatial data is contextual evidence, not ground truth.",
   ];
   return (

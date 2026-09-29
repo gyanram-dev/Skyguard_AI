@@ -1,0 +1,41 @@
+{
+  "station": "INI0000VABB",
+  "city": "Mumbai",
+  "cadence_min": 30.0,
+  "segment": {
+    "start": "2023-03-01 00:00:00",
+    "days": 30,
+    "rows": 1440
+  },
+  "pressure_basis": "altimeter_setting_hpa (validator runs the pressure channel on altimeter; detector-ready status remains PARTIAL, not FULL_TPR)",
+  "overall": {
+    "tp": 134,
+    "fp": 582,
+    "fn": 132,
+    "precision": 0.1872,
+    "recall": 0.5038
+  },
+  "per_fault": {
+    "spike": {
+      "injected": 1,
+      "detected": 1,
+      "recall": 1.0
+    },
+    "frozen": {
+      "injected": 24,
+      "detected": 12,
+      "recall": 0.5
+    },
+    "drift": {
+      "injected": 240,
+      "detected": 120,
+      "recall": 0.5
+    },
+    "cross_variable": {
+      "injected": 1,
+      "detected": 1,
+      "recall": 1.0
+    }
+  },
+  "method": "frozen statistical baseline (z=3.0/IQR), no training"
+}

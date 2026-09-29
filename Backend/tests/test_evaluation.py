@@ -30,10 +30,12 @@ def test_1_2_status_and_schema(client):
     assert body.data_mode == "benchmark_evaluation"
 
 
-# 3+4. ID and OOD metrics present for both datasets.
+# 3+4. Only Indian Delhi evaluation is exposed by the product API.
 def test_3_4_id_ood_present(client):
     body = summary(client)
-    for dataset in ("delhi", "jena"):
+    assert {row.dataset for row in body.generalization} == {"delhi"}
+    assert {row.dataset for row in body.detection} == {"delhi"}
+    for dataset in ("delhi",):
         row = next(r for r in body.generalization if r.dataset == dataset)
         assert row.id_f1 is not None and row.ood_f1 is not None
         assert row.id_event_recall is not None and row.ood_event_recall is not None

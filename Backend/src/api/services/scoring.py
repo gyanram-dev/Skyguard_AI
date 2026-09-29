@@ -41,6 +41,7 @@ from src.root_cause import explain as EX
 from src.root_cause.classifier import predict_proba
 from src.root_cause.features import DIAGNOSTIC_FEATURES, build_evidence_frame
 from src.root_cause.unknown_mixed import decide
+from src.seasonal import context as SE
 from src.spatial import decision as SD
 
 logger = logging.getLogger("skyguard.scoring")
@@ -151,7 +152,22 @@ def build_frames(store, ds: str, sensor_frame: pd.DataFrame) -> dict:
             "lstm_scaled": scaled, "lstm_valid": valid,
             "cal": models["cal"]["ecdf"], "thresholds": models["cal"]["thresholds"],
             "noaa": noaa_lookup(store) if ds == "delhi" else {},
-            "spatial_neighbors": _serving_neighbors(store, ds)}
+            "spatial_neighbors": _serving_neighbors(store, ds),
+            "seasonal_obs": _seasonal_history(store, ds, sensor_frame)}
+
+
+def _seasonal_history(store, ds: str, sensor_frame: pd.DataFrame) -> pd.DataFrame:
+    """Full station history for the same-hour reference (read-only).
+
+    The probe/replay frame is a truncated tail; the reference needs the
+    whole frozen history. Falls back to the frame itself when the
+    pipeline store has no observations for the dataset.
+    """
+    try:
+        obs = store.pipeline[ds]["obs"]
+        return obs[["timestamp", "temperature_c"]]
+    except (KeyError, AttributeError, TypeError):
+        return sensor_frame[["timestamp", "temperature_c"]]
 
 
 def _serving_neighbors(store, ds: str) -> dict:
@@ -391,6 +407,9 @@ def score_position(frames: dict, ds: str, pos: int, *,
     multivariate = {k: num(feat.get(k)) for k in
                     ("multivariate_max_abs_robust_deviation_2h",
                      "multivariate_deviation_range_2h")}
+    seasonal = SE.same_hour_context(frames["seasonal_obs"], spatial_ts) \
+        if ds == "delhi" and spatial_ts else SE.same_hour_context(
+            pd.DataFrame({"timestamp": [], "temperature_c": []}), None)
     return {
         "observations": obs,
         "data_quality": {"status": dq_status, "ml_eligible": ml_eligible,
@@ -402,6 +421,7 @@ def score_position(frames: dict, ds: str, pos: int, *,
             "lstm": {"available": lstm_ok, "raw": lstm_raw, "calibrated": lstm_cal},
             "multivariate": multivariate,
             "spatial": spatial,
+            "seasonal": seasonal,
         },
         "ensemble": {"mean": num(ens_mean[0]), "median": anomaly_score,
                      "availability": availability, "threshold": threshold,

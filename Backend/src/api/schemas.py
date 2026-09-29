@@ -13,6 +13,29 @@ class ModelStatus(BaseModel):
     root_cause: str
 
 
+class StationCapability(BaseModel):
+    """Explicit Phase-25 data-capability block (additive; measured, never inferred).
+
+    ``detector_capability``: FULL_TPR | PARTIAL | CONTEXT_ONLY | UNAVAILABLE.
+    ``data_mode``: HISTORICAL | REPLAY | CONTROLLED_DEMO | LIVE | LIVE_UNAVAILABLE —
+    LIVE is never inferred from a configured provider.
+    """
+
+    station_name: str | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str = "India"
+    data_source: str
+    pressure_basis: str | None = None
+    data_mode: str
+    observation_count: int = 0
+    start_time: str | None = None
+    end_time: str | None = None
+    variables_available: list[str] = Field(default_factory=list)
+    detector_capability: str
+    spatial_context_capability: str
+
+
 class HealthResponse(BaseModel):
     status: str
     service: str = "skyguard-api"
@@ -25,12 +48,19 @@ class HealthResponse(BaseModel):
 class StationSummary(BaseModel):
     station_id: str
     city: str
+    source_mode: str = "HISTORICAL"
+    source_dataset: str | None = None
     latitude: float | None
     longitude: float | None
     status: str
     data_available: bool = True
     operational_scope: str = "indian_operational"
     capability_notes: list[str] = Field(default_factory=list)
+    available_variables: list[str] = Field(default_factory=list)
+    # Interactive probe requires detector coverage; contextual-only stations
+    # report False so the UI never routes the demo into a guaranteed error.
+    capability: StationCapability | None = None
+    probe_available: bool = False
     data_mode: str = "historical_replay"
     temperature: float | None = None
     humidity: float | None = None
@@ -53,10 +83,15 @@ class Coordinates(BaseModel):
 class StationInfo(BaseModel):
     station_id: str
     city: str
+    source_mode: str = "HISTORICAL"
+    source_dataset: str | None = None
     coordinates: Coordinates | None = None
     status: str
     operational_scope: str = "indian_operational"
     capability_notes: list[str] = Field(default_factory=list)
+    available_variables: list[str] = Field(default_factory=list)
+    capability: StationCapability | None = None
+    probe_available: bool = False
     data_mode: str = "historical_replay"
     last_updated: str | None = None
 
@@ -99,24 +134,34 @@ class StationDetailResponse(BaseModel):
     data_quality: DataQuality
     anomaly: Anomaly
     root_cause: RootCause
+    maintenance: dict = Field(default_factory=dict)
     spatial_context: SpatialContext
 
 
 class AlertSummary(BaseModel):
     alert_id: str
     station_id: str
+    source_mode: str = "HISTORICAL_ALERT"
+    sensor: str | None = None
     timestamp: str
     status: str
     event: str
     anomaly_score: float | None = None
     root_cause: str | None = None
     root_cause_confidence: float | None = None
+    duration_seconds: float = 0.0
     summary: str
 
 
 class AlertListResponse(BaseModel):
     data_mode: str = "historical_replay"
     alerts: list[AlertSummary]
+    # Honest paging metadata: `returned` may be smaller than `total` when the
+    # caller's limit is reached, so the UI never reports a capped page as a
+    # total count of active alerts.
+    returned: int = 0
+    total: int = 0
+    limit: int = 0
 
 
 class EvidenceItem(BaseModel):
@@ -148,7 +193,9 @@ class AlertDetailResponse(BaseModel):
     observations: Observations
     evidence: list[EvidenceItem]
     history: HistorySeries
+    data_quality: dict = Field(default_factory=dict)
     root_cause: RootCause
+    recommended_action: str | None = None
     explanation: Explanation
     ensemble_method: str = "ens_median"
 
@@ -162,6 +209,27 @@ class NetworkSummary(BaseModel):
     network_health_pct: float
     indian_operational_monitored: int = 0
     indian_operational_healthy: int = 0
+    # Honest health breakdown. The four operational buckets below count only
+    # stations with detector coverage; `context_only` counts stations that
+    # carry historical observations but have no detector, so they must never
+    # be folded into "healthy".
+    detector_covered: int = 0
+    context_only: int = 0
+    indian_operational_context_only: int = 0
+    # Derived counts for honest headline numbers (never hardcoded):
+    # observations_indexed = rows actually loaded from frozen datasets.
+    # live_capable_stations = audited IMD WIS2 capability registry size.
+    observations_indexed: int = 0
+    live_capable_stations: int = 0
+    # Phase-25 capability counts (additive). live_connected_stations is a
+    # MEASURED fact: 0 unless a real provider connection is currently RUNNING.
+    total_stations: int = 0
+    historical_stations: int = 0
+    full_tpr_stations: int = 0
+    partial_stations: int = 0
+    context_only_stations: int = 0
+    total_observations: int = 0
+    live_connected_stations: int = 0
     data_mode: str = "historical_replay"
     last_updated: str | None = None
 
@@ -222,6 +290,7 @@ class ProbeEvidence(BaseModel):
     lstm: ComponentEvidence
     multivariate: dict = Field(default_factory=dict)
     spatial: dict = Field(default_factory=dict)
+    seasonal: dict = Field(default_factory=dict)
     data_quality: dict = Field(default_factory=dict)
 
 
@@ -247,6 +316,7 @@ class ProbeResponse(BaseModel):
     root_cause: ProbeRootCause
     explanation: ProbeExplanation
     spatial_decision: dict = Field(default_factory=dict)
+    recommended_action: str | None = None
 
 
 class DetectionEntry(BaseModel):

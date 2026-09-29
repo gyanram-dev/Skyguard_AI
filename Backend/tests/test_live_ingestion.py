@@ -319,6 +319,27 @@ def test_22_restart_persistence(tmp_path):
     assert live_store.SCHEMA.count("injection_id") == 0
 
 
+def test_live_episode_detail_preserves_payload_and_causal_history():
+    manager = _manager()
+    for hour in range(3):
+        observation = _ob("S1", _utc(hour), temp=29.0 + hour * 0.1)
+        manager.store.save_observation(observation, LO.VALID, _utc(hour).isoformat())
+    evidence = {"anomaly_score": 0.997, "data_quality": {"status": "PASS"}}
+    manager.store.upsert_episode(
+        {"alert_id": "live-exact", "station_id": "S1",
+         "episode_key": "S1|ANOMALY", "interpretation": "LOCAL_SENSOR_ANOMALY",
+         "started_at": _utc(0).isoformat(), "last_seen_at": _utc(1).isoformat(),
+         "detection_count": 2, "status": "OPEN", "resolved_at": None,
+         "score": 0.997}, evidence)
+
+    detail = manager.store.episode_detail("live-exact")
+
+    assert detail["evidence"] == evidence
+    assert len(detail["observations"]) == 2
+    assert detail["observations"][-1]["timestamp"] == _utc(1).isoformat()
+    assert manager.store.episode_detail("missing") is None
+
+
 # 23. Controlled-live demo runs end to end (causal, labeled as such).
 def test_23_controlled_demo():
     from src.api.services import live_service as LV
@@ -359,3 +380,138 @@ def test_25_no_secret_logging(monkeypatch):
     blob = json.dumps([LS.IMDArgSource(config).describe(),
                        str(LS.SourceError("x", "y"))])
     assert "super-secret-key" not in blob
+
+
+def test_provider_missing_and_configured_states(monkeypatch):
+    monkeypatch.setenv("LIVE_SOURCE_MODE", "LIVE_IMD")
+    monkeypatch.setenv("LIVE_PROVIDER", "IMD_WIS2")
+    monkeypatch.delenv("IMD_BASE_URL", raising=False)
+    monkeypatch.delenv("IMD_API_BASE_URL", raising=False)
+    missing = LM.LiveManager(config=LC.LiveConfig(), db_path=":memory:")
+    assert missing.snapshot()["status"] == LM.NOT_CONFIGURED
+    result = asyncio.run(missing.start())
+    assert result["status"] == LM.NOT_CONFIGURED
+
+    monkeypatch.setenv("IMD_BASE_URL", "https://wis2box.imd.gov.in/oapi")
+    configured = LM.LiveManager(config=LC.LiveConfig(), db_path=":memory:")
+    assert configured.snapshot()["status"] == LM.CONFIGURED
+    assert configured.snapshot()["status"] != LM.CONNECTED
+    assert "configured" in configured.snapshot()["detail"]
+    source = configured._default_source()
+    assert isinstance(source, LS.IMDWIS2Adapter)
+
+
+def test_provider_connection_failure_state():
+    config = LC.LiveConfig()
+    config.mode = LC.LIVE_IMD
+    config.base_url = "https://example.invalid/oapi"
+    manager = LM.LiveManager(config=config, db_path=":memory:")
+
+    class Broken(LS.ObservationSource):
+        name = "IMD_WIS2"
+
+        def fetch_new(self):
+            raise LS.SourceError("connection_failed", "provider unreachable")
+
+    manager.source = Broken()
+    manager.source_name = manager.source.name
+    asyncio.run(manager.poll_once())
+    assert manager.snapshot()["status"] == LM.CONNECTION_FAILED
+
+
+def test_mocked_authenticated_provider_response_and_tls(monkeypatch):
+    import json
+    import ssl
+
+    from src.data_sources.imd_wis2 import client as WC
+
+    secret = "mock-provider-key"
+    config = LC.LiveConfig()
+    config.mode = LC.LIVE_IMD
+    config.base_url = "https://example.test/oapi"
+    config.request_headers = {"X-API-Key": secret}
+    captured = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return json.dumps({"features": [
+                _feature("0-20000-0-42492", "air_temperature", 29.5,
+                         "Celsius", "mock-r1", "2026-09-29T00:00:00Z")
+            ]}).encode()
+
+    def mocked_urlopen(request, timeout, context):
+        captured["headers"] = {key.lower(): value
+                                for key, value in request.header_items()}
+        captured["verify_mode"] = context.verify_mode
+        captured["check_hostname"] = context.check_hostname
+        captured["timeout"] = timeout
+        return Response()
+
+    monkeypatch.setattr(WC.urllib.request, "urlopen", mocked_urlopen)
+    client = WC.IMDWIS2Client(base_url=config.base_url,
+                              headers=config.request_headers)
+    source = LS.IMDWIS2Adapter(stations=["PATNA"], client=client)
+    manager = LM.LiveManager(config=config, db_path=":memory:")
+    manager.source = source
+    manager.source_name = source.name
+
+    result = asyncio.run(manager.poll_once())
+
+    assert result["state"] == LM.RUNNING
+    assert manager.snapshot()["status"] == LM.CONNECTED
+    assert manager.histories["IMD-PATNA"].latest().temperature_c == 29.5
+    assert manager.histories["IMD-PATNA"].latest().relative_humidity_pct is None
+    assert captured["headers"]["x-api-key"] == secret
+    assert captured["verify_mode"] == ssl.CERT_REQUIRED
+    assert captured["check_hostname"] is True
+    assert secret not in json.dumps(config.describe())
+
+
+def test_provider_secret_is_redacted_from_errors_logs_and_store(monkeypatch, caplog):
+    import json
+
+    secret = "mock-secret-token"
+    monkeypatch.setenv("IMD_REQUEST_HEADERS", json.dumps(
+        {"Authorization": f"Bearer {secret}"}))
+    config = LC.LiveConfig()
+    config.mode = LC.LIVE_IMD
+    config.base_url = "https://example.invalid/oapi"
+    manager = LM.LiveManager(config=config, db_path=":memory:")
+
+    class LeakyFailure(LS.ObservationSource):
+        name = "IMD_WIS2"
+
+        def fetch_new(self):
+            raise LS.SourceError("http_error", f"Authorization: Bearer {secret}")
+
+    manager.source = LeakyFailure()
+    manager.source_name = manager.source.name
+    result = asyncio.run(manager.poll_once())
+    response = json.dumps(manager.snapshot())
+    stored = json.dumps(manager.store.source_statuses())
+
+    assert secret not in caplog.text
+    assert secret not in json.dumps(result)
+    assert secret not in response
+    assert secret not in stored
+    assert "[REDACTED]" in response
+
+
+def test_controlled_feed_is_not_provider_connected():
+    config = LC.LiveConfig()
+    config.mode = LC.CONTROLLED_LIVE
+    manager = LM.LiveManager(config=config, db_path=":memory:")
+    manager.source = LS.ControlledLiveSource(
+        script=[_ob("PATNA-TEST-01", _utc(0), temp=29.0)])
+    manager.source_name = manager.source.name
+
+    asyncio.run(manager.poll_once())
+
+    assert manager.snapshot()["status"] == LM.CONTROLLED
+    assert manager.snapshot()["status"] != LM.CONNECTED

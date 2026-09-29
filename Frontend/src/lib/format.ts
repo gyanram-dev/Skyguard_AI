@@ -71,3 +71,28 @@ export function formatDateTime(iso: string | null | undefined): string {
     hour12: false,
   });
 }
+
+/** Presentation-only labels for backend enums and data_mode values. */
+const DISPLAY_TERMS: Record<string, string> = {
+  historical_replay: "Historical Replay",
+  full_tpr: "Full T/P/RH Detection",
+  partial: "Partial Detection",
+  context_only: "Context Only",
+  unavailable: "Data Unavailable",
+};
+
+export function formatDisplayTerm(
+  value: string | null | undefined,
+  fallback = "—",
+): string {
+  if (value === null || value === undefined || value.trim() === "") return fallback;
+  const key = value.trim();
+  return DISPLAY_TERMS[key] ?? DISPLAY_TERMS[key.toLowerCase()] ?? key;
+}
+
+/** Compact count for supporting metrics (793872 → "793K+"). */
+export function formatCompactCount(value: number | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  if (value >= 1000) return `${Math.floor(value / 1000).toLocaleString()}K+`;
+  return value.toLocaleString();
+}

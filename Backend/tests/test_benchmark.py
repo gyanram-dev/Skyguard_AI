@@ -366,15 +366,20 @@ def test_23_no_future_phase(project_root):
     # Phase 8A (noaa acquisition/audit), Phase 8B (spatial evidence),
     # Phase 9 (lstm_autoencoder), Phase 10 (ensemble), Phase 11
     # (root_cause), Phase 12 (api) and Phase 21A (data_sources: official
-    # IMD WIS2 ingestion boundary, no models): each addition is a mandated
-    # single-purpose package. Intent unchanged. TensorFlow is allowed
+    # IMD WIS2 ingestion boundary, no models), Phase 23 (live processing),
+    # Phase 24 (temporal helpers + Indian-network inventory), and the final
+    # alignment pass (seasonal: read-only same-hour reference descriptors,
+    # no models, no detectors): these additions are mandated single-purpose
+    # packages. Intent unchanged.
+    # TensorFlow is allowed
     # ONLY inside src/lstm_autoencoder (Phase 9 mandate); the import scans
     # below are unchanged and still forbid it in benchmark/evaluation/
     # isolation_forest.
     assert existing <= {"data", "preprocessing", "features", "data_quality", "baseline",
                         "benchmark", "evaluation", "isolation_forest", "noaa",
                         "spatial", "lstm_autoencoder", "ensemble",
-                        "root_cause", "api", "data_sources"}, existing
+                        "root_cause", "api", "data_sources", "live",
+                        "temporal", "indian_network", "seasonal"}, existing
     forbidden = ("sklearn", "tensorflow", "torch", "fastapi", "shap", "xgboost")
     import re
 

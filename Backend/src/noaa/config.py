@@ -43,7 +43,7 @@ DOC_PDF = (
 # against the same Indian weather the rest of SkyGuard was validated on.
 YEARS = (2022, 2023, 2024)
 
-# Shortlist: 10 Indian stations, geographically distributed (north,
+# Shortlist: 13 Indian stations, geographically distributed (north,
 # northwest, north-central, west, central, east, northeast, southeast,
 # south, far south). Coordinates/elevations are copied verbatim from the
 # GHCNh station-list inventory (see metadata snapshot). Selection
@@ -71,6 +71,12 @@ STATIONS: tuple[dict, ...] = (
      "lat": 13.20, "lon": 77.70, "elev_m": 915.0, "note": "Bengaluru."},
     {"ghcnh_id": "INI0000VOTV", "name": "THIRUVANANTHAPURAM INTL", "region": "Far south",
      "lat": 8.4821, "lon": 76.9201, "elev_m": 4.6, "note": ""},
+    {"ghcnh_id": "INI0000VICG", "name": "CHANDIGARH", "region": "North",
+     "lat": 30.6735, "lon": 76.7885, "elev_m": 308.5, "note": ""},
+    {"ghcnh_id": "INI0000VAPO", "name": "PUNE", "region": "West",
+     "lat": 18.5821, "lon": 73.9197, "elev_m": 591.9, "note": ""},
+    {"ghcnh_id": "INI0000VOHS", "name": "HYDERABAD INTL AIRPORT", "region": "South-central",
+     "lat": 17.2333, "lon": 78.4167, "elev_m": 617.0, "note": ""},
 )
 
 # SkyGuard concept -> GHCNh source field. Units per GHCNh documentation:

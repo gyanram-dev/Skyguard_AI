@@ -115,7 +115,7 @@ class ReplaySession:
         station_id = params["station_id"]
         entry = next((m for m in self._store.mapping
                       if m["frontend_station_id"] == station_id), None)
-        if entry is None or entry.get("backend_station_id") not in ("jena", "delhi"):
+        if entry is None or entry.get("backend_station_id") != "delhi":
             await self._ws.send_json(P.error_event(
                 P.UNKNOWN_STATION,
                 f"Station '{station_id}' is not available for replay."))
@@ -298,6 +298,7 @@ class ReplaySession:
                 "lstm": scored["evidence"]["lstm"],
                 "multivariate": scored["evidence"]["multivariate"],
                 "spatial": scored["evidence"]["spatial"],
+                "seasonal": scored["evidence"]["seasonal"],
             },
             "spatial_decision": scored["spatial_decision"],
             "explanation": scored["explanation"],

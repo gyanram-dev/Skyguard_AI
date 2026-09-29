@@ -19,11 +19,8 @@ API_VERSION = "1.0.0-phase12"
 
 REQUIRED_FILES = [
     "data/api/station_mapping.json",
-    "data/processed/jena_clean.csv",
     "data/processed/delhi_clean.csv",
-    "data/ensemble/jena_ensemble_predictions.csv",
     "data/ensemble/delhi_ensemble_predictions.csv",
-    "data/root_cause/jena_root_cause_predictions.csv",
     "data/root_cause/delhi_root_cause_predictions.csv",
     # NOTE (Phase 21B): benchmark evaluation tables
     # (reports/ensemble/*_event_results.csv,
@@ -32,21 +29,16 @@ REQUIRED_FILES = [
     # outputs only, never from labels or event tables.
     "data/noaa/processed/spatial_consistency.csv",
     "data/noaa/metadata/neighbor_graph.csv",
-    "models/isolation_forest/jena_isolation_forest.joblib",
     "models/isolation_forest/delhi_isolation_forest.joblib",
-    "models/lstm_autoencoder/jena_lstm_autoencoder.keras",
     "models/lstm_autoencoder/delhi_lstm_autoencoder.keras",
-    "models/lstm_autoencoder/jena_scaler.joblib",
     "models/lstm_autoencoder/delhi_scaler.joblib",
-    "models/ensemble/jena_calibration.joblib",
     "models/ensemble/delhi_calibration.joblib",
-    "models/root_cause/jena_root_cause.joblib",
     "models/root_cause/delhi_root_cause.joblib",
-    "models/root_cause/jena_root_cause_explainer.joblib",
     "models/root_cause/delhi_root_cause_explainer.joblib",
 ]
 
-PIPELINE_DATASETS = ("jena", "delhi")
+# Jena artifacts remain available to offline benchmark/regression jobs only.
+PIPELINE_DATASETS = ("delhi",)
 
 
 class DataStore:
@@ -71,8 +63,10 @@ class DataStore:
         missing = [rel for rel in REQUIRED_FILES if not (store.root / rel).exists()]
         if missing:
             raise RuntimeError(f"Missing required artifacts: {missing}")
-        store.mapping = json.loads((store.root / "data" / "api" / "station_mapping.json")
-                                   .read_text(encoding="utf-8"))["stations"]
+        store.mapping = [entry for entry in json.loads(
+            (store.root / "data" / "api" / "station_mapping.json")
+            .read_text(encoding="utf-8"))["stations"]
+                         if entry.get("backend_station_id") != "jena"]
         for ds in PIPELINE_DATASETS:
             store.pipeline[ds] = store._load_pipeline(ds)
         store._load_noaa()

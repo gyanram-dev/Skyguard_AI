@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 
 import pandas as pd
 
@@ -216,7 +217,9 @@ def test_16_controlled_multicity():
 def test_17_registry_shape():
     registry = NET.build_registry(INV.build_inventory("."))
     assert registry["version"] == "phase24-v1"
-    assert len(registry["stations"]) >= 8
+    assert len(registry["stations"]) == 19
+    assert sum(s["operational_status"] == "operational"
+               for s in registry["stations"]) == 14
     for station in registry["stations"]:
         assert {"station_id", "name", "latitude", "longitude", "region",
                 "source", "available_variables", "operational_status",
@@ -227,3 +230,27 @@ def test_17_registry_shape():
             assert {"neighbor_id", "distance_km", "rank",
                     "temperature_compatible", "humidity_compatible",
                     "pressure_compatible"} <= set(edge)
+
+
+def test_frontend_station_list_is_indian_and_source_backed():
+    import json
+    import re
+
+    mapping = json.loads(Path("data/api/station_mapping.json").read_text())
+    operational_ids = {station["frontend_station_id"]
+                       for station in mapping["stations"]}
+    map_source = Path("../Frontend/src/lib/mapMeta.ts").read_text(encoding="utf-8")
+    map_ids = set(re.findall(r'\{ id: "([A-Z0-9-]+)"', map_source))
+    assert map_ids == operational_ids
+    assert not any("JENA" in station_id for station_id in map_ids)
+
+
+def test_expanded_historical_station_ingestion():
+    inventory = {entry["station_id"]: entry for entry in INV.build_inventory(".")}
+    for station_id in ("INI0000VICG", "INI0000VAPO", "INI0000VOHS"):
+        station = inventory[station_id]
+        assert station["source"] == "GHCNh"
+        assert station["source_status"] == "historical_bulk"
+        assert station["record_count"] > 0
+        assert station["temperature_available"] is True
+        assert Path(station["provenance"]["processed_file"]).is_file()

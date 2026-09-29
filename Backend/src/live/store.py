@@ -183,6 +183,38 @@ class LiveStore:
                 "resolved_at", "score")
         return [dict(zip(keys, r)) for r in rows]
 
+    def episode_detail(self, alert_id: str, history_limit: int = 200) -> dict | None:
+        """Return one stored episode with its exact evidence and causal history."""
+        with self._lock:
+            row = self._db.execute(
+                "SELECT alert_id, station_id, episode_key, interpretation,"
+                " started_at, last_seen_at, detection_count, status,"
+                " resolved_at, score, evidence_json FROM alert_episodes"
+                " WHERE alert_id=?", (alert_id,)).fetchone()
+            if row is None:
+                return None
+            history = self._db.execute(
+                "SELECT obs_id, station_id, timestamp, temperature_c,"
+                " pressure_hpa, relative_humidity_pct, source, pressure_basis,"
+                " dq_state, received_at FROM observations"
+                " WHERE station_id=? AND timestamp<=?"
+                " ORDER BY timestamp DESC LIMIT ?",
+                (row[1], row[5], history_limit)).fetchall()
+        keys = ("alert_id", "station_id", "episode_key", "interpretation",
+                "started_at", "last_seen_at", "detection_count", "status",
+                "resolved_at", "score")
+        episode = dict(zip(keys, row[:10]))
+        try:
+            evidence = json.loads(row[10])
+        except (TypeError, ValueError):
+            evidence = {}
+        observation_keys = ("obs_id", "station_id", "timestamp", "temperature_c",
+                            "pressure_hpa", "relative_humidity_pct", "source",
+                            "pressure_basis", "dq_state", "received_at")
+        observations = [dict(zip(observation_keys, item)) for item in reversed(history)]
+        return {"episode": episode, "evidence": evidence,
+                "observations": observations}
+
     def observations(self, station_id: str, limit: int = 200) -> list[dict]:
         with self._lock:
             rows = self._db.execute(

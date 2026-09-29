@@ -1,0 +1,912 @@
+{
+  "version": "phase24.1",
+  "scope": "Indian operational network",
+  "stations": [
+    {
+      "station_id": "DELHI-AWS",
+      "station_name": "Delhi-NCR AWS",
+      "classification": "REAL_HISTORICAL",
+      "source": "Delhi-AWS",
+      "source_station_id": null,
+      "source_identifier": "data/processed/delhi_clean.csv (repository bulk)",
+      "retrieval_date": null,
+      "license": "repository-bundled research data",
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "elevation_m": null,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "station_level_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "timestamp_semantics": "naive-local IST (UTC+5:30)"
+      },
+      "record_count": 289728,
+      "coverage_start": "2022-04-01 00:00:00",
+      "coverage_end": "2024-12-31 23:55:00",
+      "cadence_min": 5.0,
+      "missing_temperature": 807,
+      "missing_relative_humidity": 807,
+      "missing_pressure": 811,
+      "missingness": {
+        "temperature": {
+          "count": 807,
+          "fraction": 0.002785
+        },
+        "relative_humidity": {
+          "count": 807,
+          "fraction": 0.002785
+        },
+        "pressure": {
+          "count": 811,
+          "fraction": 0.002799
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 0
+    },
+    {
+      "station_id": "IMD-BENGALURU",
+      "station_name": "IMD Bengaluru (SYNOP)",
+      "classification": "LIVE_CAPABLE",
+      "source": "IMD_WIS2",
+      "source_station_id": "0-20000-0-43295",
+      "source_identifier": "https://wis2box.imd.gov.in/oapi (wigos 0-20000-0-43295)",
+      "retrieval_date": "2026-09-28T12:00:00Z",
+      "license": "official IMD observations (access terms per IMD)",
+      "latitude": 12.9716,
+      "longitude": 77.5946,
+      "elevation_m": null,
+      "temperature_available": true,
+      "relative_humidity_available": false,
+      "pressure_available": true,
+      "pressure_basis": "station_level_hpa",
+      "source_status": "live_capable",
+      "provenance": {
+        "audit_records_retrieved": 16798,
+        "audit_window": [
+          "2026-06-21T00:00:00Z",
+          "2026-09-28T12:00:00Z"
+        ],
+        "bulk_rows_in_repo": 0
+      },
+      "record_count": 0,
+      "coverage_start": null,
+      "coverage_end": null,
+      "cadence_min": 180.0,
+      "missing_temperature": null,
+      "missing_relative_humidity": null,
+      "missing_pressure": null,
+      "missingness": null,
+      "duplicate_count": null,
+      "out_of_order_count": null,
+      "gap_count": null
+    },
+    {
+      "station_id": "IMD-DELHI",
+      "station_name": "IMD Delhi (SYNOP)",
+      "classification": "LIVE_CAPABLE",
+      "source": "IMD_WIS2",
+      "source_station_id": "0-20000-0-42182",
+      "source_identifier": "https://wis2box.imd.gov.in/oapi (wigos 0-20000-0-42182)",
+      "retrieval_date": "2026-09-28T12:00:00Z",
+      "license": "official IMD observations (access terms per IMD)",
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "elevation_m": null,
+      "temperature_available": true,
+      "relative_humidity_available": false,
+      "pressure_available": false,
+      "pressure_basis": "unavailable",
+      "source_status": "live_capable",
+      "provenance": {
+        "audit_records_retrieved": 15108,
+        "audit_window": [
+          "2026-06-21T00:00:00Z",
+          "2026-09-28T12:00:00Z"
+        ],
+        "bulk_rows_in_repo": 0
+      },
+      "record_count": 0,
+      "coverage_start": null,
+      "coverage_end": null,
+      "cadence_min": 180.0,
+      "missing_temperature": null,
+      "missing_relative_humidity": null,
+      "missing_pressure": null,
+      "missingness": null,
+      "duplicate_count": null,
+      "out_of_order_count": null,
+      "gap_count": null
+    },
+    {
+      "station_id": "IMD-KOLKATA",
+      "station_name": "IMD Kolkata (SYNOP)",
+      "classification": "LIVE_CAPABLE",
+      "source": "IMD_WIS2",
+      "source_station_id": "0-20000-0-42809",
+      "source_identifier": "https://wis2box.imd.gov.in/oapi (wigos 0-20000-0-42809)",
+      "retrieval_date": "2026-09-28T12:00:00Z",
+      "license": "official IMD observations (access terms per IMD)",
+      "latitude": 22.5726,
+      "longitude": 88.3639,
+      "elevation_m": null,
+      "temperature_available": true,
+      "relative_humidity_available": false,
+      "pressure_available": false,
+      "pressure_basis": "unavailable",
+      "source_status": "live_capable",
+      "provenance": {
+        "audit_records_retrieved": 16113,
+        "audit_window": [
+          "2026-06-21T00:00:00Z",
+          "2026-09-28T12:00:00Z"
+        ],
+        "bulk_rows_in_repo": 0
+      },
+      "record_count": 0,
+      "coverage_start": null,
+      "coverage_end": null,
+      "cadence_min": 180.0,
+      "missing_temperature": null,
+      "missing_relative_humidity": null,
+      "missing_pressure": null,
+      "missingness": null,
+      "duplicate_count": null,
+      "out_of_order_count": null,
+      "gap_count": null
+    },
+    {
+      "station_id": "IMD-PATNA",
+      "station_name": "IMD Patna (SYNOP)",
+      "classification": "LIVE_CAPABLE",
+      "source": "IMD_WIS2",
+      "source_station_id": "0-20000-0-42492",
+      "source_identifier": "https://wis2box.imd.gov.in/oapi (wigos 0-20000-0-42492)",
+      "retrieval_date": "2026-09-28T12:00:00Z",
+      "license": "official IMD observations (access terms per IMD)",
+      "latitude": 25.6,
+      "longitude": 85.1667,
+      "elevation_m": 57,
+      "temperature_available": true,
+      "relative_humidity_available": false,
+      "pressure_available": false,
+      "pressure_basis": "unavailable",
+      "source_status": "live_capable",
+      "provenance": {
+        "audit_records_retrieved": 16121,
+        "audit_window": [
+          "2026-06-21T00:00:00Z",
+          "2026-09-28T12:00:00Z"
+        ],
+        "bulk_rows_in_repo": 0
+      },
+      "record_count": 0,
+      "coverage_start": null,
+      "coverage_end": null,
+      "cadence_min": 180.0,
+      "missing_temperature": null,
+      "missing_relative_humidity": null,
+      "missing_pressure": null,
+      "missingness": null,
+      "duplicate_count": null,
+      "out_of_order_count": null,
+      "gap_count": null
+    },
+    {
+      "station_id": "IMD-PUNE",
+      "station_name": "IMD Pune (SYNOP)",
+      "classification": "LIVE_CAPABLE",
+      "source": "IMD_WIS2",
+      "source_station_id": "0-20000-0-43063",
+      "source_identifier": "https://wis2box.imd.gov.in/oapi (wigos 0-20000-0-43063)",
+      "retrieval_date": "2026-09-28T09:00:00Z",
+      "license": "official IMD observations (access terms per IMD)",
+      "latitude": 18.5204,
+      "longitude": 73.8567,
+      "elevation_m": null,
+      "temperature_available": true,
+      "relative_humidity_available": false,
+      "pressure_available": true,
+      "pressure_basis": "station_level_hpa",
+      "source_status": "live_capable",
+      "provenance": {
+        "audit_records_retrieved": 17728,
+        "audit_window": [
+          "2026-06-21T00:00:00Z",
+          "2026-09-28T09:00:00Z"
+        ],
+        "bulk_rows_in_repo": 0
+      },
+      "record_count": 0,
+      "coverage_start": null,
+      "coverage_end": null,
+      "cadence_min": 180.0,
+      "missing_temperature": null,
+      "missing_relative_humidity": null,
+      "missing_pressure": null,
+      "missingness": null,
+      "duplicate_count": null,
+      "out_of_order_count": null,
+      "gap_count": null
+    },
+    {
+      "station_id": "INI0000VABB",
+      "station_name": "CHHATRAPATI SHIVAJI INTL",
+      "classification": "REAL_HISTORICAL",
+      "region": "West",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VABB",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 19.0887,
+      "longitude": 72.8679,
+      "elevation_m": 11.3,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 51882,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VABB_2022_2024.csv",
+        "processed_sha256": "dcdd1e401da492a34b20f8d78cc02e52327f15ef77362d42043a506f090b1964"
+      },
+      "record_count": 51882,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 23:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 3,
+      "missing_relative_humidity": 8,
+      "missing_pressure": 148,
+      "missingness": {
+        "temperature": {
+          "count": 3,
+          "fraction": 5.8e-05
+        },
+        "relative_humidity": {
+          "count": 8,
+          "fraction": 0.000154
+        },
+        "pressure": {
+          "count": 148,
+          "fraction": 0.002853
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 73
+    },
+    {
+      "station_id": "INI0000VABP",
+      "station_name": "BHOPAL",
+      "classification": "REAL_HISTORICAL",
+      "region": "Central",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VABP",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 23.2875,
+      "longitude": 77.3374,
+      "elevation_m": 524.0,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 28405,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VABP_2022_2024.csv",
+        "processed_sha256": "59184b9034ee679e625ed4e87390bc51186667d083886610351711e3251742e1"
+      },
+      "record_count": 28405,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 21:00:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 19,
+      "missing_relative_humidity": 52,
+      "missing_pressure": 1154,
+      "missingness": {
+        "temperature": {
+          "count": 19,
+          "fraction": 0.000669
+        },
+        "relative_humidity": {
+          "count": 52,
+          "fraction": 0.001831
+        },
+        "pressure": {
+          "count": 1154,
+          "fraction": 0.040627
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 4007
+    },
+    {
+      "station_id": "INI0000VAPO",
+      "station_name": "PUNE",
+      "classification": "REAL_HISTORICAL",
+      "region": "West",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VAPO",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 18.5821,
+      "longitude": 73.9197,
+      "elevation_m": 591.9,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 3488,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VAPO_2022_2024.csv",
+        "processed_sha256": "bc2a5373756d23e09bc738260a1d89d5c2bd456631def5ff96fe94eaaa515a13"
+      },
+      "record_count": 3488,
+      "coverage_start": "2022-08-17 08:30:00+00:00",
+      "coverage_end": "2024-12-31 13:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 1,
+      "missing_relative_humidity": 3,
+      "missing_pressure": 0,
+      "missingness": {
+        "temperature": {
+          "count": 1,
+          "fraction": 0.000287
+        },
+        "relative_humidity": {
+          "count": 3,
+          "fraction": 0.00086
+        },
+        "pressure": {
+          "count": 0,
+          "fraction": 0.0
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 999
+    },
+    {
+      "station_id": "INI0000VICG",
+      "station_name": "CHANDIGARH",
+      "classification": "REAL_HISTORICAL",
+      "region": "North",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VICG",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 30.6735,
+      "longitude": 76.7885,
+      "elevation_m": 308.5,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 2764,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VICG_2022_2024.csv",
+        "processed_sha256": "8c9759b79a0f32844789e71438191cc0d43ce3e5f535f10b849b037f27be0903"
+      },
+      "record_count": 2764,
+      "coverage_start": "2022-06-20 20:30:00+00:00",
+      "coverage_end": "2024-12-30 21:00:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 1,
+      "missing_relative_humidity": 1,
+      "missing_pressure": 0,
+      "missingness": {
+        "temperature": {
+          "count": 1,
+          "fraction": 0.000362
+        },
+        "relative_humidity": {
+          "count": 1,
+          "fraction": 0.000362
+        },
+        "pressure": {
+          "count": 0,
+          "fraction": 0.0
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 734
+    },
+    {
+      "station_id": "INI0000VIDD",
+      "station_name": "SAFDARJUNG",
+      "classification": "REAL_HISTORICAL",
+      "region": "North",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VIDD",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 28.5845,
+      "longitude": 77.2058,
+      "elevation_m": 214.9,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 9879,
+        "manifest_cadence_min": 180.0,
+        "processed_file": "data/noaa/processed/INI0000VIDD_2022_2024.csv",
+        "processed_sha256": "f893a811503fbd59fcbc8fda83da71b0a54e8a028bc32b527610686901a39fb0"
+      },
+      "record_count": 9879,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 21:00:00+00:00",
+      "cadence_min": 180.0,
+      "missing_temperature": 2,
+      "missing_relative_humidity": 7,
+      "missing_pressure": 8297,
+      "missingness": {
+        "temperature": {
+          "count": 2,
+          "fraction": 0.000202
+        },
+        "relative_humidity": {
+          "count": 7,
+          "fraction": 0.000709
+        },
+        "pressure": {
+          "count": 8297,
+          "fraction": 0.839862
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 9
+    },
+    {
+      "station_id": "INI0000VIJP",
+      "station_name": "JAIPUR",
+      "classification": "REAL_HISTORICAL",
+      "region": "Northwest",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VIJP",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 26.8242,
+      "longitude": 75.8122,
+      "elevation_m": 385.0,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 52046,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VIJP_2022_2024.csv",
+        "processed_sha256": "f02256df6439801917d0bda5e29ca37d5e7bd431f9fbaa01953ba828bb9192d4"
+      },
+      "record_count": 52046,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 23:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 15,
+      "missing_relative_humidity": 22,
+      "missing_pressure": 130,
+      "missingness": {
+        "temperature": {
+          "count": 15,
+          "fraction": 0.000288
+        },
+        "relative_humidity": {
+          "count": 22,
+          "fraction": 0.000423
+        },
+        "pressure": {
+          "count": 130,
+          "fraction": 0.002498
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 46
+    },
+    {
+      "station_id": "INI0000VILK",
+      "station_name": "LUCKNOW",
+      "classification": "REAL_HISTORICAL",
+      "region": "North-central",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VILK",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 26.7606,
+      "longitude": 80.8893,
+      "elevation_m": 125.0,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 48669,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VILK_2022_2024.csv",
+        "processed_sha256": "ad7259226f038d0e738a618a3d0dd82f35d599ac950d3521abb6e173912eb3e0"
+      },
+      "record_count": 48669,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 22:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 12,
+      "missing_relative_humidity": 22,
+      "missing_pressure": 1054,
+      "missingness": {
+        "temperature": {
+          "count": 12,
+          "fraction": 0.000247
+        },
+        "relative_humidity": {
+          "count": 22,
+          "fraction": 0.000452
+        },
+        "pressure": {
+          "count": 1054,
+          "fraction": 0.021656
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 375
+    },
+    {
+      "station_id": "INI0000VOBL",
+      "station_name": "BANGALURU INTL AIRPORT",
+      "classification": "REAL_HISTORICAL",
+      "region": "South",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VOBL",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 13.2,
+      "longitude": 77.7,
+      "elevation_m": 915.0,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 52289,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VOBL_2022_2024.csv",
+        "processed_sha256": "fe0425e277de6eb1e8445a9be219b0334c67ad1ca5ae7e0863e80e643a928a01"
+      },
+      "record_count": 52289,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 23:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 8,
+      "missing_relative_humidity": 12,
+      "missing_pressure": 11,
+      "missingness": {
+        "temperature": {
+          "count": 8,
+          "fraction": 0.000153
+        },
+        "relative_humidity": {
+          "count": 12,
+          "fraction": 0.000229
+        },
+        "pressure": {
+          "count": 11,
+          "fraction": 0.00021
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 46
+    },
+    {
+      "station_id": "INI0000VOHS",
+      "station_name": "HYDERABAD INTL AIRPORT",
+      "classification": "REAL_HISTORICAL",
+      "region": "South-central",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VOHS",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 17.2333,
+      "longitude": 78.4167,
+      "elevation_m": 617.0,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 49747,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VOHS_2022_2024.csv",
+        "processed_sha256": "a124f6205aa76fc881117653b063b38721ce46fd0f2ca00e6b3d798a2c9d0bef"
+      },
+      "record_count": 49747,
+      "coverage_start": "2022-01-01 00:30:00+00:00",
+      "coverage_end": "2024-12-31 23:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 2,
+      "missing_relative_humidity": 3,
+      "missing_pressure": 2,
+      "missingness": {
+        "temperature": {
+          "count": 2,
+          "fraction": 4e-05
+        },
+        "relative_humidity": {
+          "count": 3,
+          "fraction": 6e-05
+        },
+        "pressure": {
+          "count": 2,
+          "fraction": 4e-05
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 122
+    },
+    {
+      "station_id": "INI0000VOMM",
+      "station_name": "CHENNAI INTL",
+      "classification": "REAL_HISTORICAL",
+      "region": "Southeast",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VOMM",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 12.9944,
+      "longitude": 80.1805,
+      "elevation_m": 15.8,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 52022,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VOMM_2022_2024.csv",
+        "processed_sha256": "b4ebade21a271d0896f2211318dbaf007d123e70b2a24374806f72a40bdcb747"
+      },
+      "record_count": 52022,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 23:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 3,
+      "missing_relative_humidity": 4,
+      "missing_pressure": 81,
+      "missingness": {
+        "temperature": {
+          "count": 3,
+          "fraction": 5.8e-05
+        },
+        "relative_humidity": {
+          "count": 4,
+          "fraction": 7.7e-05
+        },
+        "pressure": {
+          "count": 81,
+          "fraction": 0.001557
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 50
+    },
+    {
+      "station_id": "INI0000VOTV",
+      "station_name": "THIRUVANANTHAPURAM INTL",
+      "classification": "REAL_HISTORICAL",
+      "region": "Far south",
+      "source": "GHCNh",
+      "source_station_id": "INI0000VOTV",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 8.4821,
+      "longitude": 76.9201,
+      "elevation_m": 4.6,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 51710,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INI0000VOTV_2022_2024.csv",
+        "processed_sha256": "105478491eda1a5604c07c54ce7dcc8db49c634e863bb26ed2ffb238e6ba58a4"
+      },
+      "record_count": 51710,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 23:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 3,
+      "missing_relative_humidity": 3,
+      "missing_pressure": 46,
+      "missingness": {
+        "temperature": {
+          "count": 3,
+          "fraction": 5.8e-05
+        },
+        "relative_humidity": {
+          "count": 3,
+          "fraction": 5.8e-05
+        },
+        "pressure": {
+          "count": 46,
+          "fraction": 0.00089
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 83
+    },
+    {
+      "station_id": "INU042410-1",
+      "station_name": "GAUHATI",
+      "classification": "REAL_HISTORICAL",
+      "region": "Northeast",
+      "source": "GHCNh",
+      "source_station_id": "INU042410-1",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 26.1,
+      "longitude": 91.58,
+      "elevation_m": 54.0,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 48808,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INU042410-1_2022_2024.csv",
+        "processed_sha256": "6d73587deeb14c124c0e179b37e55474dfff6a0159b7dd9a91b4a2f4366a8ca9"
+      },
+      "record_count": 48808,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 23:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 3,
+      "missing_relative_humidity": 17,
+      "missing_pressure": 832,
+      "missingness": {
+        "temperature": {
+          "count": 3,
+          "fraction": 6.1e-05
+        },
+        "relative_humidity": {
+          "count": 17,
+          "fraction": 0.000348
+        },
+        "pressure": {
+          "count": 832,
+          "fraction": 0.017046
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 643
+    },
+    {
+      "station_id": "INU042809-1",
+      "station_name": "CALCUTTA/DUMDUM",
+      "classification": "REAL_HISTORICAL",
+      "region": "East",
+      "source": "GHCNh",
+      "source_station_id": "INU042809-1",
+      "source_identifier": "doi:10.25921/jp3d-3v19 (NODD s3://noaa-ghcnh-pds)",
+      "retrieval_date": "2026-09-29",
+      "license": "NOAA public domain (U.S. government work)",
+      "latitude": 22.65,
+      "longitude": 88.45,
+      "elevation_m": 6.0,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "altimeter_qnh_hpa",
+      "source_status": "historical_bulk",
+      "provenance": {
+        "manifest_rows": 52435,
+        "manifest_cadence_min": 30.0,
+        "processed_file": "data/noaa/processed/INU042809-1_2022_2024.csv",
+        "processed_sha256": "d6d094e3933d8dce443c8ed68dbce0a89950b9007ab432f8ecd85e98ed901807"
+      },
+      "record_count": 52435,
+      "coverage_start": "2022-01-01 00:00:00+00:00",
+      "coverage_end": "2024-12-31 23:30:00+00:00",
+      "cadence_min": 30.0,
+      "missing_temperature": 6,
+      "missing_relative_humidity": 14,
+      "missing_pressure": 1267,
+      "missingness": {
+        "temperature": {
+          "count": 6,
+          "fraction": 0.000114
+        },
+        "relative_humidity": {
+          "count": 14,
+          "fraction": 0.000267
+        },
+        "pressure": {
+          "count": 1267,
+          "fraction": 0.024163
+        }
+      },
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 32
+    }
+  ],
+  "scope_counts": {
+    "REAL_HISTORICAL": 14,
+    "LIVE_CAPABLE": 5,
+    "CONTROLLED": 0,
+    "BENCHMARK_INTERNAL": 1
+  },
+  "benchmark_internal": [
+    {
+      "station_id": "JENA",
+      "station_name": "Jena climate station",
+      "classification": "BENCHMARK_INTERNAL",
+      "source": "Jena-benchmark",
+      "source_identifier": "repository bulk",
+      "source_station_id": null,
+      "retrieval_date": null,
+      "license": "repository-bundled research data",
+      "latitude": 50.9271,
+      "longitude": 11.5892,
+      "elevation_m": null,
+      "temperature_available": true,
+      "relative_humidity_available": true,
+      "pressure_available": true,
+      "pressure_basis": "station_level_hpa",
+      "source_status": "benchmark_internal",
+      "provenance": {
+        "scope": "internal benchmark/regression only; never an Indian operational station"
+      },
+      "record_count": 0,
+      "coverage_start": null,
+      "coverage_end": null,
+      "cadence_min": 10.0,
+      "missing_temperature": 0,
+      "missing_relative_humidity": 0,
+      "missing_pressure": 0,
+      "duplicate_count": 0,
+      "out_of_order_count": 0,
+      "gap_count": 0
+    }
+  ]
+}
