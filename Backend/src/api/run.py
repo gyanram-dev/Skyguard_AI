@@ -22,13 +22,18 @@ def _load_env_file() -> None:
 
 
 def main() -> None:
-    """Serve the SkyGuard API (development defaults; see reports/api/)."""
+    """Serve the SkyGuard API (development defaults; see reports/api/).
+
+    Hosting platforms that inject PORT take precedence; SKYGUARD_PORT
+    overrides only when PORT is absent; 8000 remains the local default.
+    """
     import uvicorn
 
     _load_env_file()
+    port = int(os.environ.get("PORT") or os.environ.get("SKYGUARD_PORT", "8000"))
     uvicorn.run("src.api.app:app",
                 host=os.environ.get("SKYGUARD_HOST", "127.0.0.1"),
-                port=int(os.environ.get("SKYGUARD_PORT", "8000")),
+                port=port,
                 reload=False, log_level="info")
 
 

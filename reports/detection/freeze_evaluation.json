@@ -1,0 +1,370 @@
+{
+  "generated_at": "2026-09-30T07:38:34.094774+00:00",
+  "rule": {
+    "min_run_rows": 6,
+    "variables": [
+      "temperature",
+      "pressure",
+      "relative humidity"
+    ],
+    "exclusion": "relative humidity at 0/100 (saturation) is never a freeze",
+    "causal": "a row is flagged only when its own observed run reaches the threshold",
+    "gap_semantics": "NaN and communication-gap rows terminate runs",
+    "severity": "LOW (>=6) < MEDIUM (>=12) < HIGH (>= 6-hour DQ row count)",
+    "confidence": "run/(run+6) evidence-strength margin, not a probability"
+  },
+  "threshold_sweep": {
+    "4": [
+      {
+        "dataset": "delhi",
+        "split": "test_in_distribution",
+        "frozen_events": 30,
+        "baseline_detected": 2,
+        "combined_detected": 27,
+        "added_background_flags": 0,
+        "baseline_fp_per_10k": 239.37,
+        "combined_fp_per_10k": 239.37
+      },
+      {
+        "dataset": "delhi",
+        "split": "test_generalization",
+        "frozen_events": 30,
+        "baseline_detected": 5,
+        "combined_detected": 29,
+        "added_background_flags": 0,
+        "baseline_fp_per_10k": 349.83,
+        "combined_fp_per_10k": 349.83
+      },
+      {
+        "dataset": "jena",
+        "split": "test_in_distribution",
+        "frozen_events": 30,
+        "baseline_detected": 3,
+        "combined_detected": 24,
+        "added_background_flags": 928,
+        "baseline_fp_per_10k": 129.37,
+        "combined_fp_per_10k": 242.74
+      },
+      {
+        "dataset": "jena",
+        "split": "test_generalization",
+        "frozen_events": 30,
+        "baseline_detected": 11,
+        "combined_detected": 30,
+        "added_background_flags": 560,
+        "baseline_fp_per_10k": 168.42,
+        "combined_fp_per_10k": 238.02
+      }
+    ],
+    "5": [
+      {
+        "dataset": "delhi",
+        "split": "test_in_distribution",
+        "frozen_events": 30,
+        "baseline_detected": 2,
+        "combined_detected": 22,
+        "added_background_flags": 0,
+        "baseline_fp_per_10k": 239.37,
+        "combined_fp_per_10k": 239.37
+      },
+      {
+        "dataset": "delhi",
+        "split": "test_generalization",
+        "frozen_events": 30,
+        "baseline_detected": 5,
+        "combined_detected": 29,
+        "added_background_flags": 0,
+        "baseline_fp_per_10k": 349.83,
+        "combined_fp_per_10k": 349.83
+      },
+      {
+        "dataset": "jena",
+        "split": "test_in_distribution",
+        "frozen_events": 30,
+        "baseline_detected": 3,
+        "combined_detected": 21,
+        "added_background_flags": 443,
+        "baseline_fp_per_10k": 129.37,
+        "combined_fp_per_10k": 183.49
+      },
+      {
+        "dataset": "jena",
+        "split": "test_generalization",
+        "frozen_events": 30,
+        "baseline_detected": 11,
+        "combined_detected": 30,
+        "added_background_flags": 227,
+        "baseline_fp_per_10k": 168.42,
+        "combined_fp_per_10k": 196.63
+      }
+    ],
+    "6": [
+      {
+        "dataset": "delhi",
+        "split": "test_in_distribution",
+        "frozen_events": 30,
+        "baseline_detected": 2,
+        "combined_detected": 19,
+        "added_background_flags": 0,
+        "baseline_fp_per_10k": 239.37,
+        "combined_fp_per_10k": 239.37
+      },
+      {
+        "dataset": "delhi",
+        "split": "test_generalization",
+        "frozen_events": 30,
+        "baseline_detected": 5,
+        "combined_detected": 29,
+        "added_background_flags": 0,
+        "baseline_fp_per_10k": 349.83,
+        "combined_fp_per_10k": 349.83
+      },
+      {
+        "dataset": "jena",
+        "split": "test_in_distribution",
+        "frozen_events": 30,
+        "baseline_detected": 3,
+        "combined_detected": 17,
+        "added_background_flags": 256,
+        "baseline_fp_per_10k": 129.37,
+        "combined_fp_per_10k": 160.65
+      },
+      {
+        "dataset": "jena",
+        "split": "test_generalization",
+        "frozen_events": 30,
+        "baseline_detected": 11,
+        "combined_detected": 30,
+        "added_background_flags": 102,
+        "baseline_fp_per_10k": 168.42,
+        "combined_fp_per_10k": 181.1
+      }
+    ]
+  },
+  "chosen": {
+    "delhi/test_in_distribution": {
+      "dataset": "delhi",
+      "split": "test_in_distribution",
+      "min_run_rows": 6,
+      "eligible_rows": 57622,
+      "background_rows": 54059,
+      "baseline": {
+        "tp": 203,
+        "fp": 1294,
+        "precision": 0.135605,
+        "recall": 0.056974,
+        "background_flags": 1294,
+        "fp_per_10k": 239.37
+      },
+      "combined": {
+        "tp": 246,
+        "fp": 1294,
+        "tn": 52765,
+        "fn": 3317,
+        "precision": 0.15974,
+        "recall": 0.069043,
+        "f1": 0.096414,
+        "background_flags": 1294,
+        "added_background_flags": 0,
+        "fp_per_10k": 239.37
+      },
+      "events": {
+        "SPIKE": {
+          "events": 30,
+          "ens_median_detected": 27,
+          "freeze_rule_detected": 0,
+          "combined_detected": 27
+        },
+        "FROZEN": {
+          "events": 30,
+          "ens_median_detected": 2,
+          "freeze_rule_detected": 17,
+          "combined_detected": 19
+        },
+        "DRIFT": {
+          "events": 30,
+          "ens_median_detected": 16,
+          "freeze_rule_detected": 0,
+          "combined_detected": 16
+        },
+        "CROSS_VARIABLE": {
+          "events": 30,
+          "ens_median_detected": 17,
+          "freeze_rule_detected": 0,
+          "combined_detected": 17
+        }
+      }
+    },
+    "delhi/test_generalization": {
+      "dataset": "delhi",
+      "split": "test_generalization",
+      "min_run_rows": 6,
+      "eligible_rows": 56786,
+      "background_rows": 51825,
+      "baseline": {
+        "tp": 822,
+        "fp": 1813,
+        "precision": 0.311954,
+        "recall": 0.165692,
+        "background_flags": 1813,
+        "fp_per_10k": 349.83
+      },
+      "combined": {
+        "tp": 1324,
+        "fp": 1813,
+        "tn": 50012,
+        "fn": 3637,
+        "precision": 0.422059,
+        "recall": 0.266882,
+        "f1": 0.326994,
+        "background_flags": 1813,
+        "added_background_flags": 0,
+        "fp_per_10k": 349.83
+      },
+      "events": {
+        "SPIKE": {
+          "events": 30,
+          "ens_median_detected": 29,
+          "freeze_rule_detected": 0,
+          "combined_detected": 29
+        },
+        "FROZEN": {
+          "events": 30,
+          "ens_median_detected": 5,
+          "freeze_rule_detected": 29,
+          "combined_detected": 29
+        },
+        "DRIFT": {
+          "events": 30,
+          "ens_median_detected": 10,
+          "freeze_rule_detected": 0,
+          "combined_detected": 10
+        },
+        "CROSS_VARIABLE": {
+          "events": 30,
+          "ens_median_detected": 30,
+          "freeze_rule_detected": 0,
+          "combined_detected": 30
+        },
+        "SPIKE_PLUS_DRIFT": {
+          "events": 20,
+          "ens_median_detected": 20,
+          "freeze_rule_detected": 0,
+          "combined_detected": 20
+        }
+      }
+    },
+    "jena/test_in_distribution": {
+      "dataset": "jena",
+      "split": "test_in_distribution",
+      "min_run_rows": 6,
+      "eligible_rows": 83873,
+      "background_rows": 81856,
+      "baseline": {
+        "tp": 129,
+        "fp": 1059,
+        "precision": 0.108586,
+        "recall": 0.063956,
+        "background_flags": 1059,
+        "fp_per_10k": 129.37
+      },
+      "combined": {
+        "tp": 173,
+        "fp": 1315,
+        "tn": 80541,
+        "fn": 1844,
+        "precision": 0.116263,
+        "recall": 0.085771,
+        "f1": 0.098716,
+        "background_flags": 1315,
+        "added_background_flags": 256,
+        "fp_per_10k": 160.65
+      },
+      "events": {
+        "SPIKE": {
+          "events": 30,
+          "ens_median_detected": 30,
+          "freeze_rule_detected": 0,
+          "combined_detected": 30
+        },
+        "FROZEN": {
+          "events": 30,
+          "ens_median_detected": 3,
+          "freeze_rule_detected": 16,
+          "combined_detected": 17
+        },
+        "DRIFT": {
+          "events": 30,
+          "ens_median_detected": 10,
+          "freeze_rule_detected": 0,
+          "combined_detected": 10
+        },
+        "CROSS_VARIABLE": {
+          "events": 30,
+          "ens_median_detected": 12,
+          "freeze_rule_detected": 0,
+          "combined_detected": 12
+        }
+      }
+    },
+    "jena/test_generalization": {
+      "dataset": "jena",
+      "split": "test_generalization",
+      "min_run_rows": 6,
+      "eligible_rows": 83510,
+      "background_rows": 80455,
+      "baseline": {
+        "tp": 1262,
+        "fp": 1355,
+        "precision": 0.482232,
+        "recall": 0.413093,
+        "background_flags": 1355,
+        "fp_per_10k": 168.42
+      },
+      "combined": {
+        "tp": 1775,
+        "fp": 1457,
+        "tn": 78998,
+        "fn": 1280,
+        "precision": 0.549196,
+        "recall": 0.581015,
+        "f1": 0.564657,
+        "background_flags": 1457,
+        "added_background_flags": 102,
+        "fp_per_10k": 181.1
+      },
+      "events": {
+        "SPIKE": {
+          "events": 30,
+          "ens_median_detected": 30,
+          "freeze_rule_detected": 0,
+          "combined_detected": 30
+        },
+        "FROZEN": {
+          "events": 30,
+          "ens_median_detected": 11,
+          "freeze_rule_detected": 30,
+          "combined_detected": 30
+        },
+        "DRIFT": {
+          "events": 30,
+          "ens_median_detected": 16,
+          "freeze_rule_detected": 1,
+          "combined_detected": 16
+        },
+        "CROSS_VARIABLE": {
+          "events": 30,
+          "ens_median_detected": 30,
+          "freeze_rule_detected": 0,
+          "combined_detected": 30
+        },
+        "SPIKE_PLUS_DRIFT": {
+          "events": 20,
+          "ens_median_detected": 20,
+          "freeze_rule_detected": 0,
+          "combined_detected": 20
+        }
+      }
+    }
+  }
+}

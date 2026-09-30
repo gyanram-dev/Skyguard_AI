@@ -13,6 +13,28 @@ class ModelStatus(BaseModel):
     root_cause: str
 
 
+class StationDetectorState(BaseModel):
+    """Calibrated station-detector declaration (registry, not inferred).
+
+    Present only for stations with a calibrated station-specific detector.
+    ``cadence`` is minutes between real observations; ``pressure_semantics``
+    records the measured basis (QNH altimeter is never relabelled as
+    station pressure).
+    """
+
+    station_id: str | None = None
+    capability: str | None = None
+    detector_available: bool = False
+    detector_type: str | None = None
+    detector_method: str | None = None
+    cadence: float | None = None
+    pressure_semantics: str | None = None
+    rh_provenance: str | None = None
+    data_mode: str | None = None
+    backend_station_id: str | None = None
+    source: str | None = None
+
+
 class StationCapability(BaseModel):
     """Explicit Phase-25 data-capability block (additive; measured, never inferred).
 
@@ -34,6 +56,8 @@ class StationCapability(BaseModel):
     variables_available: list[str] = Field(default_factory=list)
     detector_capability: str
     spatial_context_capability: str
+    # Calibrated station-detector state (None when no detector covers it).
+    detector: StationDetectorState | None = None
 
 
 class HealthResponse(BaseModel):
@@ -135,6 +159,7 @@ class StationDetailResponse(BaseModel):
     anomaly: Anomaly
     root_cause: RootCause
     maintenance: dict = Field(default_factory=dict)
+    signal_health: dict = Field(default_factory=dict)
     spatial_context: SpatialContext
 
 
@@ -230,6 +255,11 @@ class NetworkSummary(BaseModel):
     context_only_stations: int = 0
     total_observations: int = 0
     live_connected_stations: int = 0
+    # Task-contract aliases for the same measured counts (explicit names).
+    historical_only: int = 0
+    full_tpr: int = 0
+    partial: int = 0
+    live_capable: int = 0
     data_mode: str = "historical_replay"
     last_updated: str | None = None
 
@@ -240,6 +270,131 @@ class HistoryResponse(BaseModel):
     hours: int
     data_mode: str = "historical_replay"
     points: list[dict]
+
+
+class TimelineDetector(BaseModel):
+    """Declared provenance of the detector whose events a timeline shows.
+
+    ``available = false`` means no stored detector output covers the
+    station; the UI then states HISTORICAL DATA — DETECTOR VERDICT
+    UNAVAILABLE and must not infer a verdict.
+    """
+
+    available: bool = False
+    coverage: str = "UNAVAILABLE"
+    detector_type: str | None = None
+    threshold: float | None = None
+    iqr_factor: float | None = None
+    note: str | None = None
+    coverage_window: dict | None = None
+    flags_total: int = 0
+    flags_scored: int | None = None
+    flag_rate: float | None = None
+    excluded_injection_rows: int | None = None
+
+
+class TimelineEvent(BaseModel):
+    """One detector event over the station's real history (existing output)."""
+
+    timestamp: str
+    variable: str | None = None
+    observed: float | None = None
+    temperature: float | None = None
+    humidity: float | None = None
+    pressure: float | None = None
+    # Causal station baseline and the deviation from it (the frozen 2-hour
+    # rolling median for the statistical detector, the station's own preceding
+    # two hours for the ensemble timeline).
+    baseline_median: float | None = None
+    deviation: float | None = None
+    baseline_variable: str | None = None
+    baseline_basis: str | None = None
+    z: float | None = None
+    score: float | None = None
+    threshold: float | None = None
+    severity: str | None = None
+    confidence: float | None = None
+    confidence_basis: str | None = None
+    pattern: str | None = None
+    trigger: str | None = None
+    detector: str | None = None
+    data_quality: str | None = None
+    reason: str | None = None
+    contributing_factors: list[str] = Field(default_factory=list)
+    evidence: dict = Field(default_factory=dict)
+
+
+class TimelineResponse(BaseModel):
+    station_id: str
+    city: str
+    pressure_basis: str | None = None
+    period: dict = Field(default_factory=dict)
+    observations: int = 0
+    cadence_min: float | None = None
+    series: dict = Field(default_factory=dict)
+    events: list[TimelineEvent] = Field(default_factory=list)
+    events_returned: int = 0
+    events_total: int = 0
+    detector: TimelineDetector
+    data_source: str | None = None
+    note: str | None = None
+
+
+class NearbyStation(BaseModel):
+    """One audited neighbour with its real, causally aligned observation."""
+
+    station_id: str
+    city: str | None = None
+    backend_station_id: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    distance_km: float | None = None
+    rank: int | None = None
+    aligned_timestamp: str | None = None
+    age_minutes: float | None = None
+    temperature: float | None = None
+    humidity: float | None = None
+    pressure: float | None = None
+    pressure_basis: str | None = None
+    data_freshness: str | None = None
+
+
+class InvestigationResponse(BaseModel):
+    """Target station vs real nearby stations (existing spatial decision)."""
+
+    station_id: str
+    city: str
+    coordinates: dict = Field(default_factory=dict)
+    pressure_basis: str | None = None
+    source_dataset: str | None = None
+    anchor: dict = Field(default_factory=dict)
+    target_observation: Observations
+    detector_verdict: dict = Field(default_factory=dict)
+    nearby: list[NearbyStation] = Field(default_factory=list)
+    expected_neighbors: int = 0
+    usable_neighbors: int = 0
+    comparison: dict = Field(default_factory=dict)
+    interpretation: dict = Field(default_factory=dict)
+    notes: list[str] = Field(default_factory=list)
+
+
+class FaultDemoResponse(BaseModel):
+    """Controlled fault-injection demo (never live data)."""
+
+    label: str
+    disclaimer: str
+    station_id: str
+    city: str
+    city_coordinates: dict = Field(default_factory=dict)
+    source_dataset: str
+    cadence_min: float
+    anchor: str
+    context_rows: int
+    detector: str
+    injection_parameters: dict = Field(default_factory=dict)
+    summary: dict = Field(default_factory=dict)
+    rows: list[dict] = Field(default_factory=list)
+    stored_data_modified: bool = False
 
 
 class ErrorResponse(BaseModel):
@@ -273,8 +428,11 @@ class ProbeResult(BaseModel):
     is_anomalous: bool
     anomaly_score: float | None = None
     confidence: float | None = None
+    confidence_basis: str | None = None
     availability: str = "INSUFFICIENT_EVIDENCE"
     threshold: float | None = None
+    severity: str | None = None
+    trigger: str | None = None
     method: str = "ens_median"
 
 
@@ -292,12 +450,14 @@ class ProbeEvidence(BaseModel):
     spatial: dict = Field(default_factory=dict)
     seasonal: dict = Field(default_factory=dict)
     data_quality: dict = Field(default_factory=dict)
+    freeze: dict = Field(default_factory=dict)
 
 
 class ProbeRootCause(BaseModel):
     class_: str | None = Field(default=None, alias="class")
     confidence: float | None = None
     runner_up: str | None = None
+    basis: str | None = None
 
     model_config = {"populate_by_name": True}
 
@@ -317,6 +477,10 @@ class ProbeResponse(BaseModel):
     explanation: ProbeExplanation
     spatial_decision: dict = Field(default_factory=dict)
     recommended_action: str | None = None
+    detector: str | None = None
+    severity: str | None = None
+    primary_reason: str | None = None
+    contributing_factors: list[str] | None = None
 
 
 class DetectionEntry(BaseModel):

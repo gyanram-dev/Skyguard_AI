@@ -25,6 +25,10 @@ data/*
 !data/noaa/
 !data/noaa/metadata/
 !data/noaa/metadata/**
+# Calibrated detector registry + per-station artifacts (small, needed to
+# serve honest station capability; bulk processed CSVs stay ignored)
+!data/detectors/
+!data/detectors/**
 # India-expansion bulk outputs (local only; provenance in reports/)
 data/noaa/extended/
 data/noaa/processed/

@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 import math
 
 import pandas as pd
+
+logger = logging.getLogger("skyguard.station_service")
+
+# Trailing window scanned for the signal-health indicator (rows are bounded
+# by the window so a station page never scans a full multi-year history).
+SIGNAL_HEALTH_WINDOW_DAYS = 90
+_SIGNAL_HEALTH_CACHE: dict[str, dict] = {}
 
 EVIDENCE_COMPLETENESS = {"FULL_EVIDENCE": 1.0, "PARTIAL_EVIDENCE": 0.67,
                          "LOW_CONTEXT": 0.33, "INSUFFICIENT_EVIDENCE": None}
@@ -98,13 +106,96 @@ def maintenance_review(store, entry: dict, current_anomalous: bool) -> dict:
             "currently_anomalous": bool(current_anomalous)}
 
 
-def capability_notes(entry: dict) -> list[str]:
+def _detector_cadence(store, backend_id: str) -> float:
+    """Registry cadence for a station, or the documented 30-min default."""
+    try:
+        from src.detection import registry as REG
+
+        entry = REG.get(getattr(store, "root", ".") or ".", backend_id)
+        if entry is not None:
+            return float(entry.get("cadence", 30))
+    except Exception:  # noqa: BLE001 - documented default is acceptable
+        pass
+    return 30.0
+
+
+def signal_health(store, entry: dict) -> dict:
+    """Longitudinal signal-health indicator from the station's loaded history.
+
+    Descriptive facts over a trailing window: confirmed flatline runs
+    (>= 6 consecutive identical readings, causal; relative humidity at
+    0/100 excluded) plus a documented watch level. Explicitly **not** a
+    failure prediction or remaining-useful-life estimate; the measured
+    rule and benchmark validation live in ``src.detection.freeze``.
+    """
+    from src.detection import freeze as FE
+    from src.features.feature_builder import CADENCE_HORIZONS
+
+    backend_id = entry.get("backend_station_id")
+    if not backend_id:
+        return {"state": "UNAVAILABLE",
+                "reason": "No backend station is mapped for this station."}
+    if backend_id in _SIGNAL_HEALTH_CACHE:
+        return _SIGNAL_HEALTH_CACHE[backend_id]
+    result: dict = {"state": "UNAVAILABLE",
+                    "reason": "No loaded history for this station."}
+    try:
+        data = None
+        cadence = 30.0
+        if entry.get("source_dataset") == "noaa_ghcnh":
+            frame = store.noaa_obs.get(backend_id)
+            if frame is not None and len(frame):
+                cadence = _detector_cadence(store, backend_id)
+                data = pd.DataFrame({
+                    "timestamp": frame["timestamp_utc"].astype(str),
+                    "temperature_c": pd.to_numeric(frame["temperature_c"],
+                                                   errors="coerce"),
+                    "pressure_hpa": pd.to_numeric(frame["altimeter_setting_hpa"],
+                                                  errors="coerce"),
+                    "relative_humidity_pct": pd.to_numeric(
+                        frame["relative_humidity_pct"], errors="coerce")})
+        else:
+            bundle = store.pipeline.get(backend_id)
+            cadence = float(CADENCE_HORIZONS[backend_id]["expected_interval_min"])
+            if bundle:
+                data = bundle["obs"][["timestamp", "temperature_c",
+                                       "pressure_hpa",
+                                       "relative_humidity_pct"]].copy()
+        if data is not None and len(data):
+            window_rows = max(96, int(SIGNAL_HEALTH_WINDOW_DAYS * 24 * 60 / cadence))
+            total = int(len(data))
+            window = data.tail(window_rows).reset_index(drop=True)
+            result = FE.summarise(window, cadence)
+            result.update({
+                "window_days": SIGNAL_HEALTH_WINDOW_DAYS,
+                "window_start": str(window["timestamp"].iloc[0]),
+                "window_end": str(window["timestamp"].iloc[-1]),
+                "rows_in_window": int(len(window)),
+                "rows_available": total,
+                "cadence_min": float(cadence)})
+    except Exception as exc:  # noqa: BLE001 - absence stays honest
+        logger.warning("signal health unavailable for %s: %s", backend_id, exc)
+        result = {"state": "UNAVAILABLE",
+                  "reason": "Signal-health scan failed; no indicator reported."}
+    _SIGNAL_HEALTH_CACHE[backend_id] = result
+    return result
+
+
+def capability_notes(store, entry: dict) -> list[str]:
     """Honest capability limitations for display (no fake health)."""
     notes: list[str] = []
     if operational_scope(entry) == BENCHMARK_INTERNAL:
         notes.append("Internal benchmark only; not an Indian operational station.")
     if entry.get("source_dataset") == "noaa_ghcnh":
-        notes.append("Historical context observations; no detector models cover it.")
+        # A calibrated station detector changes what is true about the station:
+        # it does have a detector, just a partial (T/P/RH) one with no probe.
+        if detector_registry_entry(store, entry) is not None:
+            notes.append("Calibrated station-specific detector (PARTIAL): "
+                         "temperature, pressure and relative humidity, with "
+                         "this station's own calibrated thresholds.")
+        else:
+            notes.append("Historical context observations; no detector models "
+                         "cover it.")
     if not entry.get("backend_station_id"):
         notes.append("No backend data; offline placeholder.")
     return notes
@@ -326,6 +417,24 @@ def pressure_basis(entry: dict) -> str | None:
     return None
 
 
+def detector_registry_entry(store, entry: dict) -> dict | None:
+    """Calibrated detector declaration for a station, or None.
+
+    Read from the single detector registry written by
+    ``src.detection.calibrate``; a missing registry/artifact means the
+    station genuinely has no station-level detector.
+    """
+    backend_id = entry.get("backend_station_id")
+    if not backend_id:
+        return None
+    try:
+        from src.detection import registry as REG
+
+        return REG.get(getattr(store, "root", ".") or ".", backend_id)
+    except Exception:  # noqa: BLE001 - absence means no detector
+        return None
+
+
 def detector_capability(store, entry: dict, variables: list[str]) -> str:
     """Classify the station per the explicit capability rules."""
     if not entry.get("backend_station_id"):
@@ -336,10 +445,28 @@ def detector_capability(store, entry: dict, variables: list[str]) -> str:
             return DETECTOR_CAPABILITY_FULL_TPR
         return DETECTOR_CAPABILITY_PARTIAL
     if entry.get("source_dataset") == "noaa_ghcnh":
+        # A calibrated station-specific statistical detector promotes the
+        # station from context-only to PARTIAL (honest, measured coverage).
+        if detector_registry_entry(store, entry) is not None:
+            if {"temperature", "pressure", "relative_humidity"} <= variables_set:
+                return DETECTOR_CAPABILITY_PARTIAL
         # Real observations carried for context; spatial evidence is the
         # neighbour layer's job, not a station-level detector verdict.
         return DETECTOR_CAPABILITY_CONTEXT_ONLY
     return DETECTOR_CAPABILITY_UNAVAILABLE
+
+
+def detector_state(store, entry: dict) -> dict | None:
+    """Serving detector state for one station (registry-backed, or None)."""
+    reg_entry = detector_registry_entry(store, entry)
+    if reg_entry is None:
+        return None
+    from src.detection.registry import ENTRY_FIELDS
+
+    state = {field: reg_entry.get(field) for field in ENTRY_FIELDS}
+    state.update({"backend_station_id": reg_entry.get("backend_station_id"),
+                  "source": "calibrated station-specific statistical detector"})
+    return state
 
 
 def spatial_context_capability(entry: dict) -> str:
@@ -379,4 +506,5 @@ def capability_profile(store, entry: dict) -> dict:
         "variables_available": variables,
         "detector_capability": detector_capability(store, entry, variables),
         "spatial_context_capability": spatial_context_capability(entry),
+        "detector": detector_state(store, entry),
     }

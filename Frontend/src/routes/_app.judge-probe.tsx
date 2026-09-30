@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlaskConical, Info, Snowflake, TrendingUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,17 @@ import {
   StatusBadge,
 } from "@/components/common";
 import { ExplanationBlock } from "@/components/evidence";
-import { ApiError, normalizeStatus, type ProbeResponse } from "@/lib/api";
-import { cleanText, errorMessage, formatConfidence, formatTemp } from "@/lib/format";
+import { ApiError, normalizeStatus, type ProbeResponse, type StationSummary } from "@/lib/api";
+import {
+  cleanText,
+  errorMessage,
+  formatCompactCount,
+  formatConfidence,
+  formatDisplayTerm,
+  formatHumidity,
+  formatPressure,
+  formatTemp,
+} from "@/lib/format";
 import { useProbeObservation, useReadiness, useStations } from "@/hooks/useSkyguard";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +41,11 @@ export const Route = createFileRoute("/_app/judge-probe")({
   }),
   component: JudgeProbePage,
 });
+
+/** True when the backend reports a calibrated station-specific detector. */
+function hasCalibratedDetector(station: StationSummary | undefined): boolean {
+  return station?.capability?.detector?.detector_available === true;
+}
 
 function toNumberInput(value: number | null | undefined): string {
   if (value === null || value === undefined) return "";
@@ -95,46 +109,49 @@ function evidenceRows(record: Record<string, unknown>): Array<{ label: string; v
 function JudgeProbePage() {
   const stationsQuery = useStations();
   const readinessQuery = useReadiness();
+  // Every station the backend registry exposes is listed — the dropdown is the
+  // API response, never a local station list.
   const stations = useMemo(() => stationsQuery.data?.stations ?? [], [stationsQuery.data]);
 
-  // Does this backend report per-station detector coverage at all? An absent
+  // Does this backend report per-station probe capability at all? An absent
   // field is NOT the same as "no station is probeable", so the two cases are
-  // handled separately and the empty state only claims what we can prove.
+  // handled separately and the UI only claims what the backend actually said.
   const capabilityReported = useMemo(
     () => stations.some((station) => typeof station.probe_available === "boolean"),
     [stations],
   );
-
-  // Only stations with detector coverage can be probed; contextual-only
-  // stations would dead-end, so they are surfaced separately instead. When the
-  // backend does not report the flag, the readiness endpoint is the remaining
-  // authoritative signal for whether interactive inference can run.
+  // Legacy fallback: a backend without the per-station flag can still confirm
+  // interactive inference through the readiness endpoint.
   const fallbackStationId =
     !capabilityReported && readinessQuery.data?.probe_available
       ? (readinessQuery.data.default_station ?? null)
       : null;
-  const probeableStations = useMemo(() => {
-    if (capabilityReported) {
-      return stations.filter((station) => station.probe_available === true);
-    }
-    if (fallbackStationId) {
-      return stations.filter((station) => station.station_id === fallbackStationId);
-    }
-    return [];
-  }, [stations, capabilityReported, fallbackStationId]);
-  const usingReadinessFallback = !capabilityReported && probeableStations.length > 0;
-  const contextualOnlyCount = capabilityReported ? stations.length - probeableStations.length : 0;
-  // Confirmed dead end only when the backend itself reports zero coverage.
-  const coverageConfirmedEmpty =
-    !stationsQuery.isPending &&
-    !stationsQuery.isError &&
-    capabilityReported &&
-    probeableStations.length === 0;
-  const capabilityUnknown =
-    !stationsQuery.isPending &&
-    !stationsQuery.isError &&
-    !capabilityReported &&
-    probeableStations.length === 0;
+  const probeCapabilityKnown = capabilityReported || fallbackStationId !== null;
+
+  /**
+   * Interactive-probe capability, read from the backend flag only — never from
+   * a hardcoded station list. The probe executes the frozen ensemble; stations
+   * covered solely by a calibrated station-specific detector are listed with
+   * their real metadata and are scored during historical replay, so their Run
+   * control is gated instead of dead-ending in a 422.
+   */
+  const probeRunnable = useCallback(
+    (station: StationSummary | undefined): boolean => {
+      if (!station) return false;
+      if (station.probe_available === true) return true;
+      return !capabilityReported && station.station_id === fallbackStationId;
+    },
+    [capabilityReported, fallbackStationId],
+  );
+  const runnableStations = useMemo(
+    () => stations.filter((station) => probeRunnable(station)),
+    [stations, probeRunnable],
+  );
+  const calibratedCount = useMemo(
+    () => stations.filter((station) => hasCalibratedDetector(station)).length,
+    [stations],
+  );
+  const contextOnlyCount = Math.max(0, stations.length - runnableStations.length - calibratedCount);
   const probe = useProbeObservation();
 
   const [stationId, setStationId] = useState<string>("");
@@ -144,28 +161,28 @@ function JudgeProbePage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const selected = useMemo(
-    () => probeableStations.find((station) => station.station_id === stationId),
-    [probeableStations, stationId],
+    () => stations.find((station) => station.station_id === stationId) ?? null,
+    [stations, stationId],
   );
+  const selectedRunnable = probeRunnable(selected ?? undefined);
 
   useEffect(() => {
-    if (stationId === "" && probeableStations.length > 0) {
-      const preferred =
-        probeableStations.find((station) => station.station_id === "DEL-01") ??
-        probeableStations[0];
-      if (preferred) {
-        setStationId(preferred.station_id);
-        setTemperature(toNumberInput(preferred.temperature));
-        setHumidity(toNumberInput(preferred.humidity));
-        setPressure(toNumberInput(preferred.pressure));
-      }
-    }
-  }, [probeableStations, stationId]);
+    if (stationId !== "" || stations.length === 0) return;
+    // Default to the first station the backend can actually score; otherwise
+    // the first station it lists. No station ID is hardcoded here.
+    const preferred = runnableStations[0] ?? stations[0];
+    if (!preferred) return;
+    setStationId(preferred.station_id);
+    setTemperature(toNumberInput(preferred.temperature));
+    setHumidity(toNumberInput(preferred.humidity));
+    setPressure(toNumberInput(preferred.pressure));
+  }, [stations, runnableStations, stationId]);
 
-  const prefill = (id: string) => {
+  /** Selecting a station loads its real latest observation into the form. */
+  const selectStation = (id: string) => {
     setStationId(id);
     setFieldErrors({});
-    const row = probeableStations.find((station) => station.station_id === id);
+    const row = stations.find((station) => station.station_id === id);
     if (row) {
       setTemperature(toNumberInput(row.temperature));
       setHumidity(toNumberInput(row.humidity));
@@ -178,21 +195,23 @@ function JudgeProbePage() {
    * backend. Values are scripted inputs, so they are labelled CONTROLLED.
    */
   const applyScenario = (kind: "normal" | "spike") => {
-    const row = probeableStations.find((station) => station.station_id === stationId) ?? selected;
-    if (!row) return;
+    if (!selected) return;
     setFieldErrors({});
-    if (kind === "normal" || row.temperature === null || row.temperature === undefined) {
-      setTemperature(toNumberInput(row.temperature));
-      setHumidity(toNumberInput(row.humidity));
-      setPressure(toNumberInput(row.pressure));
+    if (kind === "normal" || selected.temperature === null || selected.temperature === undefined) {
+      setTemperature(toNumberInput(selected.temperature));
+      setHumidity(toNumberInput(selected.humidity));
+      setPressure(toNumberInput(selected.pressure));
       return;
     }
-    setTemperature(Math.min(row.temperature + 25, 69.9).toFixed(1));
-    setHumidity(toNumberInput(row.humidity));
-    setPressure(toNumberInput(row.pressure));
+    setTemperature(Math.min(selected.temperature + 25, 69.9).toFixed(1));
+    setHumidity(toNumberInput(selected.humidity));
+    setPressure(toNumberInput(selected.pressure));
   };
 
   const submit = () => {
+    // Gated station: never send an observation the backend cannot score, so
+    // the UI can never imply a verdict that will not exist.
+    if (!selectedRunnable) return;
     const errors: FieldErrors = {};
     if (!stationId) errors.station = "Select a station for historical context.";
     const temp = parseField(temperature);
@@ -209,23 +228,56 @@ function JudgeProbePage() {
     probe.mutate({ station_id: stationId, temperature: temp, pressure: pres, humidity: hum });
   };
 
+  // Backend capability metadata for the selected station (real values only).
+  const capability = selected?.capability ?? null;
+  const detectorState = capability?.detector ?? null;
+  const detectorType = cleanText(detectorState?.detector_type);
+  const cadence = detectorState?.cadence ?? null;
+  const pressureBasis = cleanText(capability?.pressure_basis);
+  const qnhPressure = pressureBasis === "altimeter_qnh_hpa";
+  const rhProvenance = cleanText(detectorState?.rh_provenance);
+  const capabilityNotes = selected?.capability_notes ?? [];
+  const historicalWindow = capability
+    ? `${formatCompactCount(capability.observation_count) ?? "0"} observations${
+        capability.start_time && capability.end_time
+          ? ` · ${capability.start_time.slice(0, 10)} → ${capability.end_time.slice(0, 10)}`
+          : ""
+      }`
+    : "Not reported";
+  const latestParts = selected
+    ? [
+        selected.temperature != null ? formatTemp(selected.temperature) : null,
+        selected.humidity != null ? formatHumidity(selected.humidity) : null,
+        selected.pressure != null ? formatPressure(selected.pressure) : null,
+      ].filter((part): part is string => part !== null)
+    : [];
+  const latestObservation = latestParts.length > 0 ? latestParts.join(" · ") : null;
+  const selectedHasDetector = hasCalibratedDetector(selected ?? undefined);
+  const capabilityTone = selectedRunnable
+    ? "bg-success-soft text-success-deep"
+    : selectedHasDetector
+      ? "bg-info-soft text-info"
+      : "bg-muted text-muted-foreground";
+  const capabilityPill = selectedRunnable
+    ? "Interactive probe available"
+    : selectedHasDetector
+      ? "Scored during historical replay"
+      : "No detector coverage";
+
   const scenarios: Array<{
     label: string;
     description: string;
     kind: "normal" | "spike";
-    available: boolean;
   }> = [
     {
       label: "Normal",
       description: "Latest replayed reading for the selected station.",
       kind: "normal",
-      available: true,
     },
     {
       label: "Spike-like",
       description: "Elevated temperature, other variables held at the station reading.",
       kind: "spike",
-      available: true,
     },
   ];
 
@@ -238,37 +290,13 @@ function JudgeProbePage() {
           onRetry={() => stationsQuery.refetch()}
         />
       )}
-      {coverageConfirmedEmpty && (
+      {!stationsQuery.isPending && !stationsQuery.isError && stations.length === 0 && (
         <EmptyState
-          title="No stations currently have interactive detector coverage."
-          message="The backend reports detector coverage for zero stations. Contextual-only stations still appear on the network map."
+          title="No stations reported by the backend."
+          message="GET /api/v1/stations returned an empty registry, so no observation can be contextualised. This is not a claim about the network — restart the backend on the current build and retry."
         />
       )}
-      {capabilityUnknown &&
-        (readinessQuery.isPending ? (
-          <LoadingState message="Checking interactive probe capability…" />
-        ) : (
-          <section className="panel p-4" aria-label="Probe capability unknown">
-            <p className="text-xs font-extrabold">Probe capability could not be confirmed</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              This backend did not report per-station detector coverage, and the readiness check did
-              not confirm a probe station. This is not a statement that no station has coverage —
-              restart the backend on the current build and retry.
-            </p>
-            <Button
-              className="mt-2"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                stationsQuery.refetch();
-                readinessQuery.refetch();
-              }}
-            >
-              Retry
-            </Button>
-          </section>
-        ))}
-      {!stationsQuery.isPending && !stationsQuery.isError && probeableStations.length > 0 && (
+      {!stationsQuery.isPending && !stationsQuery.isError && stations.length > 0 && (
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <section className="panel p-4" aria-label="Probe input">
             <div className="flex items-center justify-between gap-2">
@@ -281,25 +309,35 @@ function JudgeProbePage() {
               )}
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Pick a station, enter Temperature, Pressure and Relative Humidity, then let SkyGuard
-              score the observation through the same pipeline used for operational alerts.
+              Pick any station the backend exposes, review its real detector coverage, then enter
+              Temperature, Pressure and Relative Humidity. Run SkyGuard sends the observation to the
+              backend and renders the backend&apos;s own verdict.
             </p>
 
             <div className="mt-3 space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="probe-station">1. Station</Label>
-                <Select value={stationId} onValueChange={prefill}>
+                <Select value={stationId} onValueChange={selectStation}>
                   <SelectTrigger
                     id="probe-station"
                     aria-label="Station"
                     className={cn(fieldErrors.station && "border-anomaly")}
                   >
-                    <SelectValue placeholder="Select station" />
+                    <SelectValue
+                      placeholder={
+                        stations.length === 0 ? "No stations reported" : "Select station"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {probeableStations.map((station) => (
+                    {stations.map((station) => (
                       <SelectItem key={station.station_id} value={station.station_id}>
-                        {station.station_id} · {station.city} · {formatTemp(station.temperature)}
+                        {station.station_id} · {station.city}
+                        {probeRunnable(station)
+                          ? " · probe available"
+                          : hasCalibratedDetector(station)
+                            ? " · detector via replay"
+                            : " · context only"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -309,21 +347,121 @@ function JudgeProbePage() {
                     {fieldErrors.station}
                   </p>
                 )}
-                {contextualOnlyCount > 0 && (
+                {calibratedCount > 0 && (
                   <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
                     <Info className="mt-0.5 size-3 shrink-0" />
-                    {contextualOnlyCount} other Indian station(s) carry historical context
-                    observations only — no detector covers them, so they are not probeable.
+                    {calibratedCount} station(s) are scored by their own calibrated station-specific
+                    detector during historical replay
+                    {contextOnlyCount > 0
+                      ? `, and ${contextOnlyCount} carry historical context observations only (no detector)`
+                      : ""}
+                    . The interactive probe runs the frozen ensemble, so only the{" "}
+                    {runnableStations.length} station(s) it covers can be run here.
                   </p>
                 )}
-                {usingReadinessFallback && (
-                  <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
+                {!probeCapabilityKnown && (
+                  <p
+                    className="flex items-start gap-1 text-[10px] text-muted-foreground"
+                    role="status"
+                  >
                     <Info className="mt-0.5 size-3 shrink-0" />
-                    This backend does not report per-station coverage; the readiness check confirms
-                    that interactive inference can run.
+                    This backend did not report interactive probe capability, so no station can be
+                    run until it is confirmed.{" "}
+                    <button
+                      type="button"
+                      className="font-bold text-info hover:underline"
+                      onClick={() => {
+                        stationsQuery.refetch();
+                        readinessQuery.refetch();
+                      }}
+                    >
+                      Retry
+                    </button>
                   </p>
                 )}
               </div>
+
+              {selected && (
+                <div
+                  className="rounded-xl border border-border p-2.5"
+                  aria-label="Selected station capability"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">
+                      Station capability
+                    </p>
+                    <span className={cn("status-pill text-[9px]", capabilityTone)}>
+                      <span className="status-dot" />
+                      {capabilityPill}
+                    </span>
+                  </div>
+                  <div className="mt-1 divide-y divide-border">
+                    <FactRow
+                      label="Detector coverage"
+                      value={formatDisplayTerm(capability?.detector_capability, "Not reported")}
+                    />
+                    {detectorType && <FactRow label="Detector" value={detectorType} />}
+                    <FactRow
+                      label="Data source"
+                      value={capability?.data_source ?? "Not reported"}
+                    />
+                    {cadence != null && (
+                      <FactRow
+                        label="Cadence"
+                        value={`${cadence % 1 === 0 ? cadence.toFixed(0) : cadence.toFixed(1)} min`}
+                      />
+                    )}
+                    <FactRow label="Historical data" value={historicalWindow} />
+                    <FactRow
+                      label="Pressure basis"
+                      value={formatDisplayTerm(capability?.pressure_basis, "Not reported")}
+                    />
+                    {rhProvenance && (
+                      <FactRow label="RH provenance" value={formatDisplayTerm(rhProvenance)} />
+                    )}
+                    {latestObservation && (
+                      <FactRow label="Latest observation" value={latestObservation} />
+                    )}
+                  </div>
+                  {capabilityNotes.length > 0 && (
+                    <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[10px] leading-snug text-muted-foreground">
+                      {capabilityNotes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {selected && !selectedRunnable && (
+                <div className="rounded-xl border border-border bg-muted/50 p-2.5" role="status">
+                  <p className="text-[11px] font-extrabold">
+                    Interactive probe is not available for {selected.station_id}
+                  </p>{" "}
+                  <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+                    {selectedHasDetector ? (
+                      <>
+                        {detectorType ? `${detectorType} · ` : ""}
+                        this station&apos;s calibrated detector runs on its own real history during
+                        historical replay; the frozen ensemble the probe executes does not cover it,
+                        so a single observation cannot be scored here.{" "}
+                        <Link to="/" className="font-bold text-info hover:underline">
+                          Open Historical Replay →
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        No detector covers this station — it carries real historical context
+                        observations only, so neither the interactive probe nor historical replay
+                        produces a station-level verdict for it.{" "}
+                        <Link to="/network-health" className="font-bold text-info hover:underline">
+                          View it on the network map →
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="space-y-1.5">
@@ -346,7 +484,9 @@ function JudgeProbePage() {
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="probe-pressure">3. Pressure (hPa)</Label>
+                  <Label htmlFor="probe-pressure">
+                    {qnhPressure ? "3. Pressure (hPa · QNH altimeter)" : "3. Pressure (hPa)"}
+                  </Label>
                   <Input
                     id="probe-pressure"
                     inputMode="decimal"
@@ -358,6 +498,12 @@ function JudgeProbePage() {
                     }}
                     className={cn(fieldErrors.pressure && "border-anomaly")}
                   />
+                  {qnhPressure && (
+                    <p className="text-[10px] leading-snug text-muted-foreground">
+                      {formatDisplayTerm(pressureBasis)} — carried as the backend reports it, never
+                      relabelled as station pressure.
+                    </p>
+                  )}
                   {fieldErrors.pressure && (
                     <p className="text-[10px] font-semibold text-anomaly-deep" role="alert">
                       {fieldErrors.pressure}
@@ -385,10 +531,26 @@ function JudgeProbePage() {
                 </div>
               </div>
 
-              <Button size="sm" onClick={submit} disabled={probe.isPending}>
-                <FlaskConical />
-                {probe.isPending ? "Running SkyGuard…" : "5. Run SkyGuard"}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={submit}
+                  disabled={probe.isPending || !selectedRunnable}
+                  title={
+                    selectedRunnable
+                      ? undefined
+                      : "The interactive probe runs the frozen ensemble, which does not cover this station."
+                  }
+                >
+                  <FlaskConical />
+                  {probe.isPending ? "Running SkyGuard…" : "5. Run SkyGuard"}
+                </Button>
+                {selected && !selectedRunnable && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Gated: {selected.station_id} is evaluated during historical replay.
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-4 rounded-xl border border-border p-3" aria-label="Demo scenarios">
@@ -456,8 +618,9 @@ function JudgeProbePage() {
             )}
             {!probe.isPending && !probe.isError && !probe.data && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Configure an observation and run the analysis. The result is generated by the
-                backend through the frozen inference pipeline.
+                {selected && !selectedRunnable
+                  ? `${selected.station_id} is not scored by the interactive probe — its calibrated station-specific detector runs during historical replay, so no probe verdict exists for this station.`
+                  : "Configure an observation and run the analysis. The result is generated by the backend through the frozen inference pipeline."}
               </p>
             )}
             {!probe.isPending && probe.data && <ProbeResultView result={probe.data} />}
@@ -586,7 +749,41 @@ function ProbeResultView({ result }: { result: ProbeResponse }) {
         <p className="mt-1.5 text-[10px] text-muted-foreground">
           Method {result.result.method} · {availabilityLabel(result.result.availability)}
         </p>
+        {result.result.confidence_basis ? (
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            Confidence basis: {result.result.confidence_basis}
+          </p>
+        ) : null}
       </div>
+
+      {/* Fields are rendered only when the backend actually sent them. The
+          frozen ensemble path reports its detector label and severity; the
+          calibrated station detectors additionally report contributing
+          factors. Nothing here is inferred. */}
+      {result.detector ||
+      result.severity ||
+      result.primary_reason ||
+      (result.contributing_factors?.length ?? 0) > 0 ? (
+        <div className="rounded-xl border border-border p-2.5">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.06em]">
+            Detector evidence
+          </p>
+          <div className="mt-1 divide-y divide-border">
+            {result.detector ? <FactRow label="Detector" value={result.detector} /> : null}
+            {result.severity ? <FactRow label="Severity" value={result.severity} /> : null}
+            {result.primary_reason ? (
+              <FactRow label="Primary reason" value={result.primary_reason} />
+            ) : null}
+          </div>
+          {(result.contributing_factors?.length ?? 0) > 0 ? (
+            <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">
+              {result.contributing_factors?.map((factor) => (
+                <li key={factor}>{factor}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-3 gap-1.5">
         <DetailStat
@@ -728,8 +925,8 @@ function ProbeResultView({ result }: { result: ProbeResponse }) {
           </div>
         ) : (
           <p className="mt-1.5 text-[11px] text-muted-foreground">
-            Seasonal reference unavailable for this observation — descriptive history only,
-            never a substitute for detection.
+            Seasonal reference unavailable for this observation — descriptive history only, never a
+            substitute for detection.
           </p>
         )}
       </div>

@@ -1,0 +1,46 @@
+{
+  "detector_type": "Statistical Baseline",
+  "detector_method": "statistical",
+  "station_id": "JAI-02",
+  "backend_station_id": "INI0000VIJP",
+  "city": "Jaipur",
+  "cadence_min": 30.0,
+  "pressure_semantics": "altimeter_qnh_hpa",
+  "pressure_column": "altimeter_setting_hpa",
+  "rh_provenance": "REPORTED (provider file; measured-vs-calculated not verifiable)",
+  "data_mode": "HISTORICAL",
+  "train_start": "2023-01-05 00:00:00",
+  "train_end": "2023-02-15 00:00:00",
+  "train_rows": 1951,
+  "z_threshold": 3.0,
+  "iqr_factor": 1.5,
+  "reference_distribution": {
+    "temperature_c": {
+      "median": 16.0,
+      "mad": 3.0,
+      "n": 1951,
+      "min": 4.0,
+      "max": 30.0
+    },
+    "pressure_hpa": {
+      "median": 1017.0,
+      "mad": 2.0,
+      "n": 1951,
+      "min": 1010.0,
+      "max": 1027.0
+    },
+    "relative_humidity_pct": {
+      "median": 60.0,
+      "mad": 19.0,
+      "n": 1951,
+      "min": 11.0,
+      "max": 100.0
+    }
+  },
+  "dq_profile": {
+    "PASS": 1888,
+    "POSSIBLE_FREEZE": 49,
+    "COMMUNICATION_GAP": 14
+  },
+  "rules": "frozen z=3.0 / Tukey IQR=1.5 on causal station-specific rolling context; thresholds unchanged from Delhi baseline"
+}

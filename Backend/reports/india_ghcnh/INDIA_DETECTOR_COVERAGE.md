@@ -17,8 +17,26 @@ City | Station | T | P | RH | Joint coverage | Detector | Status
 "Detector" here means validated statistical-baseline response on real
 station data (Mumbai measured; peers share the pipeline path). No city
 is FULL_TPR: station-level pressure is absent and Delhi calibration
-does not transfer. IF/LSTM/RC remain Delhi-only. OOD evaluation of new
-models and replay wiring are deferred future work, stated openly.
+does not transfer. IF/LSTM/RC remain Delhi-only.
+
+## Status after MVP integration (2026-09-30)
+
+- Calibration is persisted per station and enumerated once, in
+  `data/detectors/registry.json` (+ `data/detectors/statistical/<station>.json`),
+  written by `python -m src.detection.calibrate`. Registry entries expose
+  `station_id`, `city`, `capability`, `detector_available`, `detector_type`,
+  `cadence`, `pressure_semantics`, `rh_provenance`, `data_mode`.
+- Replay serves these stations: `ReplaySession` selects a station's real
+  GHCNh history, scores it with that station's calibrated detector, emits
+  OBSERVATION / ANOMALY_DETECTED / REPLAY_COMPLETE events, and persists
+  anomalies to the replay alert store. See
+  `docs`-level summary in `MVP_INTEGRATION_STATUS.md`.
+- The station API reports the registry state (`capability.detector`) and
+  promotes calibrated stations from CONTEXT_ONLY to PARTIAL; the 3
+  uncalibrated GHCNh stations (Safdarjung, Guwahati,
+  Thiruvananthapuram) remain CONTEXT_ONLY.
+- Controlled demo metrics and the measured background flag rate are in
+  `<city>_controlled_demo.json`; the frozen z/IQR rules were not changed.
 
 Spatial context: Mumbai spike vs compatible neighbors discriminates
 (CONTRADICTED, score 32.2) while normal reads agree (SUPPORTED, 0.25)

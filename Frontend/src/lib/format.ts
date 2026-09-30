@@ -72,19 +72,27 @@ export function formatDateTime(iso: string | null | undefined): string {
   });
 }
 
-/** Presentation-only labels for backend enums and data_mode values. */
+/**
+ * Presentation-only labels for backend enums, data_mode and provenance
+ * values. The underlying backend value is never altered — only its display
+ * form. Unknown values fall through unchanged.
+ */
 const DISPLAY_TERMS: Record<string, string> = {
   historical_replay: "Historical Replay",
+  historical: "Historical data",
   full_tpr: "Full T/P/RH Detection",
-  partial: "Partial Detection",
-  context_only: "Context Only",
+  partial: "Partial T/P/RH coverage",
+  context_only: "Context Only (no detector verdict)",
   unavailable: "Data Unavailable",
+  // Pressure basis (never silently conflated across stations).
+  altimeter_qnh_hpa: "QNH altimeter (sea-level reduced — not station pressure)",
+  station_level_hpa: "Station-level pressure",
+  // Provider provenance for relative humidity.
+  "reported (provider file; measured-vs-calculated not verifiable)":
+    "Reported in the provider file — measured vs calculated is not verifiable",
 };
 
-export function formatDisplayTerm(
-  value: string | null | undefined,
-  fallback = "—",
-): string {
+export function formatDisplayTerm(value: string | null | undefined, fallback = "—"): string {
   if (value === null || value === undefined || value.trim() === "") return fallback;
   const key = value.trim();
   return DISPLAY_TERMS[key] ?? DISPLAY_TERMS[key.toLowerCase()] ?? key;

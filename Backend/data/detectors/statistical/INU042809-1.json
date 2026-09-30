@@ -1,0 +1,47 @@
+{
+  "detector_type": "Statistical Baseline",
+  "detector_method": "statistical",
+  "station_id": "KOL-02",
+  "backend_station_id": "INU042809-1",
+  "city": "Kolkata",
+  "cadence_min": 30.0,
+  "pressure_semantics": "altimeter_qnh_hpa",
+  "pressure_column": "altimeter_setting_hpa",
+  "rh_provenance": "REPORTED (provider file; measured-vs-calculated not verifiable)",
+  "data_mode": "HISTORICAL",
+  "train_start": "2023-01-05 00:00:00",
+  "train_end": "2023-02-15 00:00:00",
+  "train_rows": 1967,
+  "z_threshold": 3.0,
+  "iqr_factor": 1.5,
+  "reference_distribution": {
+    "temperature_c": {
+      "median": 22.0,
+      "mad": 3.0,
+      "n": 1967,
+      "min": 12.0,
+      "max": 34.0
+    },
+    "pressure_hpa": {
+      "median": 1013.0,
+      "mad": 2.0,
+      "n": 1928,
+      "min": 1008.0,
+      "max": 1021.0
+    },
+    "relative_humidity_pct": {
+      "median": 70.0,
+      "mad": 13.0,
+      "n": 1967,
+      "min": 15.0,
+      "max": 100.0
+    }
+  },
+  "dq_profile": {
+    "PASS": 1886,
+    "DATA_AVAILABILITY_EVENT": 39,
+    "POSSIBLE_FREEZE": 33,
+    "COMMUNICATION_GAP": 9
+  },
+  "rules": "frozen z=3.0 / Tukey IQR=1.5 on causal station-specific rolling context; thresholds unchanged from Delhi baseline"
+}

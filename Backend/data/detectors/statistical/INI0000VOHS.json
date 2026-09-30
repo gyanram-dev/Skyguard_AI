@@ -1,0 +1,46 @@
+{
+  "detector_type": "Statistical Baseline",
+  "detector_method": "statistical",
+  "station_id": "HYD-07",
+  "backend_station_id": "INI0000VOHS",
+  "city": "Hyderabad",
+  "cadence_min": 30.0,
+  "pressure_semantics": "altimeter_qnh_hpa",
+  "pressure_column": "altimeter_setting_hpa",
+  "rh_provenance": "REPORTED (provider file; measured-vs-calculated not verifiable)",
+  "data_mode": "HISTORICAL",
+  "train_start": "2023-01-05 00:00:00",
+  "train_end": "2023-02-15 00:00:00",
+  "train_rows": 1921,
+  "z_threshold": 3.0,
+  "iqr_factor": 1.5,
+  "reference_distribution": {
+    "temperature_c": {
+      "median": 22.0,
+      "mad": 4.0,
+      "n": 1921,
+      "min": 10.0,
+      "max": 33.0
+    },
+    "pressure_hpa": {
+      "median": 1016.0,
+      "mad": 1.0,
+      "n": 1921,
+      "min": 1012.0,
+      "max": 1024.0
+    },
+    "relative_humidity_pct": {
+      "median": 59.0,
+      "mad": 19.0,
+      "n": 1921,
+      "min": 15.0,
+      "max": 100.0
+    }
+  },
+  "dq_profile": {
+    "PASS": 1887,
+    "COMMUNICATION_GAP": 26,
+    "POSSIBLE_FREEZE": 8
+  },
+  "rules": "frozen z=3.0 / Tukey IQR=1.5 on causal station-specific rolling context; thresholds unchanged from Delhi baseline"
+}

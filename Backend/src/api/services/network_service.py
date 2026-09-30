@@ -131,4 +131,9 @@ def summarize(store, states: list[dict]) -> dict:
             "context_only_stations": context_only_stations,
             "total_observations": total_observations,
             "live_connected_stations": live_connected_count(),
+            # Task-contract aliases (identical measured values, explicit names).
+            "historical_only": context_only_stations,
+            "full_tpr": full_tpr,
+            "partial": partial,
+            "live_capable": live_capable_station_count(),
             "last_updated": latest}

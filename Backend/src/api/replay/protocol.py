@@ -3,10 +3,16 @@
 Server -> client: connection | replay_state | reading | alert | error | complete
 Client -> server: start | pause | resume | stop | speed
 
-Fixed allowlists only: stations resolve through the station mapping to
-pipeline datasets (delhi/jena); splits to ID/OOD benchmark files; speeds
-and limits to numeric ranges. No filesystem paths, model paths,
-expressions, or commands ever come from the client.
+Fixed allowlists only: stations resolve through the station mapping to a
+frozen pipeline dataset (Delhi) or a calibrated station-specific
+statistical detector (Indian GHCNh stations); splits to ID/OOD benchmark
+files (HISTORICAL for statistical replays); speeds and limits to numeric
+ranges. No filesystem paths, model paths, expressions, or commands ever
+come from the client.
+
+Every server message carries both `type` (the existing frontend contract)
+and `event_type` (the documented replay contract: CONNECTION /
+REPLAY_STATE / OBSERVATION / ANOMALY_DETECTED / REPLAY_COMPLETE / ERROR).
 """
 
 from __future__ import annotations
@@ -16,7 +22,17 @@ DATA_MODE = "historical_replay"
 MIN_SPEED, MAX_SPEED = 1, 3600
 MIN_LIMIT, MAX_LIMIT = 1, 5000
 
-VALID_SPLITS = ("ID", "OOD")
+VALID_SPLITS = ("ID", "OOD", "HISTORICAL")
+
+# `type` -> `event_type` (additive alias; values never overlap).
+EVENT_TYPES = {
+    "connection": "CONNECTION",
+    "replay_state": "REPLAY_STATE",
+    "reading": "OBSERVATION",
+    "alert": "ANOMALY_DETECTED",
+    "complete": "REPLAY_COMPLETE",
+    "error": "ERROR",
+}
 
 # Error codes surfaced to the frontend (never stack traces).
 INVALID_COMMAND = "invalid_command"
@@ -40,7 +56,9 @@ class ProtocolError(Exception):
 
 
 def connection_event() -> dict:
-    return {"type": "connection", "status": "connected", "data_mode": DATA_MODE}
+    return {"type": "connection", "event_type": EVENT_TYPES["connection"],
+            "status": "connected", "data_mode": DATA_MODE,
+            "source_mode": "HISTORICAL_REPLAY"}
 
 
 def replay_state_event(status: str, station_id: str | None = None,
@@ -48,8 +66,9 @@ def replay_state_event(status: str, station_id: str | None = None,
                        sequence: int = 0, processed: int = 0,
                        anomalies: int = 0,
                        effective_speed: float | None = None) -> dict:
-    event: dict = {"type": "replay_state", "status": status,
-                   "data_mode": DATA_MODE}
+    event: dict = {"type": "replay_state",
+                   "event_type": EVENT_TYPES["replay_state"],
+                   "status": status, "data_mode": DATA_MODE}
     if station_id is not None:
         event["station_id"] = station_id
     if split is not None:
@@ -63,20 +82,26 @@ def replay_state_event(status: str, station_id: str | None = None,
     return event
 
 
-def error_event(code: str, detail: string) -> dict:
-    return {"type": "error", "code": code, "detail": detail,
-            "data_mode": DATA_MODE}
+def error_event(code: str, detail: str) -> dict:
+    return {"type": "error", "event_type": EVENT_TYPES["error"],
+            "code": code, "detail": detail, "data_mode": DATA_MODE}
 
 
 def complete_event(station_id: str, split: str, processed: int,
                    anomalies: int, duration_ms: int,
-                   effective_speed: float | None = None) -> dict:
-    event: dict = {"type": "complete", "station_id": station_id,
+                   effective_speed: float | None = None,
+                   alerts_recorded: int | None = None) -> dict:
+    event: dict = {"type": "complete",
+                   "event_type": EVENT_TYPES["complete"],
+                   "station_id": station_id,
                    "split": split, "processed": processed,
                    "anomalies": anomalies, "duration_ms": duration_ms,
+                   "source_mode": "HISTORICAL_REPLAY",
                    "data_mode": DATA_MODE}
     if effective_speed is not None:
         event["effective_speed"] = effective_speed
+    if alerts_recorded is not None:
+        event["alerts_recorded"] = alerts_recorded
     return event
 
 
@@ -99,8 +124,10 @@ def parse_client_message(raw) -> tuple[str, dict]:
         params["station_id"] = station_id.strip()
         split = str(params.get("split", "OOD")).upper()
         if split not in VALID_SPLITS:
-            raise ProtocolError(INVALID_SPLIT,
-                                f"Unknown split '{params.get('split')}' (ID|OOD).")
+            raise ProtocolError(
+                INVALID_SPLIT,
+                f"Unknown split '{params.get('split')}' "
+                f"({'|'.join(VALID_SPLITS)}).")
         params["split"] = split
         params["speed"] = _checked_speed(params.get("speed", 10))
         if "limit" in params and params["limit"] is not None:

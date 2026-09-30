@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DetailStat, EmptyState, FactRow, StatusBadge } from "@/components/common";
 import { HistoryChart, toChartPoints } from "@/components/charts";
 import { EvidenceList, ExplanationBlock, OutcomeBanner } from "@/components/evidence";
-import { normalizeStatus } from "@/lib/api";
+import { normalizeStatus, type EvidenceItem } from "@/lib/api";
 import {
   cleanText,
   formatConfidence,
@@ -16,6 +16,19 @@ import {
   formatTemp,
   formatTime,
 } from "@/lib/format";
+import {
+  alertReason,
+  alertSeverity,
+  readingConfidence,
+  readingContributingFactors,
+  readingDetectorLabel,
+  readingReason,
+  readingSeverity,
+  readingShape,
+  readingSpatial,
+  readingThreshold,
+  severityLabel,
+} from "@/lib/liveView";
 import { useReplaySession } from "@/components/replay/ReplaySessionContext";
 import { useStationHistory } from "@/hooks/useSkyguard";
 import type { LiveAlert, LiveReading } from "@/lib/live";
@@ -104,51 +117,114 @@ function ReplayAnomalyDetail({
   }
 
   const status = normalizeStatus(alert.status, true);
-  const spatial = reading.evidence.spatial;
-  const spatialAvailable = spatial["available"] === true;
-  const multi = reading.evidence.multivariate;
-  const evidence = [
-    {
-      title: "Statistical evidence",
-      detail: `max|z|=${reading.evidence.statistical.raw?.toFixed(2) ?? "—"} (calibrated ${reading.evidence.statistical.calibrated?.toFixed(3) ?? "—"}).`,
-      source: "statistical",
-    },
-    {
-      title: "Isolation Forest evidence",
-      detail: `raw score=${reading.evidence.isolation_forest.raw?.toFixed(3) ?? "—"} (calibrated ${reading.evidence.isolation_forest.calibrated?.toFixed(3) ?? "—"}).`,
-      source: "isolation_forest",
-    },
-    {
-      title: "LSTM reconstruction evidence",
-      detail: `target MSE=${reading.evidence.lstm.raw?.toFixed(3) ?? "—"} (calibrated ${reading.evidence.lstm.calibrated?.toFixed(3) ?? "—"}).`,
-      source: "lstm",
-    },
-    {
-      title: "Ensemble decision",
-      detail: `score=${reading.anomaly.score?.toFixed(3) ?? "—"} vs threshold ${reading.anomaly.threshold?.toFixed(3) ?? "—"}; availability=${reading.anomaly.availability}.`,
-      source: "ensemble",
-    },
-    {
-      title: "Multivariate evidence",
-      detail:
-        typeof multi["multivariate_max_abs_robust_deviation_2h"] === "number"
-          ? `max robust deviation=${(multi["multivariate_max_abs_robust_deviation_2h"] as number).toFixed(2)}.`
-          : "Multivariate context unavailable for this event.",
-      source: "multivariate",
-    },
-    {
-      title: "Spatial evidence",
-      detail: spatialAvailable
-        ? `Reference median ${typeof spatial["reference_median"] === "number" ? `${(spatial["reference_median"] as number).toFixed(1)}°C` : "—"} (${String(spatial["neighbor_count"] ?? "—")} neighbors, ${String(spatial["context"] ?? "—")}).`
-        : "Spatial context unavailable — no neighbor values invented.",
-      source: "spatial",
-    },
-    {
-      title: "Data-quality evidence",
-      detail: `${reading.data_quality.status}; ML ${reading.data_quality.ml_eligible ? "eligible" : "ineligible"}.`,
-      source: "quality",
-    },
-  ];
+  // Two real detector shapes reach the socket. Read whichever evidence the
+  // backend actually sent; never render a component it did not provide.
+  const shape = readingShape(reading);
+  const reason = readingReason(reading) ?? alertReason(alert);
+  const factors = readingContributingFactors(reading);
+  const spatialView = readingSpatial(reading);
+  const severity = readingSeverity(reading) ?? alertSeverity(alert);
+  const confidence = alert.confidence ?? readingConfidence(reading);
+  const threshold = readingThreshold(reading);
+  const statistical = reading.evidence.statistical ?? null;
+  const isolationForest = reading.evidence.isolation_forest ?? null;
+  const lstmEvidence = reading.evidence.lstm ?? null;
+  const multi = reading.evidence.multivariate ?? {};
+  const spatialDetail = spatialView.available
+    ? [
+        spatialView.referenceMedian !== null
+          ? `Reference median ${spatialView.referenceMedian.toFixed(1)}°C`
+          : null,
+        spatialView.neighborCount !== null
+          ? `${spatialView.neighborCount} compatible neighbour(s)`
+          : null,
+        `context ${spatialView.level}`,
+      ]
+        .filter((part): part is string => part !== null)
+        .join(" · ") + "."
+    : "Spatial context unavailable — no neighbour values invented.";
+  const evidence: EvidenceItem[] =
+    shape === "station-statistical"
+      ? [
+          {
+            title: "Station detector verdict",
+            detail:
+              reason ??
+              "The calibrated station detector flagged this observation without a pattern label.",
+            source: "statistical",
+          },
+          {
+            title: "Detector",
+            detail: `${readingDetectorLabel(reading)} · severity ${severityLabel(severity) ?? "—"}${
+              confidence !== null
+                ? ` · confidence ${formatConfidence(confidence)}`
+                : " · confidence not available"
+            }.`,
+            source: "detector",
+          },
+          {
+            title: "Contributing factors",
+            detail:
+              factors.length > 0
+                ? factors.join(" · ")
+                : "The detector reported no additional contributing factors for this observation.",
+            source: "factors",
+          },
+          {
+            title: "Spatial evidence",
+            detail: spatialDetail,
+            source: "spatial",
+          },
+          {
+            title: "Data-quality evidence",
+            detail: `${reading.data_quality.status}; ML ${reading.data_quality.ml_eligible ? "eligible" : "ineligible"}${
+              cleanText(reading.data_quality.reason) ? ` (${reading.data_quality.reason})` : ""
+            }.`,
+            source: "quality",
+          },
+        ]
+      : [
+          {
+            title: "Statistical evidence",
+            detail: `max|z|=${statistical?.raw?.toFixed(2) ?? "—"} (calibrated ${statistical?.calibrated?.toFixed(3) ?? "—"}).`,
+            source: "statistical",
+          },
+          {
+            title: "Isolation Forest evidence",
+            detail: `raw score=${isolationForest?.raw?.toFixed(3) ?? "—"} (calibrated ${isolationForest?.calibrated?.toFixed(3) ?? "—"}).`,
+            source: "isolation_forest",
+          },
+          {
+            title: "LSTM reconstruction evidence",
+            detail: `target MSE=${lstmEvidence?.raw?.toFixed(3) ?? "—"} (calibrated ${lstmEvidence?.calibrated?.toFixed(3) ?? "—"}).`,
+            source: "lstm",
+          },
+          {
+            title: "Ensemble decision",
+            detail: `score=${reading.anomaly.score?.toFixed(3) ?? "—"} vs threshold ${threshold?.toFixed(3) ?? "—"}; availability=${reading.anomaly.availability ?? "—"}.`,
+            source: "ensemble",
+          },
+          {
+            title: "Multivariate evidence",
+            detail:
+              typeof multi["multivariate_max_abs_robust_deviation_2h"] === "number"
+                ? `max robust deviation=${(multi["multivariate_max_abs_robust_deviation_2h"] as number).toFixed(2)}.`
+                : "Multivariate context unavailable for this event.",
+            source: "multivariate",
+          },
+          {
+            title: "Spatial evidence",
+            detail: spatialDetail,
+            source: "spatial",
+          },
+          {
+            title: "Data-quality evidence",
+            detail: `${reading.data_quality.status}; ML ${reading.data_quality.ml_eligible ? "eligible" : "ineligible"}.`,
+            source: "quality",
+          },
+        ];
+
+  const severityText = severityLabel(severity);
 
   return (
     <>
@@ -173,21 +249,28 @@ function ReplayAnomalyDetail({
 
       <section className="panel p-4" aria-label="Anomaly summary">
         <p className="section-kicker">Anomaly summary</p>
-        <div className="mt-2 grid grid-cols-2 gap-1.5 xl:grid-cols-4">
+        <div className="mt-2 grid grid-cols-2 gap-1.5 xl:grid-cols-5">
           <DetailStat
             label="Anomaly"
-            value={`${formatScore(reading.anomaly.score)} / ${formatScore(reading.anomaly.threshold)} threshold`}
+            value={
+              threshold !== null
+                ? `${formatScore(reading.anomaly.score)} / ${formatScore(threshold)} threshold`
+                : `${formatScore(reading.anomaly.score)} detected`
+            }
             emphasis
             tone="bg-anomaly-soft"
           />
+          {severityText !== null && (
+            <DetailStat label="Severity" value={severityText} tone="bg-anomaly-soft" />
+          )}
           <DetailStat
             label="Confidence"
-            value={formatConfidence(alert.confidence ?? reading.anomaly.confidence)}
+            value={confidence !== null ? formatConfidence(confidence) : "Not available"}
             tone="bg-surface-blue-tint"
           />
           <DetailStat
-            label="Root cause"
-            value={cleanText(alert.root_cause) ?? "Not available"}
+            label={shape === "station-statistical" ? "Primary reason" : "Root cause"}
+            value={reason ?? "Not available"}
             tone="bg-surface-blue-tint"
           />
           <DetailStat
@@ -234,15 +317,18 @@ function ReplayAnomalyDetail({
       </section>
 
       <section className="panel p-4" aria-label="Root cause">
-        <p className="section-kicker">Root cause</p>
+        <p className="section-kicker">
+          {shape === "station-statistical" ? "Detection reason" : "Root cause"}
+        </p>
         <p className="mt-2 text-[12px] leading-snug">
-          <strong className="text-foreground">
-            {cleanText(alert.root_cause) ?? "Not available"}
-          </strong>
-          {alert.confidence !== null && alert.confidence !== undefined && (
+          <strong className="text-foreground">{reason ?? "Not available"}</strong>
+          {severityText !== null && (
+            <span className="text-muted-foreground"> · severity {severityText}</span>
+          )}
+          {confidence !== null && (
             <span className="text-muted-foreground">
               {" "}
-              · {formatConfidence(alert.confidence)} confidence
+              · {formatConfidence(confidence)} confidence
             </span>
           )}
           {cleanText(reading.root_cause.runner_up) && (
@@ -252,16 +338,28 @@ function ReplayAnomalyDetail({
             </span>
           )}
         </p>
+        {factors.length > 0 && (
+          <ul className="mt-2 list-disc space-y-0.5 pl-5 text-[11px] text-muted-foreground">
+            {factors.map((factor) => (
+              <li key={factor}>{factor}</li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          Detector: {readingDetectorLabel(reading)} · Spatial context {spatialView.level} —{" "}
+          {spatialView.label}
+        </p>
         <div className="mt-2">
           <OutcomeBanner
             status={status}
-            outcome={cleanText(alert.root_cause) ?? alert.event}
+            outcome={reason ?? alert.event}
             message={
               cleanText(reading.explanation.text) ??
               "Streamed replay event assessed by the frozen pipeline."
             }
-            rootCauseConfidence={alert.confidence ?? reading.root_cause.confidence}
-            ensembleMethod={reading.anomaly.method}
+            rootCauseConfidence={confidence}
+            ensembleMethod={shape === "ensemble" ? reading.anomaly.method : null}
+            anomalyScore={shape === "ensemble" ? reading.anomaly.score : null}
           />
         </div>
       </section>

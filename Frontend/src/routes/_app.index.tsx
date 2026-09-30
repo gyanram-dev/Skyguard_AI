@@ -22,19 +22,20 @@ import { ResponsiveContainer } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { StatusBadge, DetailStat, FactRow } from "@/components/common";
+import { StatusBadge, FactRow } from "@/components/common";
 import { SensorSpark } from "@/components/charts";
-import { ReplayControls } from "@/components/replay/ReplayControls";
-import { LiveEventFeed } from "@/components/replay/LiveEventFeed";
-import { ReplayIntelligence } from "@/components/replay/ReplayIntelligence";
+import { ReplayStage } from "@/components/replay/ReplayStage";
 import { useReplaySession } from "@/components/replay/ReplaySessionContext";
 import type { LiveReading } from "@/lib/live";
-import { normalizeStatus, type AlertSummary, type StationDetailResponse } from "@/lib/api";
+import {
+  hasDetectorCoverage,
+  normalizeStatus,
+  type AlertSummary,
+  type StationDetailResponse,
+} from "@/lib/api";
 import {
   errorMessage,
-  cleanText,
   formatCompactCount,
-  formatConfidence,
   formatDisplayTerm,
   formatHumidity,
   formatPressure,
@@ -127,10 +128,18 @@ function LiveOverview() {
     [liveSummaries],
   );
 
-  // Historical replay is limited to the deployed Indian detector station.
+  // Historical replay is offered for every station the backend reports a
+  // detector for: the frozen ensemble (Delhi) plus each calibrated
+  // station-specific statistical detector. Coverage is read from the API
+  // response, never hardcoded here.
   const replayStations = useMemo(() => {
-    const delhi = mergedStations.find((station) => station.id === "DEL-01");
-    return [{ id: "DEL-01", city: delhi?.city ?? "New Delhi" }];
+    const covered = mergedStations.filter((station) => hasDetectorCoverage(station.api));
+    return covered.map((station) => ({
+      id: station.id,
+      city: station.city,
+      statistical: station.api?.capability?.detector?.detector_available === true,
+      api: station.api,
+    }));
   }, [mergedStations]);
 
   const liveStations = useMemo<(MergedStation & { live?: LiveReading })[]>(
@@ -148,7 +157,9 @@ function LiveOverview() {
               : ("review" as const)
             : reading.data_quality.ml_eligible
               ? station.status
-              : ("offline" as const),
+              : // A historical observation that fails data-quality checks is
+                // not "offline" — it needs review before any verdict.
+                ("review" as const),
           temperature: formatTemp(reading.observations.temperature_c),
           live: reading,
         };
@@ -163,17 +174,6 @@ function LiveOverview() {
 
   const selectedLive =
     liveActive && selectedStationId ? (live.latestByStation[selectedStationId] ?? null) : null;
-
-  const latestLiveAlertId = useMemo(() => {
-    if (!liveActive || live.recentReadings.length === 0) return null;
-    const latest = live.recentReadings[live.recentReadings.length - 1];
-    if (!latest?.anomaly.detected) return null;
-    return (
-      live.liveAlerts.find(
-        (alert) => alert.station_id === latest.station_id && alert.sequence === latest.sequence,
-      )?.alert_id ?? null
-    );
-  }, [live.recentReadings, live.liveAlerts, liveActive]);
 
   const liveSeries = useMemo(() => {
     const rows = live.recentReadings.filter((row) => row.station_id === selectedStationId);
@@ -192,11 +192,6 @@ function LiveOverview() {
       if (first) setSelectedAlertId(first.alert_id);
     }
   }, [alerts, selectedAlertId]);
-
-  const selectedAlert = useMemo(
-    () => alerts.find((alert) => alert.alert_id === selectedAlertId) ?? null,
-    [alerts, selectedAlertId],
-  );
 
   // Station detail is only requested for stations that actually have backend
   // data; offline/unmapped stations (AMD-06, HYD-07) render an unavailable
@@ -276,43 +271,7 @@ function LiveOverview() {
         stationLabel={selectedStation ? `${selectedStation.id} · ${selectedStation.city}` : null}
       />
 
-      <section className="panel shrink-0 p-4" aria-label="Historical replay">
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <div>
-            <p className="section-kicker">Historical replay</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Historical observations processed through the real-time detection pipeline.
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <ReplayControls live={live} stations={replayStations} />
-          <div className="min-w-0">
-            <CurrentReplayCard
-              status={live.replay.status}
-              processed={live.replay.processed}
-              split={live.replay.split}
-              latest={live.recentReadings.at(-1) ?? null}
-              alertId={latestLiveAlertId}
-            />
-            <LiveEventFeed readings={live.recentReadings} limit={6} />
-          </div>
-        </div>
-        <div className="mt-2 border-t border-border pt-2">
-          <ReplaySummary
-            status={live.replay.status}
-            observations={live.summary.observations}
-            normal={live.summary.normal}
-            anomalies={live.summary.anomalies}
-          />
-          <ReplayAnomalies
-            status={live.replay.status}
-            alerts={liveSummaries}
-            onReview={(alert) => selectAlert(alert, true)}
-          />
-        </div>
-        <ReplayIntelligence live={live} />
-      </section>
+      <ReplayStage live={live} stations={replayStations} />
 
       <RecentAlerts
         alerts={recentAlerts}
@@ -428,6 +387,15 @@ function NetworkMetricStrip({
     return count.toLocaleString();
   };
   const stations = summary?.indian_operational_monitored;
+  // Stations a detector actually covers: the frozen full T/P/RH ensemble plus
+  // the calibrated station-specific statistical detectors (PARTIAL). Both are
+  // measured backend counts. `detector_covered` alone counts only stations whose
+  // verdict is available without a replay, which would understate the ten
+  // calibrated stations — a PARTIAL station is detector-covered, not uncovered.
+  const detectorCoverage =
+    summary?.full_tpr_stations !== undefined && summary?.partial_stations !== undefined
+      ? summary.full_tpr_stations + summary.partial_stations
+      : summary?.detector_covered;
   const cells: Array<{ label: string; value: string; icon: typeof Radio; tone: string }> = [
     { label: "Indian stations", value: exact(stations), icon: Radio, tone: "text-[#20D7F5]" },
     {
@@ -438,7 +406,7 @@ function NetworkMetricStrip({
     },
     {
       label: "Detector coverage",
-      value: `${exact(summary?.detector_covered)} / ${exact(stations)}`,
+      value: `${exact(detectorCoverage)} / ${exact(stations)}`,
       icon: ShieldAlert,
       tone: "text-[#F4B400]",
     },
@@ -750,228 +718,6 @@ function RealWeatherOrFault({
   );
 }
 
-function ReplaySummary({
-  status,
-  observations,
-  normal,
-  anomalies,
-}: {
-  status: string;
-  observations: number;
-  normal: number;
-  anomalies: number;
-}) {
-  if (status === "idle") return null;
-  const cells = [
-    { label: "Observations", value: String(observations) },
-    { label: "Normal", value: String(normal) },
-    { label: "Anomalies", value: String(anomalies) },
-  ];
-  return (
-    <div aria-label="Replay summary">
-      <p className="section-kicker">Replay Summary</p>
-      <div className="mt-1 grid grid-cols-3 gap-2">
-        {cells.map((cell) => (
-          <div key={cell.label} className="rounded-xl bg-muted p-2">
-            <p className="text-[9px] font-semibold text-muted-foreground">{cell.label}</p>
-            <p className="text-base font-extrabold leading-tight tabular-nums">{cell.value}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ReplayAnomalies({
-  status,
-  alerts,
-  onReview,
-}: {
-  status: string;
-  alerts: AlertSummary[];
-  onReview: (alert: AlertSummary) => void;
-}) {
-  return (
-    <div className="mt-2" aria-label="Current replay anomalies">
-      <p className="section-kicker">Current Replay Anomalies</p>
-      {alerts.length === 0 ? (
-        <p className="mt-1 text-[10px] text-muted-foreground" role="status">
-          {status === "idle"
-            ? "No replay anomalies yet. Start a historical replay to generate observations."
-            : "No anomalies detected in the observations processed so far."}
-        </p>
-      ) : (
-        <div className="mt-1.5 max-h-[220px] space-y-1.5 overflow-y-auto pr-0.5">
-          {alerts.map((alert) => {
-            const liveStatus = normalizeStatus(alert.status, true);
-            return (
-              <div
-                key={alert.alert_id}
-                role="link"
-                tabIndex={0}
-                aria-label={`Review replay anomaly ${alert.event} at ${alert.station_id}`}
-                onClick={() => onReview(alert)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onReview(alert);
-                  }
-                }}
-                className={cn(
-                  "grid w-full cursor-pointer grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-border bg-card px-2.5 py-2 text-left transition-colors hover:border-primary/30 hover:bg-info-soft/50",
-                )}
-              >
-                <time className="text-[10px] font-semibold text-muted-foreground">
-                  {formatTime(alert.timestamp)}
-                </time>
-                <div className="min-w-0">
-                  <p className="truncate text-[11px] font-extrabold">
-                    {alert.station_id} · {alert.event}{" "}
-                    <span className="ml-1 rounded bg-warning-soft px-1 text-[8px] font-extrabold text-warning-deep">
-                      Replay
-                    </span>
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Score {formatScore(alert.anomaly_score)} · Confidence{" "}
-                    {alert.root_cause_confidence !== null &&
-                    alert.root_cause_confidence !== undefined
-                      ? formatConfidence(alert.root_cause_confidence)
-                      : "Not available"}
-                  </p>
-                </div>
-                <span className="flex items-center gap-1.5">
-                  <StatusBadge status={liveStatus} />
-                  <span className="text-[10px] font-extrabold text-info">Review →</span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CurrentReplayCard({
-  status,
-  processed,
-  split,
-  latest,
-  alertId,
-}: {
-  status: string;
-  processed: number;
-  split: string | null;
-  latest: LiveReading | null;
-  alertId: string | null;
-}) {
-  const navigate = useNavigate();
-  return (
-    <aside className="panel min-h-0 overflow-y-auto p-3.5" aria-label="Current replay">
-      <p className="section-kicker">Current Replay</p>
-      {!latest ? (
-        <>
-          <h2 className="mt-0.5 text-sm font-extrabold">
-            {status === "running" ? "Replay starting" :
-              status === "preparing" ? "Preparing replay" :
-                status === "paused" ? "Replay paused" :
-                  status === "completed" ? "Replay complete" : "Replay ready"}
-          </h2>
-          <p className="mt-2 text-[10px] text-muted-foreground" role="status">
-            {status === "running" && processed === 0
-              ? "Historical replay is running and waiting for its first observation (0 processed)."
-              : status === "paused"
-                ? `Replay paused · ${processed} observations processed.`
-                : status === "completed"
-                  ? `Replay complete · ${processed} observations processed.`
-                  : "No replay observations yet. Start a historical replay to generate observations."}
-          </p>
-        </>
-      ) : (
-        <>
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h2 className="mt-0.5 text-sm font-extrabold">
-                {latest.station_id} · {latest.city}
-              </h2>
-              <p className="text-[10px] text-muted-foreground">
-                Historical Replay · {split ?? "—"} · {formatTime(latest.timestamp)}
-              </p>
-            </div>
-            <StatusBadge
-              status={
-                latest.anomaly.detected
-                  ? latest.root_cause.class && latest.root_cause.class !== "UNKNOWN"
-                    ? "anomaly"
-                    : "review"
-                  : latest.data_quality.ml_eligible
-                    ? "healthy"
-                    : "offline"
-              }
-            />
-          </div>
-          <div className="mt-2.5 grid grid-cols-3 gap-1.5">
-            <DetailStat
-              label="Temperature"
-              value={formatTemp(latest.observations.temperature_c)}
-              emphasis={latest.anomaly.detected}
-              tone={latest.anomaly.detected ? "bg-anomaly-soft" : undefined}
-            />
-            <DetailStat
-              label="Humidity"
-              value={formatHumidity(latest.observations.relative_humidity_pct)}
-              tone="bg-surface-blue-tint"
-            />
-            <DetailStat
-              label="Pressure"
-              value={formatPressure(latest.observations.pressure_hpa)}
-              tone="bg-surface-blue-tint"
-              valueTone="text-info"
-            />
-          </div>
-          <div className="mt-2.5 divide-y divide-border rounded-xl border border-border px-2.5">
-            <FactRow
-              label="Anomaly score"
-              value={`${formatScore(latest.anomaly.score)} / ${formatScore(latest.anomaly.threshold)}`}
-            />
-            <FactRow label="Confidence" value={formatConfidence(latest.anomaly.confidence)} />
-            {latest.anomaly.detected && (
-              <FactRow
-                label="Root cause"
-                value={cleanText(latest.root_cause.class) ?? "Not available"}
-              />
-            )}
-          </div>
-          {!latest.anomaly.detected ? (
-            <p className="mt-2.5 text-[10px] text-muted-foreground" role="status">
-              {latest.data_quality.ml_eligible
-                ? "No investigation required"
-                : `Data quality: ${latest.data_quality.status} — no investigation required`}
-            </p>
-          ) : alertId ? (
-            <Button
-              size="sm"
-              className="mt-2.5 w-full"
-              onClick={() =>
-                navigate({
-                  to: "/investigations/replay/$anomalyId",
-                  params: { anomalyId: alertId },
-                })
-              }
-            >
-              Investigate →
-            </Button>
-          ) : (
-            <p className="mt-2.5 text-[10px] text-muted-foreground" role="status">
-              Alert incoming…
-            </p>
-          )}
-        </>
-      )}
-    </aside>
-  );
-}
-
 function MapLab({
   stations,
   selectedStation,
@@ -1076,7 +822,11 @@ function SelectedStationIntelligence({
         : api?.data_available === false
           ? "Data Unavailable"
           : "Context Only";
-  const noVerdict = capability !== "full-tpr";
+  // Coverage = a detector can produce a verdict (frozen ensemble OR a
+  // calibrated station detector). PARTIAL is partial variable coverage, not
+  // "no detector".
+  const detectorCovered = hasDetectorCoverage(api);
+  const noVerdict = !detectorCovered;
 
   const hasVerdict = detail?.data_quality?.ml_eligible === true;
   const variables = [
@@ -1146,7 +896,7 @@ function SelectedStationIntelligence({
               className="h-[38px] rounded-lg border-border bg-transparent px-4 text-[13px] text-foreground"
             >
               <Link to="/stations/$stationId" params={{ stationId: station.id }}>
-                Station detail
+                Investigate
                 <ArrowRight className="size-4 text-[#20D7F5]" />
               </Link>
             </Button>
@@ -1203,7 +953,9 @@ function SelectedStationIntelligence({
                     ? "Anomalous"
                     : noVerdict
                       ? "No detector verdict available for this station."
-                      : "No active anomaly."}
+                      : capability === "full-tpr"
+                        ? "No active anomaly."
+                        : "Calibrated station detector · verdicts are produced during historical replay."}
             </p>
           </div>
         </div>

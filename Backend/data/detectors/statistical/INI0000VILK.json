@@ -1,0 +1,47 @@
+{
+  "detector_type": "Statistical Baseline",
+  "detector_method": "statistical",
+  "station_id": "LUCK-04",
+  "backend_station_id": "INI0000VILK",
+  "city": "Lucknow",
+  "cadence_min": 30.0,
+  "pressure_semantics": "altimeter_qnh_hpa",
+  "pressure_column": "altimeter_setting_hpa",
+  "rh_provenance": "REPORTED (provider file; measured-vs-calculated not verifiable)",
+  "data_mode": "HISTORICAL",
+  "train_start": "2023-01-05 00:00:00",
+  "train_end": "2023-02-15 00:00:00",
+  "train_rows": 1877,
+  "z_threshold": 3.0,
+  "iqr_factor": 1.5,
+  "reference_distribution": {
+    "temperature_c": {
+      "median": 15.0,
+      "mad": 4.0,
+      "n": 1876,
+      "min": 4.0,
+      "max": 30.2
+    },
+    "pressure_hpa": {
+      "median": 1015.0,
+      "mad": 2.0,
+      "n": 1861,
+      "min": 1008.0,
+      "max": 1026.0
+    },
+    "relative_humidity_pct": {
+      "median": 88.0,
+      "mad": 6.0,
+      "n": 1874,
+      "min": 21.0,
+      "max": 100.0
+    }
+  },
+  "dq_profile": {
+    "PASS": 1736,
+    "COMMUNICATION_GAP": 77,
+    "POSSIBLE_FREEZE": 48,
+    "DATA_AVAILABILITY_EVENT": 16
+  },
+  "rules": "frozen z=3.0 / Tukey IQR=1.5 on causal station-specific rolling context; thresholds unchanged from Delhi baseline"
+}

@@ -1,0 +1,46 @@
+{
+  "detector_type": "Statistical Baseline",
+  "detector_method": "statistical",
+  "station_id": "MUM-03",
+  "backend_station_id": "INI0000VABB",
+  "city": "Mumbai",
+  "cadence_min": 30.0,
+  "pressure_semantics": "altimeter_qnh_hpa",
+  "pressure_column": "altimeter_setting_hpa",
+  "rh_provenance": "REPORTED (provider file; measured-vs-calculated not verifiable)",
+  "data_mode": "HISTORICAL",
+  "train_start": "2023-01-05 00:00:00",
+  "train_end": "2023-02-15 00:00:00",
+  "train_rows": 1946,
+  "z_threshold": 3.0,
+  "iqr_factor": 1.5,
+  "reference_distribution": {
+    "temperature_c": {
+      "median": 26.0,
+      "mad": 3.0,
+      "n": 1946,
+      "min": 15.0,
+      "max": 36.0
+    },
+    "pressure_hpa": {
+      "median": 1013.0,
+      "mad": 1.0,
+      "n": 1946,
+      "min": 1008.0,
+      "max": 1019.0
+    },
+    "relative_humidity_pct": {
+      "median": 50.0,
+      "mad": 12.0,
+      "n": 1946,
+      "min": 12.0,
+      "max": 95.0
+    }
+  },
+  "dq_profile": {
+    "PASS": 1934,
+    "COMMUNICATION_GAP": 11,
+    "POSSIBLE_FREEZE": 1
+  },
+  "rules": "frozen z=3.0 / Tukey IQR=1.5 on causal station-specific rolling context; thresholds unchanged from Delhi baseline"
+}

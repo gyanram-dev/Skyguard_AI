@@ -1,16 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowUpRight, Home } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, FactRow, LoadingState, StatusBadge } from "@/components/common";
 import { HistoryChart, toChartPoints } from "@/components/charts";
+import { FaultDemoPanel, InvestigationPanel } from "@/components/showcase";
+import { StationForensicsPanel } from "@/components/forensics";
 import { normalizeStatus, type HistoryVariable } from "@/lib/api";
 import {
   cleanText,
   errorMessage,
   formatConfidence,
   formatDateTime,
+  formatDisplayTerm,
   formatHumidity,
   formatPressure,
   formatScore,
@@ -31,6 +34,21 @@ const HISTORY_VARIABLES: Array<{ variable: HistoryVariable; label: string }> = [
   { variable: "humidity", label: "Humidity · 24 hours" },
   { variable: "pressure", label: "Pressure · 24 hours" },
 ];
+
+/** Plain-language rendering of the backend signal-health indicator. */
+function signalHealthValue(
+  health: Record<string, string | number | boolean | null> | null | undefined,
+): string {
+  const state = typeof health?.["state"] === "string" ? String(health["state"]) : null;
+  if (!state || state === "UNAVAILABLE") return "Unavailable";
+  const pretty = state.replace(/_/g, " ").toLowerCase();
+  const runs = typeof health?.["freeze_runs"] === "number" ? health["freeze_runs"] : 0;
+  const longest =
+    typeof health?.["longest_run_hours"] === "number" ? health["longest_run_hours"] : null;
+  return longest === null
+    ? `${pretty} · ${runs} confirmed run(s)`
+    : `${pretty} · longest ${longest} h (${runs} run(s))`;
+}
 
 function StationHistoryBlock({
   stationId,
@@ -90,6 +108,9 @@ function StationDetailPage() {
   const navigate = useNavigate();
   const stationsQuery = useStations();
   const alertsQuery = useAlerts(1000);
+  // Event selected on the historical timeline: it anchors the
+  // evidence panel and the investigation hub below.
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
 
   const summaryRow = useMemo(
     () => (stationsQuery.data?.stations ?? []).find((row) => row.station_id === stationId),
@@ -129,7 +150,9 @@ function StationDetailPage() {
   const detail = detailQuery.data;
   // Phase-25 explicit capability block (falls back to derived fields).
   const capability = summaryRow.capability;
-  const variables = new Set(capability?.variables_available ?? summaryRow.available_variables ?? []);
+  const variables = new Set(
+    capability?.variables_available ?? summaryRow.available_variables ?? [],
+  );
   const variableRow = (label: string, key: string, present: boolean) => (
     <FactRow
       label={label}
@@ -142,11 +165,13 @@ function StationDetailPage() {
       }
     />
   );
+  // Calibrated station detector declaration from the backend registry.
+  const detector = capability?.detector ?? null;
   const detectorLabel =
     capability?.detector_capability === "FULL_TPR"
       ? "FULL T/P/RH"
       : capability?.detector_capability === "PARTIAL"
-        ? "PARTIAL"
+        ? "PARTIAL T/P/RH — station-specific detector"
         : capability?.detector_capability === "CONTEXT_ONLY"
           ? "CONTEXT ONLY — no detector verdict"
           : capability?.detector_capability === "UNAVAILABLE"
@@ -154,24 +179,48 @@ function StationDetailPage() {
             : summaryRow.probe_available
               ? "FULL T/P/RH"
               : "CONTEXT ONLY — no detector verdict";
-  const anomalyAllowed =
-    (capability?.detector_capability ?? (summaryRow.probe_available ? "FULL_TPR" : "CONTEXT_ONLY")) ===
-    "FULL_TPR";
+  // Coverage = the frozen ensemble (FULL_TPR) or a calibrated station detector.
+  const ensembleCovered =
+    capability?.detector_capability === "FULL_TPR" || summaryRow.probe_available === true;
+  const statisticalCovered = detector?.detector_available === true && !ensembleCovered;
+  const detectorCovered = ensembleCovered || statisticalCovered;
+  // Detector badge: the name of the detector that actually covers the
+  // station (frozen ensemble vs the calibrated station detector), derived
+  // from the measured capability flags — never assumed.
+  const detectorBadge = capability?.detector?.detector_type
+    ? capability.detector.detector_type
+    : ensembleCovered
+      ? "Detector: Frozen ensemble (statistical + IF + LSTM)"
+      : detectorCovered
+        ? "Detector: Statistical Baseline"
+        : "Detector: none for this station";
+  const coverageBadge =
+    capability?.detector_capability === "FULL_TPR"
+      ? "FULL (T/P/RH)"
+      : capability?.detector_capability === "PARTIAL"
+        ? "PARTIAL (T/P/RH)"
+        : capability?.detector_capability === "CONTEXT_ONLY"
+          ? "CONTEXT ONLY"
+          : "UNAVAILABLE";
 
   return (
-    <>
+    // Scoped dark surface: this route renders the station forensic view
+    // with the dark token palette, without touching the global theme.
+    <div className="dark flex flex-col gap-2 rounded-2xl bg-background p-2 text-foreground">
       <section className="panel p-4" aria-label="Station identity">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="section-kicker">Station detail</p>
-            <h2 className="mt-1 text-lg font-extrabold">
+            <h2 className="mt-1 text-[24px] font-extrabold leading-tight">
               {stationId} · {city}
             </h2>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Data: {capability?.data_source ?? summaryRow.source_mode} ·{" "}
-              {capability?.data_mode === "REPLAY" ? "Historical Replay" : "Historical"} ·{" "}
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              {capability?.station_name ?? city} ·{" "}
+              {capability?.state ? `${capability.state}, ` : ""}
               {capability?.country ?? "India"}
-              {capability?.state ? ` · ${capability.state}` : ""}
+              {summaryRow.latitude !== null && summaryRow.latitude !== undefined
+                ? ` · ${summaryRow.latitude.toFixed(4)}° N, ${summaryRow.longitude?.toFixed(4)}° E`
+                : ""}
             </p>
             {capability && (
               <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -196,9 +245,18 @@ function StationDetailPage() {
               </p>
             ))}
           </div>
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <span className="rounded-md border border-border px-2 py-0.5 text-[10px] font-semibold">
+              {detectorBadge}
+            </span>
             <StatusBadge status={status} />
-            {!anomalyAllowed && (
+            <span
+              className="rounded-md border border-border px-2 py-0.5 text-[10px] font-semibold"
+              title={detectorLabel}
+            >
+              Coverage: {coverageBadge}
+            </span>
+            {!detectorCovered && (
               <span
                 className="rounded-md bg-warning-soft px-1.5 py-0.5 text-[9px] font-extrabold text-warning-deep"
                 title="No detector models cover this station; historical observations are served as network context."
@@ -238,14 +296,16 @@ function StationDetailPage() {
               <FactRow
                 label="Anomaly status"
                 value={
-                  anomalyAllowed ? (
-                    status === "anomaly" ? (
-                      "Anomaly detected"
-                    ) : status === "review" ? (
-                      "Needs review"
-                    ) : (
-                      "Normal (detector evaluated)"
-                    )
+                  status === "anomaly" ? (
+                    "Anomaly detected"
+                  ) : status === "review" ? (
+                    "Needs review"
+                  ) : ensembleCovered ? (
+                    "Normal (detector evaluated)"
+                  ) : statisticalCovered ? (
+                    <span className="text-muted-foreground">
+                      Scored during historical replay — this snapshot is not a verdict
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">
                       Not evaluated — detector does not cover this station
@@ -253,6 +313,38 @@ function StationDetailPage() {
                   )
                 }
               />
+              {detector && (
+                <>
+                  <FactRow
+                    label="Detector type"
+                    value={formatDisplayTerm(detector.detector_type, "Not available")}
+                  />
+                  <FactRow
+                    label="Detector available"
+                    value={detector.detector_available ? "Yes" : "No"}
+                  />
+                  <FactRow
+                    label="Cadence"
+                    value={
+                      detector.cadence !== null && detector.cadence !== undefined
+                        ? `${detector.cadence} min`
+                        : "Not available"
+                    }
+                  />
+                  <FactRow
+                    label="Pressure semantics"
+                    value={formatDisplayTerm(detector.pressure_semantics, "Not available")}
+                  />
+                  <FactRow
+                    label="RH provenance"
+                    value={formatDisplayTerm(detector.rh_provenance, "Not available")}
+                  />
+                  <FactRow
+                    label="Detector data mode"
+                    value={formatDisplayTerm(detector.data_mode, "Not available")}
+                  />
+                </>
+              )}
               {capability?.spatial_context_capability && (
                 <FactRow
                   label="Spatial context"
@@ -266,6 +358,16 @@ function StationDetailPage() {
 
       {hasBackendData && (
         <>
+          <StationForensicsPanel
+            stationId={stationId}
+            selectedTimestamp={selectedEvent}
+            onSelectEvent={setSelectedEvent}
+          />
+          <InvestigationPanel
+            stationId={stationId}
+            anchor={selectedEvent}
+            onResetAnchor={() => setSelectedEvent(null)}
+          />
           {detailQuery.isPending && <LoadingState message="Loading station detail…" />}
           {detailQuery.isError && (
             <ErrorState
@@ -374,11 +476,7 @@ function StationDetailPage() {
                     />
                     <FactRow
                       label="Freeze evidence"
-                      value={
-                        detail.data_quality.flags.length > 0
-                          ? detail.data_quality.flags.join(", ")
-                          : "Unavailable"
-                      }
+                      value={signalHealthValue(detail.signal_health)}
                     />
                     <FactRow label="Drift evidence" value="Unavailable" />
                     <FactRow
@@ -458,6 +556,8 @@ function StationDetailPage() {
         </>
       )}
 
+      {hasBackendData && detectorCovered && <FaultDemoPanel stationId={stationId} />}
+
       <section className="flex flex-wrap gap-2" aria-label="Station actions">
         <Button variant="outline" size="sm" onClick={() => navigate({ to: "/stations" })}>
           <ArrowLeft />
@@ -501,6 +601,6 @@ function StationDetailPage() {
           </Button>
         ) : null}
       </section>
-    </>
+    </div>
   );
 }

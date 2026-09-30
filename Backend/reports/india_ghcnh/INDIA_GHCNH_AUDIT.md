@@ -131,5 +131,9 @@ reported as found. Metrics: `reports/india_ghcnh/mumbai_statistical_validation.j
 Station pressure absent (altimeter only); RH reported-not-verified;
 Delhi calibration does not transfer (new stations need own
 calibration/training — future work); Pune/Chandigarh sparse outside
-2022-2024; replay wiring and OOD eval of new models deferred;
-serving APIs/UI unchanged (Delhi-only serving preserved).
+2022-2024. Station-specific calibration and replay wiring are now
+implemented (registry + replay + station/alert/network API exposure; see
+`MVP_INTEGRATION_STATUS.md`), with the frozen z=3.0 / IQR=1.5 rules
+unchanged; the measured background flag rate on 30-minute GHCNh data
+remains the open limitation. Deep-learning models for the new stations
+and their OOD evaluation remain deferred; the UI is unchanged.

@@ -17,7 +17,8 @@ Historical AWS / benchmark observations
 FastAPI backend (Backend/)
   Data Quality → Context Features → Detection Ensemble
   (statistical, Isolation Forest, LSTM) → Calibrated Score
-  → Root-Cause Classifier → SHAP explanation
+  + Freeze confirmation (deterministic, measured) → Root-Cause Classifier
+  → SHAP explanation
         ↓  REST /api/v1/*  +  POST /api/v1/demo/probe  +  WS /api/v1/live
 React dashboard (Frontend/)
   Overview, Stations, Alerts, Investigations,
@@ -147,6 +148,36 @@ Nothing auto-starts; every result is computed by the backend pipeline.
   stations, episodes, and observations under `/api/v1/live/*`.
 - Live alerts persist in SQLite (`Backend/data/live/`, git-ignored)
   and are separate from historical replay alerts.
+
+## Freeze (stuck-signal) detection
+
+Benchmark FROZEN fault injections run 1-5 hours, shorter than the data-quality
+6-hour candidate gate, so the frozen ensemble alone missed most frozen
+episodes. A deterministic freeze confirmation (`Backend/src/detection/freeze.py`)
+now joins every serving path (probe/replay ensemble, calibrated station
+detectors, live inference): >= 6 consecutive identical readings observed
+causally at the row itself, relative humidity at 0/100 excluded (real clean
+data contains multi-hour saturated runs), with documented presentation
+severity and an evidence-strength confidence margin. It never changes the
+ensemble score itself; when a freeze is confirmed the root-cause class is
+assigned by rule (`root_cause.basis = freeze_rule` or `freeze_rule_override`).
+
+Reproduce the measured benchmark evaluation (frozen predictions + labels, no
+inference re-run):
+
+```sh
+cd Backend
+python -m src.detection.run_freeze_evaluation
+```
+
+Outputs `Backend/reports/detection/freeze_evaluation.{json,md}` (mirrored to
+the root `reports/` tree). Measured: FROZEN event recall 5/30 -> 29/30
+(Delhi generalisation, 0 added background flags) and 11/30 -> 30/30
+(Jena generalisation, +102 background rows, 168 -> 181 per 10k).
+
+Station detail pages also report a descriptive signal-health indicator over a
+trailing 90-day window (confirmed flatline runs; explicitly not a failure
+prediction or remaining-useful-life estimate).
 
 ## Testing
 

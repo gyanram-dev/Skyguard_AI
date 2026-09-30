@@ -8,6 +8,14 @@ import { API_BASE_URL } from "@/lib/api";
 
 export type ConnectionState = "disconnected" | "connecting" | "connected" | "error";
 
+/**
+ * Documented replay event contract (backend: src/api/replay/protocol.py).
+ * Every server message carries both `type` (this frontend's original
+ * contract) and `event_type` (the same event under its documented name).
+ */
+export type LiveEventType =
+  "CONNECTION" | "REPLAY_STATE" | "OBSERVATION" | "ANOMALY_DETECTED" | "REPLAY_COMPLETE" | "ERROR";
+
 export interface LiveObservations {
   temperature_c: number | null;
   relative_humidity_pct: number | null;
@@ -20,62 +28,140 @@ export interface LiveComponentEvidence {
   calibrated: number | null;
 }
 
+/**
+ * Evidence payload. Two shapes reach the wire:
+ *
+ * - Delhi frozen ensemble: statistical / isolation_forest / lstm component
+ *   evidence plus multivariate and spatial context.
+ * - Calibrated station detectors (the ten Indian GHCNh stations): a
+ *   statistical verdict with contributing factors and spatial context. The
+ *   ensemble-only components are genuinely absent, so every component field
+ *   is optional and no component is invented by the UI.
+ */
+/** Deterministic freeze confirmation (stuck-signal evidence), when present. */
+export interface LiveFreezeEvidence {
+  confirmed: boolean;
+  column?: string;
+  variable?: string;
+  run_rows?: number;
+  run_hours?: number;
+  severity?: string;
+  confidence?: number | null;
+  confidence_basis?: string;
+  min_run_rows?: number;
+}
+
+export interface LiveEvidence {
+  statistical?: LiveComponentEvidence;
+  isolation_forest?: LiveComponentEvidence;
+  lstm?: LiveComponentEvidence;
+  multivariate?: Record<string, number | null>;
+  spatial?: Record<string, number | string | boolean | null>;
+  seasonal?: Record<string, number | string | boolean | null>;
+  freeze?: LiveFreezeEvidence | null;
+  contributing_factors?: string[];
+}
+
+export interface LiveDetection {
+  detected?: boolean;
+  anomaly?: boolean;
+  score: number | null;
+  severity?: string;
+  confidence?: number | null;
+  confidence_basis?: string | null;
+  detector?: string;
+  method?: string;
+  trigger?: string | null;
+  freeze?: LiveFreezeEvidence | null;
+  pattern_estimate?: string | null;
+  primary_reason?: string;
+  contributing_factors?: string[];
+}
+
 export interface LiveReading {
   type: "reading";
+  event_type?: LiveEventType;
   station_id: string;
   city: string;
   timestamp: string;
   sequence: number;
+  source_mode?: string;
   data_mode: string;
   observations: LiveObservations;
-  data_quality: { status: string; ml_eligible: boolean };
+  /** Spec'd alias of `observations` (present on calibrated station replays). */
+  observation?: LiveObservations;
+  /** Spec'd detection block (present on calibrated station replays). */
+  detection?: LiveDetection;
+  severity?: string;
+  confidence?: number | null;
+  reason?: string;
+  data_quality: { status: string; ml_eligible: boolean; reason?: string };
   anomaly: {
     detected: boolean;
     score: number | null;
     confidence: number | null;
-    availability: string;
-    threshold: number | null;
+    /** Ensemble-only: absent for calibrated station detectors. */
+    availability?: string;
+    /** Ensemble-only decision threshold. */
+    threshold?: number | null;
+    severity?: string | null;
+    trigger?: string | null;
     method: string;
   };
+  confidence_basis?: string | null;
+  trigger?: string | null;
+  freeze?: LiveFreezeEvidence | null;
   root_cause: { class: string | null; confidence: number | null; runner_up: string | null };
-  evidence: {
-    statistical: LiveComponentEvidence;
-    isolation_forest: LiveComponentEvidence;
-    lstm: LiveComponentEvidence;
-    multivariate: Record<string, number | null>;
-    spatial: Record<string, number | string | boolean | null>;
-  };
+  evidence: LiveEvidence;
   explanation: { text: string | null; features: Array<Record<string, unknown>> };
   spatial_decision?: Record<string, string | null> | null;
 }
 
 export interface LiveAlert {
   type: "alert";
+  event_type?: LiveEventType;
   alert_id: string;
   station_id: string;
   city: string;
   timestamp: string;
   sequence: number;
   status: string;
+  /** Durable replay-store state (e.g. RECORDED); absent on the ensemble path. */
+  record_status?: string;
   event: string;
+  severity?: string;
   score: number | null;
-  threshold: number | null;
+  /** Ensemble-only decision threshold. */
+  threshold?: number | null;
+  detector?: string;
   root_cause: string | null;
+  root_cause_basis?: string | null;
   confidence: number | null;
-  runner_up: string | null;
+  runner_up?: string | null;
+  trigger?: string | null;
+  freeze?: LiveFreezeEvidence | null;
+  reason?: string;
+  observation?: LiveObservations;
+  detection?: LiveDetection;
+  contributing_factors?: string[];
+  data_quality?: { status: string; ml_eligible: boolean; reason?: string };
   spatial_decision?: Record<string, string | null> | null;
+  source_mode?: string;
   data_mode: string;
   summary: string;
 }
 
 export interface LiveConnection {
   type: "connection";
+  event_type?: LiveEventType;
   status: string;
   data_mode: string;
+  source_mode?: string;
 }
 
 export interface LiveReplayState {
   type: "replay_state";
+  event_type?: LiveEventType;
   status: string;
   station_id?: string;
   split?: string;
@@ -89,6 +175,7 @@ export interface LiveReplayState {
 
 export interface LiveError {
   type: "error";
+  event_type?: LiveEventType;
   code: string;
   detail: string;
   data_mode: string;
@@ -96,12 +183,16 @@ export interface LiveError {
 
 export interface LiveComplete {
   type: "complete";
+  event_type?: LiveEventType;
   station_id: string;
   split: string;
   processed: number;
   anomalies: number;
   duration_ms: number;
   effective_speed?: number;
+  /** Replay alerts actually persisted for this run (station replays only). */
+  alerts_recorded?: number;
+  source_mode?: string;
   data_mode: string;
 }
 

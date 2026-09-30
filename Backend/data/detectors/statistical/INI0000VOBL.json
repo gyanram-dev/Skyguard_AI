@@ -1,0 +1,46 @@
+{
+  "detector_type": "Statistical Baseline",
+  "detector_method": "statistical",
+  "station_id": "BLR-05",
+  "backend_station_id": "INI0000VOBL",
+  "city": "Bengaluru",
+  "cadence_min": 30.0,
+  "pressure_semantics": "altimeter_qnh_hpa",
+  "pressure_column": "altimeter_setting_hpa",
+  "rh_provenance": "REPORTED (provider file; measured-vs-calculated not verifiable)",
+  "data_mode": "HISTORICAL",
+  "train_start": "2023-01-05 00:00:00",
+  "train_end": "2023-02-15 00:00:00",
+  "train_rows": 1959,
+  "z_threshold": 3.0,
+  "iqr_factor": 1.5,
+  "reference_distribution": {
+    "temperature_c": {
+      "median": 20.0,
+      "mad": 4.0,
+      "n": 1959,
+      "min": 9.0,
+      "max": 31.0
+    },
+    "pressure_hpa": {
+      "median": 1017.0,
+      "mad": 1.0,
+      "n": 1959,
+      "min": 1011.0,
+      "max": 1023.0
+    },
+    "relative_humidity_pct": {
+      "median": 64.0,
+      "mad": 25.0,
+      "n": 1959,
+      "min": 13.0,
+      "max": 100.0
+    }
+  },
+  "dq_profile": {
+    "PASS": 1875,
+    "POSSIBLE_FREEZE": 73,
+    "COMMUNICATION_GAP": 11
+  },
+  "rules": "frozen z=3.0 / Tukey IQR=1.5 on causal station-specific rolling context; thresholds unchanged from Delhi baseline"
+}

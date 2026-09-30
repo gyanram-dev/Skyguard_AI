@@ -71,6 +71,14 @@ def resolve_dataset(store, station_id: str | None) -> tuple[dict, str]:
         raise ProbeError(404, UNKNOWN_STATION,
                          f"Station '{station_id}' is not available for probing.")
     if entry.get("source_dataset") == "noaa_ghcnh":
+        from src.api.services import station_service as SS
+
+        if SS.detector_registry_entry(store, entry) is not None:
+            raise ProbeError(422, INSUFFICIENT_CONTEXT,
+                             f"Station '{station_id}' is covered by a calibrated "
+                             "station-specific detector, which runs during historical "
+                             "replay; the interactive probe runs the frozen ensemble, "
+                             "which does not cover this station.")
         raise ProbeError(422, INSUFFICIENT_CONTEXT,
                          f"Station '{station_id}' has contextual observations only; "
                          "no detector models cover it, so probe inference is unavailable.")
@@ -114,6 +122,15 @@ def run_probe(store, station_id: str | None,
                          "Insufficient historical context for probe inference: "
                          "fewer than two detector components are available.")
     ens = scored["ensemble"]
+    verdict = scored["verdict"]
+    anomalous = bool(verdict["is_anomalous"])
+    detector_label = None
+    if anomalous:
+        detector_label = {
+            "freeze": "Freeze detector (deterministic stuck-signal rule)",
+            "ensemble+freeze": "Frozen ensemble + freeze detector",
+        }.get(verdict["trigger"],
+              "Frozen ensemble (statistical + Isolation Forest + LSTM)")
     return {
         "data_mode": DATA_MODE,
         "probe": {"station_id": station_id, "temperature": temp_c,
@@ -128,12 +145,15 @@ def run_probe(store, station_id: str | None,
                              f"{anchor}; replayed history, not live sensors."),
         },
         "result": {
-            "is_anomalous": ens["is_anomalous"],
+            "is_anomalous": anomalous,
             "anomaly_score": ens["median"],
-            "confidence": ens["confidence"],
+            "confidence": verdict["confidence"],
+            "confidence_basis": verdict["confidence_basis"],
             "availability": ens["availability"],
             "threshold": ens["threshold"],
-            "method": "ens_median",
+            "severity": verdict["severity"],
+            "trigger": verdict["trigger"],
+            "method": verdict["method"],
         },
         "evidence": {
             "statistical": scored["evidence"]["statistical"],
@@ -143,12 +163,17 @@ def run_probe(store, station_id: str | None,
             "spatial": scored["evidence"]["spatial"],
             "seasonal": scored["evidence"]["seasonal"],
             "data_quality": scored["data_quality"],
+            "freeze": scored["freeze"],
         },
         "root_cause": scored["root_cause"],
         "explanation": scored["explanation"],
         "spatial_decision": scored["spatial_decision"],
-        "recommended_action": OA.for_verdict(True)
-        if not ens["is_anomalous"] else OA.for_root_cause(
+        "detector": detector_label,
+        "severity": verdict["severity"] if anomalous else None,
+        "primary_reason": None,
+        "contributing_factors": None,
+        "recommended_action": OA.for_root_cause(
             scored["root_cause"]["class"],
-            scored["spatial_decision"]["contextual_decision"]),
+            scored["spatial_decision"]["contextual_decision"])
+        if anomalous else OA.for_verdict(True),
     }

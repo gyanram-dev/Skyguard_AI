@@ -14,14 +14,17 @@ from fastapi.responses import JSONResponse
 
 from src.api import schemas as S
 from src.api.dependencies import API_VERSION, DataStore
+from src.api.services import fault_demo as FD
 from src.api.services import health_service as HS
 from src.api.services import evaluation_service as ES
+from src.api.services import investigation_hub as IH
 from src.api.services import investigation_service as IV
 from src.api.services import network_service as NS
 from src.api.services import observation_service as OS
 from src.api.services import probe_service as PS
 from src.api.services import readiness_service as RS
 from src.api.services import station_service as SS
+from src.api.services import timeline_service as TL
 from src.api.services import upload_analysis as UA
 from src.api.services import upload_session as US
 
@@ -133,7 +136,7 @@ def list_stations() -> dict:
                          "status": state["status"],
                          "data_available": state["data_available"],
                          "operational_scope": SS.operational_scope(entry),
-                         "capability_notes": SS.capability_notes(entry),
+                         "capability_notes": SS.capability_notes(store, entry),
                          "available_variables": SS.available_variables(store, entry) if state["data_available"] else [],
                          "capability": SS.capability_profile(store, entry),
                          "probe_available": SS.probe_capable(entry),
@@ -173,7 +176,7 @@ def station_detail(station_id: str) -> dict:
                   "source_dataset": entry.get("source_dataset"),
                   "status": state["status"],
                   "operational_scope": SS.operational_scope(entry),
-                  "capability_notes": SS.capability_notes(entry),
+                  "capability_notes": SS.capability_notes(store, entry),
                   "available_variables": SS.available_variables(store, entry) if state["data_available"] else [],
                   "capability": SS.capability_profile(store, entry),
                   "probe_available": SS.probe_capable(entry),
@@ -195,6 +198,7 @@ def station_detail(station_id: str) -> dict:
                             "confidence": None},
                 "root_cause": {"class": None, "confidence": None},
                 "maintenance": SS.maintenance_review(store, entry, False),
+                "signal_health": SS.signal_health(store, entry),
                 "spatial_context": {"available": spatial is not None,
                                     "neighbor_count": neighbor_count,
                                     "context_level": context_level}}
@@ -220,6 +224,7 @@ def station_detail(station_id: str) -> dict:
                              "pressure_hpa": SS._num(obs["pressure_hpa"])},
             "data_quality": quality, "anomaly": anomaly, "root_cause": root_cause,
             "maintenance": SS.maintenance_review(store, entry, anomaly["detected"]),
+            "signal_health": SS.signal_health(store, entry),
             "spatial_context": spatial}
 
 
@@ -237,6 +242,67 @@ def station_history(station_id: str, variable: str = Query("temperature"),
     points = SS.history_series(store, entry, variable, hours)
     return {"station_id": station_id, "variable": variable, "hours": hours,
             "data_mode": OS.DATA_MODE, "points": points}
+
+
+@app.get("/api/v1/stations/{station_id}/timeline", response_model=S.TimelineResponse)
+def station_timeline(station_id: str,
+                     max_points: int = Query(900, ge=60, le=4000),
+                     max_events: int = Query(400, ge=0, le=2000)) -> dict:
+    """Historical observations over the full available period + EXISTING
+
+    detector events. Never computes a new verdict at request time: the
+    events are stored frozen-ensemble output (Delhi) or the calibrated
+    station detector's output over that station's own history. Stations
+    without detector coverage return ``detector.available = false``.
+    """
+    store = get_store()
+    try:
+        return TL.timeline(store, station_id, max_points, max_events)
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=f"Unknown station '{station_id}'") from None
+
+
+@app.get("/api/v1/stations/{station_id}/investigation",
+         response_model=S.InvestigationResponse)
+def station_investigation(station_id: str,
+                          at: str | None = Query(None)) -> dict:
+    """Target station vs its audited nearby stations (existing spatial layer).
+
+    ``at`` anchors the comparison at a station-local timestamp (a timeline
+    event, typically); omitted, the latest detector-flagged observation is
+    used and, failing that, the latest observation. Neighbour values are
+    aligned causally and never filled.
+    """
+    store = get_store()
+    entry = SS.get_mapping(store, station_id)
+    if entry is None or not entry.get("backend_station_id"):
+        raise HTTPException(status_code=404,
+                            detail=f"No backend data for '{station_id}'")
+    anchor = at or TL.default_anchor(store, station_id)
+    try:
+        return IH.build_investigation(store, station_id, anchor)
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=f"Unknown station '{station_id}'") from None
+    except (ValueError, IndexError) as exc:
+        raise HTTPException(status_code=422,
+                            detail=f"Invalid anchor for '{station_id}': {exc}") from None
+
+
+@app.get("/api/v1/demo/fault-sequence", response_model=S.FaultDemoResponse)
+def fault_sequence() -> dict:
+    """Controlled fault demo: real Delhi rows + benchmark injectors.
+
+    Deterministic and cached; the stored observations are never modified.
+    """
+    store = get_store()
+    try:
+        return FD.build(store)
+    except RuntimeError as exc:
+        return JSONResponse(status_code=503,
+                            content={"detail": str(exc),
+                                     "code": "fault_demo_unavailable"})
 
 
 @app.get("/api/v1/alerts", response_model=S.AlertListResponse)

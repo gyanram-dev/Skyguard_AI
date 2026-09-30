@@ -160,12 +160,25 @@ def test_6_7_8_9_15_18_stream_honesty(client):
         for alert in alerts:
             assert alert["root_cause"] in RC_TAXONOMY
             assert alert["status"] in ("anomaly", "review")
+        # Serving contract: a replayed alert is emitted for the COMBINED
+        # verdict — the frozen ensemble flag OR the deterministic freeze rule
+        # (documented in src/detection/freeze.py and src/ensemble/severity.py).
+        # Every alert therefore names its trigger, and the ensemble-triggered
+        # rows still have to agree exactly with the frozen predictions file.
         frozen = pd.read_csv(
             "data/ensemble/delhi_ensemble_predictions.csv",
             usecols=["timestamp", "ens_median_flag"])
-        frozen = frozen[frozen["timestamp"].isin(
-            [a["timestamp"] for a in alerts[:3]])]
-        assert set(frozen["ens_median_flag"].tolist()) == {1}
+        by_stamp = dict(zip(frozen["timestamp"].astype(str),
+                            frozen["ens_median_flag"]))
+        for alert in alerts:
+            trigger = alert["trigger"]
+            assert trigger in ("ensemble", "freeze", "ensemble+freeze"), trigger
+            if trigger in ("ensemble", "ensemble+freeze"):
+                assert by_stamp[str(alert["timestamp"])] == 1
+            if trigger in ("freeze", "ensemble+freeze"):
+                assert alert["freeze"]["confirmed"] is True
+        assert any(a["trigger"] in ("ensemble", "ensemble+freeze")
+                   for a in alerts)
 
 
 # 10+11+12. Pause stalls, resume continues, stop terminates.

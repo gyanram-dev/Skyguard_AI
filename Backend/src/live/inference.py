@@ -26,6 +26,7 @@ import pandas as pd
 
 from src.api.services import upload_analysis as UA
 from src.baseline.statistical_baseline import build_statistical_baseline
+from src.detection import freeze as FE
 from src.baseline.zscore_baseline import Z_THRESHOLD
 from src.isolation_forest.evaluator import prepare_split
 from src.live import history as LH
@@ -107,7 +108,21 @@ def score_station(history: LH.StationHistory, histories: dict,
     feat = features.iloc[pos]
     freeze_flag = "possible_freeze" in str(quality["quality_reason"].iloc[pos])
     estimate, reason = UA._estimate_pattern(feat, freeze_flag)
-    if flagged:
+    gap_arr = (quality["communication_gap"].to_numpy()
+               if "communication_gap" in quality.columns else None)
+    if FE.applicable(float(cadence_min)):
+        freeze_run_rows, freeze_var_code = FE.scan_frame(frame, gap_rows=gap_arr)
+    else:
+        # Slow, coarsely quantized cadence: no fast-rule confirmations.
+        freeze_run_rows = np.zeros(len(frame), dtype=int)
+        freeze_var_code = np.zeros(len(frame), dtype=np.int8)
+    freeze = FE.row_evidence(freeze_run_rows, freeze_var_code, pos,
+                             float(cadence_min))
+    freeze_confirmed = bool(eligible and freeze["confirmed"])
+    if freeze_confirmed:
+        estimate = "FROZEN"
+        reason = FE.reason_text(freeze, float(cadence_min))
+    if flagged or freeze_confirmed:
         base, verdict = SD.BASE_ANOMALOUS, "ANOMALY"
     elif zmax is None or not eligible:
         # No measurable statistical evidence: honestly insufficient,
@@ -141,6 +156,13 @@ def score_station(history: LH.StationHistory, histories: dict,
     spatial["live_neighbor_count"] = int(n_live)
     multi = _finite(feat.get("multivariate_max_abs_robust_deviation_2h"))
     zmax_text = f"{zmax:.2f}" if zmax is not None else "unavailable"
+    if freeze_confirmed:
+        explanation = (f"{reason} max|z|={zmax_text} vs {Z_THRESHOLD}. "
+                       f"{spatial['description']}")
+    else:
+        explanation = (f"Heuristic pattern estimate ({estimate}): {reason}; "
+                       f"max|z|={zmax_text} vs {Z_THRESHOLD}. "
+                       f"{spatial['description']}")
     return {
         "verdict": verdict,
         "timestamp": latest.timestamp.isoformat(),
@@ -157,10 +179,12 @@ def score_station(history: LH.StationHistory, histories: dict,
                             baseline["statistical_baseline_reason"].iloc[pos])},
         "multivariate": {"max_abs_robust_deviation_2h": multi},
         "spatial_decision": spatial,
+        "freeze": freeze,
+        "trigger": ("statistical+freeze" if flagged and freeze_confirmed
+                    else "freeze" if freeze_confirmed
+                    else "statistical" if flagged else None),
         "pattern": {"estimate": estimate, "reason": reason},
-        "explanation": (f"Heuristic pattern estimate ({estimate}): {reason}; "
-                        f"max|z|={zmax_text} vs {Z_THRESHOLD}. "
-                        f"{spatial['description']}"),
+        "explanation": explanation,
         "ml_models": {"available": False, "reason": _ml_reason()},
         "inference_ms": round((time.perf_counter() - started) * 1000.0, 2),
     }

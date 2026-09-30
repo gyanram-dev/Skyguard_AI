@@ -107,10 +107,15 @@ function NetworkHealthPage() {
           </p>
           {networkQuery.data ? (
             <p className="text-[10px] text-muted-foreground">
-              Indian operational network: {networkQuery.data.detector_covered} station(s) with
-              detector coverage ({networkQuery.data.indian_operational_healthy} healthy);{" "}
-              {networkQuery.data.indian_operational_context_only} historical-only station(s) carry
-              observations but have no detector. Benchmark stations excluded.
+              Indian operational network:{" "}
+              {(networkQuery.data.full_tpr_stations ?? 0) +
+                (networkQuery.data.partial_stations ?? 0)}{" "}
+              detector-covered station(s) — {networkQuery.data.full_tpr_stations ?? 0} full T/P/RH
+              and {networkQuery.data.partial_stations ?? 0} partial (calibrated station detector,
+              missing variables).{" "}
+              {networkQuery.data.context_only_stations ?? networkQuery.data.context_only}{" "}
+              historical-only station(s) carry observations but have no detector. Benchmark stations
+              excluded.
             </p>
           ) : null}
         </div>

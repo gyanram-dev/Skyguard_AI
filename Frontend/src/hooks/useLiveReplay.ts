@@ -31,7 +31,10 @@ export interface CompleteInfo {
   effectiveSpeed: number | null;
 }
 
-const MAX_READINGS = 30;
+// Retention window for the replay report (timeline + temperature chart). A
+// station replay streams 60 observations by default, so the buffer is sized to
+// keep a whole session inspectable after completion — still a bounded ring.
+const MAX_READINGS = 240;
 const MAX_ALERTS = 50;
 const MAX_RECONNECTS = 3;
 const RECONNECT_DELAYS = [1000, 2000, 4000];
@@ -73,7 +76,10 @@ export function useLiveReplay() {
   // Session-owned pairing state: exact streamed payloads keyed by alert_id,
   // plus the set of seen reading sequences for duplicate-proof counting.
   // Cleared on every Start; never merged with persistent REST alerts.
-  const sessionRef = useRef<{ seen: Set<number> }>({ seen: new Set() });
+  const sessionRef = useRef<{ seen: Set<number>; alerts: Set<string> }>({
+    seen: new Set(),
+    alerts: new Set(),
+  });
   const readingsRef = useRef<LiveReading[]>([]);
 
   useEffect(
@@ -124,13 +130,26 @@ export function useLiveReplay() {
         readingsRef.current = next;
         return next;
       });
-      setReplay((prev) => ({ ...prev, sequence: event.sequence }));
+      setReplay((prev) => ({
+        ...prev,
+        sequence: event.sequence,
+        // One OBSERVATION arrives per processed row. `replay_state` messages
+        // only carry a count when the session state changes, so the running
+        // totals must advance with the observations themselves (otherwise the
+        // control bar would still say "waiting for first observation" while
+        // readings stream, and the footer would report 0 events).
+        processed: Math.max(prev.processed, event.sequence),
+      }));
       return;
     }
     if (event.type === "alert") {
       const reading = readingsRef.current.find(
         (row) => row.station_id === event.station_id && row.sequence === event.sequence,
       );
+      if (!sessionRef.current.alerts.has(event.alert_id)) {
+        sessionRef.current.alerts.add(event.alert_id);
+        setReplay((prev) => ({ ...prev, anomalies: prev.anomalies + 1 }));
+      }
       setLiveAlerts((prev) => {
         if (prev.some((alert) => alert.alert_id === event.alert_id)) return prev;
         return [event, ...prev].slice(0, MAX_ALERTS);
@@ -151,6 +170,16 @@ export function useLiveReplay() {
         durationMs: event.duration_ms,
         effectiveSpeed: event.effective_speed ?? null,
       });
+      // REPLAY_COMPLETE is the final message of a session: the stream stops
+      // here, so the session state must stop too (otherwise the controls stay
+      // busy and the card never shows completion). Final totals are the
+      // server's, not the client's tally.
+      setReplay((prev) => ({
+        ...prev,
+        status: "completed",
+        processed: event.processed,
+        anomalies: event.anomalies,
+      }));
       manualRef.current = true;
       return;
     }
@@ -244,7 +273,7 @@ export function useLiveReplay() {
     (params: ReplayStartParams) => {
       // New session: clear every previous replay artifact (readings, alerts,
       // exact payloads, counters). Persistent REST alerts are untouched.
-      sessionRef.current = { seen: new Set() };
+      sessionRef.current = { seen: new Set(), alerts: new Set() };
       readingsRef.current = [];
       setNotice(null);
       setCompleteInfo(null);

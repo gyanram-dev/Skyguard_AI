@@ -29,8 +29,11 @@ import numpy as np
 import pandas as pd
 
 from src.baseline.statistical_baseline import build_statistical_baseline
+from src.detection import freeze as FE
 from src.ensemble import aggregation as G
 from src.ensemble import calibration as C
+from src.ensemble import severity as ES
+from src.features.feature_builder import CADENCE_HORIZONS
 from src.isolation_forest.evaluator import prepare_split
 from src.isolation_forest.features import to_model_matrix
 from src.isolation_forest.scoring import raw_scores as if_raw_scores
@@ -135,6 +138,10 @@ def build_frames(store, ds: str, sensor_frame: pd.DataFrame) -> dict:
     models = get_models(store, ds)
     features, quality = prepare_split(sensor_frame, ds)
     baseline, _ = build_statistical_baseline(features, quality, ds)
+    cadence_min = float(CADENCE_HORIZONS[ds]["expected_interval_min"])
+    gap_arr = (quality["communication_gap"].to_numpy()
+               if "communication_gap" in quality.columns else None)
+    freeze_run_rows, freeze_var_code = FE.scan_frame(features, gap_rows=gap_arr)
     z_raw_all, _ = C.z_evidence(baseline)
     iqr_raw_all, _ = C.iqr_evidence(baseline)
     if_bundle = models["if"]
@@ -147,6 +154,9 @@ def build_frames(store, ds: str, sensor_frame: pd.DataFrame) -> dict:
     scaled = lstm_bundle["scaler"].transform(mat)
     valid = valid_sequence_mask(segments, eligible, finite)
     return {"models": models, "features": features, "quality": quality,
+            "cadence_min": cadence_min,
+            "freeze_run_rows": freeze_run_rows,
+            "freeze_var_code": freeze_var_code,
             "z_raw_all": z_raw_all, "iqr_raw_all": iqr_raw_all,
             "if_X": X, "if_scorable": scorable,
             "lstm_scaled": scaled, "lstm_valid": valid,
@@ -314,14 +324,26 @@ def score_position(frames: dict, ds: str, pos: int, *,
     threshold = num(thresholds.get("ens_median"))
     is_anomalous = bool(ml_eligible and anomaly_score is not None
                         and threshold is not None and anomaly_score >= threshold)
+    ensemble_anomalous = is_anomalous
     n_comp = int(stat_ok) + int(if_ok) + int(lstm_ok)
+
+    cadence_min = float(frames.get("cadence_min")
+                        or CADENCE_HORIZONS[ds]["expected_interval_min"])
+    freeze = FE.row_evidence(frames["freeze_run_rows"],
+                             frames["freeze_var_code"], pos, cadence_min)
+    freeze_confirmed = bool(ml_eligible and freeze["confirmed"])
+    combined = ensemble_anomalous or freeze_confirmed
 
     rc_class: str | None = None
     rc_conf: float | None = None
     rc_runner: str | None = None
+    rc_basis: str | None = None
     explanation_text: str | None = None
     explanation_features: list = []
-    if is_anomalous:
+    shap_top: list | None = None
+    shap_row: pd.Series | None = None
+    shap_noaa: str = ""
+    if ensemble_anomalous:
         evidence_row = {
             "z_maxabs": np.nan if z_raw is None else z_raw,
             "iqr_combined": np.nan if iqr_raw is None else iqr_raw,
@@ -345,6 +367,7 @@ def score_position(frames: dict, ds: str, pos: int, *,
             labels, conf, runner = decide(probas, list(models["rc"].classes_))
             rc_class, rc_conf = str(labels[0]), num(conf[0])
             rc_runner = str(runner[0]) if str(runner[0]) else None
+            rc_basis = "trained_classifier"
             try:
                 shap_values = models["explainer"].shap_values(X_ev)
                 if isinstance(shap_values, list):
@@ -364,6 +387,7 @@ def score_position(frames: dict, ds: str, pos: int, *,
                         str(spatial_ts),
                         {str(spatial_ts): {"temp_diff": spatial_temp - info["median"],
                                            "n": info["count"]}})
+                shap_top, shap_row, shap_noaa = top, row_series, noaa_text
                 explanation_text = EX.compose_explanation(rc_class, row_series, top,
                                                           noaa_text)
                 explanation_features = [
@@ -380,10 +404,27 @@ def score_position(frames: dict, ds: str, pos: int, *,
                 explanation_features = []
         else:
             rc_class = CF.UNKNOWN
-    if is_anomalous and not explanation_text:
+    if freeze_confirmed:
+        model_class = rc_class
+        freeze_text = FE.reason_text(freeze, cadence_min)
+        if ensemble_anomalous and model_class and model_class != "FROZEN":
+            rc_runner = model_class
+        rc_class = "FROZEN"
+        rc_conf = freeze["confidence"]
+        rc_basis = ("freeze_rule_override" if ensemble_anomalous
+                    else "freeze_rule")
+        if shap_row is not None:
+            explanation_text = (freeze_text + " " + EX.compose_explanation(
+                "FROZEN", shap_row, shap_top or [], shap_noaa))
+        else:
+            explanation_text = (
+                freeze_text + " Root-cause class assigned by the deterministic "
+                "freeze rule; trained-classifier evidence was unavailable for "
+                "this row.")
+    if combined and not explanation_text:
         explanation_text = ("Insufficient evidence for root-cause classification: "
                             "context too sparse to support a known class.")
-    if not is_anomalous:
+    if not combined:
         explanation_text = ("Observation consistent with the station's historical context; "
                             "no fault pattern diagnosed. This is a model prediction, "
                             "not a confirmed physical diagnosis.")
@@ -391,7 +432,7 @@ def score_position(frames: dict, ds: str, pos: int, *,
                                      "Explanation not available for this observation.")
 
     spatial = _spatial_evidence(frames, ds, spatial_ts, obs)
-    if is_anomalous:
+    if combined:
         base_state = SD.BASE_ANOMALOUS
     elif not ml_eligible or anomaly_score is None or threshold is None:
         base_state = SD.BASE_INSUFFICIENT
@@ -410,6 +451,34 @@ def score_position(frames: dict, ds: str, pos: int, *,
     seasonal = SE.same_hour_context(frames["seasonal_obs"], spatial_ts) \
         if ds == "delhi" and spatial_ts else SE.same_hour_context(
             pd.DataFrame({"timestamp": [], "temperature_c": []}), None)
+    ens_severity = ES.severity_for(anomaly_score, threshold, ensemble_anomalous)
+    freeze_severity = freeze.get("severity") if freeze_confirmed else None
+    if combined:
+        bands = [s for s in (ens_severity, freeze_severity) if s]
+        severity = max(bands, key=ES.rank) if bands else None
+    else:
+        severity = "NORMAL"
+    ens_conf = (CONFIDENCE_BY_AVAILABILITY.get(availability)
+                if ensemble_anomalous else None)
+    ens_basis = (f"evidence availability: {n_comp} of 3 components "
+                 f"({availability}); availability proxy, not a probability"
+                 if ensemble_anomalous else None)
+    freeze_conf = freeze.get("confidence") if freeze_confirmed else None
+    if ensemble_anomalous and freeze_confirmed:
+        confidence = max(ens_conf or 0.0, freeze_conf or 0.0) or None
+        confidence_basis = ("max of ensemble availability proxy and freeze-run "
+                            "margin; neither is a probability")
+        trigger, method = "ensemble+freeze", "ens_median+freeze_detector"
+    elif freeze_confirmed:
+        confidence = freeze_conf
+        confidence_basis = freeze.get("confidence_basis")
+        trigger, method = "freeze", "freeze_detector"
+    elif ensemble_anomalous:
+        confidence, confidence_basis = ens_conf, ens_basis
+        trigger, method = "ensemble", "ens_median"
+    else:
+        confidence, confidence_basis = ens_conf, ens_basis
+        trigger, method = None, "ens_median"
     return {
         "observations": obs,
         "data_quality": {"status": dq_status, "ml_eligible": ml_eligible,
@@ -425,11 +494,17 @@ def score_position(frames: dict, ds: str, pos: int, *,
         },
         "ensemble": {"mean": num(ens_mean[0]), "median": anomaly_score,
                      "availability": availability, "threshold": threshold,
-                     "is_anomalous": is_anomalous,
+                     "is_anomalous": ensemble_anomalous,
                      "confidence": CONFIDENCE_BY_AVAILABILITY.get(availability),
+                     "confidence_basis": ens_basis,
+                     "severity": ens_severity,
                      "n_components": n_comp, "method": "ens_median"},
+        "freeze": freeze,
+        "verdict": {"is_anomalous": combined, "trigger": trigger,
+                    "severity": severity, "confidence": confidence,
+                    "confidence_basis": confidence_basis, "method": method},
         "root_cause": {"class": rc_class, "confidence": rc_conf,
-                       "runner_up": rc_runner},
+                       "runner_up": rc_runner, "basis": rc_basis},
         "explanation": {"text": explanation_text, "features": explanation_features},
         "spatial_decision": spatial_decision,
     }

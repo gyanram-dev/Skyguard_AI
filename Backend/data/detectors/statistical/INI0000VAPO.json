@@ -1,0 +1,45 @@
+{
+  "detector_type": "Statistical Baseline",
+  "detector_method": "statistical",
+  "station_id": "PUN-10",
+  "backend_station_id": "INI0000VAPO",
+  "city": "Pune",
+  "cadence_min": 30.0,
+  "pressure_semantics": "altimeter_qnh_hpa",
+  "pressure_column": "altimeter_setting_hpa",
+  "rh_provenance": "REPORTED (provider file; measured-vs-calculated not verifiable)",
+  "data_mode": "HISTORICAL",
+  "train_start": "2023-06-01 00:00:00",
+  "train_end": "2023-09-01 00:00:00",
+  "train_rows": 232,
+  "z_threshold": 3.0,
+  "iqr_factor": 1.5,
+  "reference_distribution": {
+    "temperature_c": {
+      "median": 25.0,
+      "mad": 2.0,
+      "n": 232,
+      "min": 22.0,
+      "max": 37.0
+    },
+    "pressure_hpa": {
+      "median": 1010.0,
+      "mad": 2.0,
+      "n": 232,
+      "min": 1004.0,
+      "max": 1016.0
+    },
+    "relative_humidity_pct": {
+      "median": 84.0,
+      "mad": 10.0,
+      "n": 232,
+      "min": 29.0,
+      "max": 100.0
+    }
+  },
+  "dq_profile": {
+    "COMMUNICATION_GAP": 145,
+    "PASS": 87
+  },
+  "rules": "frozen z=3.0 / Tukey IQR=1.5 on causal station-specific rolling context; thresholds unchanged from Delhi baseline"
+}

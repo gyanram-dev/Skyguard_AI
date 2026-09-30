@@ -4,6 +4,9 @@ import {
   getAlert,
   getAlerts,
   getDemoReadiness,
+  getFaultSequence,
+  getStationInvestigation,
+  getStationTimeline,
   getEvaluationSummary,
   getHealth,
   getLiveAlerts,
@@ -68,6 +71,45 @@ export function useStation(stationId: string | null) {
     staleTime: STALE_MS,
     retry: 1,
     refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Full-period historical timeline (real observations + existing detector
+ * events). Fetched on selection change only; no polling.
+ */
+export function useStationTimeline(stationId: string | null) {
+  return useQuery({
+    queryKey: ["station-timeline", stationId],
+    queryFn: () => getStationTimeline(stationId as string),
+    enabled: stationId !== null,
+    staleTime: STALE_MS,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Anchor a station against its audited neighbours (existing spatial layer). */
+export function useStationInvestigation(stationId: string | null, at: string | null) {
+  return useQuery({
+    queryKey: ["station-investigation", stationId, at],
+    queryFn: () => getStationInvestigation(stationId as string, at),
+    enabled: stationId !== null,
+    staleTime: STALE_MS,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Controlled fault demo. Runs only when the judge presses the button: the
+ * backend replays real Delhi rows with benchmark injections applied, so the
+ * result is deterministic and cached server-side.
+ */
+export function useFaultSequence() {
+  return useMutation({
+    mutationFn: () => getFaultSequence(),
+    retry: false,
   });
 }
 

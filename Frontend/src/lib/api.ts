@@ -20,6 +20,30 @@ export type DisplayStatus = "healthy" | "review" | "anomaly" | "offline" | "hist
 export type DetectorCapability = "FULL_TPR" | "PARTIAL" | "CONTEXT_ONLY" | "UNAVAILABLE";
 
 /**
+ * Calibrated station-detector declaration served inside `capability.detector`
+ * (mirrors Backend/src/api/schemas.py StationDetectorState). Present only for
+ * stations with a calibrated station-specific detector; every value is read
+ * from the detector registry, never inferred in the browser.
+ *
+ * `cadence` is minutes between real observations. `pressure_semantics` records
+ * the measured pressure basis (QNH altimeter is never shown as station
+ * pressure).
+ */
+export interface StationDetectorState {
+  station_id: string | null;
+  capability: DetectorCapability | null;
+  detector_available: boolean;
+  detector_type: string | null;
+  detector_method: string | null;
+  cadence: number | null;
+  pressure_semantics: string | null;
+  rh_provenance: string | null;
+  data_mode: string | null;
+  backend_station_id: string | null;
+  source: string | null;
+}
+
+/**
  * Phase-25 capability block served additively by /api/v1/stations.
  * `observation_count` is measured from loaded rows; missing variables stay
  * absent from `variables_available` — never fabricated.
@@ -38,6 +62,23 @@ export interface StationCapability {
   variables_available: string[];
   detector_capability: DetectorCapability;
   spatial_context_capability: string;
+  /** Calibrated station detector (null when no detector covers the station). */
+  detector?: StationDetectorState | null;
+}
+
+/**
+ * True when a detector can actually produce a verdict for this station:
+ * the frozen ensemble (FULL_TPR) or a calibrated station-specific statistical
+ * detector. PARTIAL means partial variable coverage, never "no detector".
+ */
+export function hasDetectorCoverage(
+  summary:
+    | { probe_available?: boolean | undefined; capability?: StationCapability | null | undefined }
+    | undefined,
+): boolean {
+  if (!summary) return false;
+  if (summary.capability?.detector?.detector_available === true) return true;
+  return summary.probe_available === true;
 }
 
 /**
@@ -264,6 +305,8 @@ export interface StationDetailResponse {
   anomaly: Anomaly;
   root_cause: RootCause;
   maintenance?: Record<string, string | number | boolean | null>;
+  /** Longitudinal flatline indicator; descriptive, never a prediction. */
+  signal_health?: Record<string, string | number | boolean | null> | null;
   spatial_context: SpatialContext;
 }
 
@@ -534,8 +577,11 @@ export interface ProbeResult {
   is_anomalous: boolean;
   anomaly_score: number | null;
   confidence: number | null;
+  confidence_basis?: string | null;
   availability: string;
   threshold: number | null;
+  severity?: string | null;
+  trigger?: string | null;
   method: string;
 }
 
@@ -553,12 +599,14 @@ export interface ProbeEvidence {
   spatial: Record<string, number | string | boolean | null>;
   seasonal?: Record<string, number | string | boolean | null> | null;
   data_quality: Record<string, number | string | boolean | null>;
+  freeze?: Record<string, string | number | boolean | null> | null;
 }
 
 export interface ProbeRootCause {
   class: string | null;
   confidence: number | null;
   runner_up: string | null;
+  basis?: string | null;
 }
 
 export interface SpatialDecision {
@@ -579,6 +627,16 @@ export interface ProbeResponse {
   explanation: Explanation;
   spatial_decision?: SpatialDecision | null;
   recommended_action?: string | null;
+  /**
+   * Station-specific detector evidence: sent only by backends that score the
+   * observation with a calibrated station detector. The frozen ensemble path
+   * does not carry these fields, so they are optional and are rendered only
+   * when actually present — never inferred in the browser.
+   */
+  detector?: string | null;
+  severity?: string | null;
+  primary_reason?: string | null;
+  contributing_factors?: string[] | null;
 }
 
 export function probeObservation(payload: ProbePayload): Promise<ProbeResponse> {
@@ -814,4 +872,238 @@ export function runUploadAnalysis(sessionId: string): Promise<UploadAnalysisResu
 
 export function getUploadAnalysis(sessionId: string): Promise<UploadAnalysisResult> {
   return request<UploadAnalysisResult>(`/api/v1/analyze/${encodeURIComponent(sessionId)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Historical timeline + investigation hub (showcase layer).
+//
+// `detector.available === false` means no stored detector output covers the
+// station: the timeline then shows real observations only and the UI must
+// state HISTORICAL DATA — DETECTOR VERDICT UNAVAILABLE. Nothing here infers a
+// verdict the backend does not have.
+// ---------------------------------------------------------------------------
+export interface TimelineDetector {
+  available: boolean;
+  coverage: string;
+  detector_type: string | null;
+  threshold: number | null;
+  iqr_factor: number | null;
+  note: string | null;
+  coverage_window: { start: string; end: string } | null;
+  flags_total: number;
+  flags_scored: number | null;
+  flag_rate: number | null;
+  excluded_injection_rows: number | null;
+}
+
+export interface TimelineEvent {
+  timestamp: string;
+  variable: string | null;
+  /** Value of the parameter that actually fired (equals one channel below). */
+  observed: number | null;
+  temperature?: number | null;
+  humidity: number | null;
+  pressure: number | null;
+  /** Causal station baseline (2-hour median) and the deviation from it. */
+  baseline_median?: number | null;
+  deviation?: number | null;
+  baseline_variable?: string | null;
+  baseline_basis?: string | null;
+  /** Detector statistic behind the event (z margin / raw component value). */
+  z?: number | null;
+  score: number | null;
+  threshold: number | null;
+  severity: string | null;
+  confidence: number | null;
+  confidence_basis: string | null;
+  pattern: string | null;
+  trigger: string | null;
+  detector: string | null;
+  data_quality: string | null;
+  reason: string | null;
+  contributing_factors?: string[];
+  evidence?: Record<string, number | string | null>;
+}
+
+export interface TimelineSeries {
+  timestamps: string[];
+  temperature: Array<number | null>;
+  humidity: Array<number | null>;
+  pressure: Array<number | null>;
+  stride?: number;
+  reported_points?: number;
+}
+
+export interface TimelineResponse {
+  station_id: string;
+  city: string;
+  pressure_basis: string | null;
+  period: { start: string | null; end: string | null };
+  observations: number;
+  cadence_min: number | null;
+  series: TimelineSeries;
+  events: TimelineEvent[];
+  events_returned: number;
+  events_total: number;
+  detector: TimelineDetector;
+  data_source: string | null;
+  note: string | null;
+}
+
+export interface NearbyStation {
+  station_id: string;
+  city: string | null;
+  backend_station_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  distance_km: number | null;
+  rank: number | null;
+  aligned_timestamp: string | null;
+  age_minutes: number | null;
+  temperature: number | null;
+  humidity: number | null;
+  pressure: number | null;
+  pressure_basis: string | null;
+  data_freshness: string | null;
+}
+
+export interface SpatialVariableEvidence {
+  status: string;
+  reference_median: number | null;
+  mad: number | null;
+  robust_score: number | null;
+  deviation: number | null;
+  neighbor_count: number;
+  usable_neighbor_count: number;
+  supporting_neighbors: string[];
+  contradicting_neighbors: string[];
+  reason: string;
+}
+
+export interface InvestigationResponse {
+  station_id: string;
+  city: string;
+  coordinates: { latitude: number | null; longitude: number | null };
+  pressure_basis: string | null;
+  source_dataset: string | null;
+  anchor: {
+    timestamp: string;
+    basis: string;
+    requested: string | null;
+    time_basis: string;
+  };
+  target_observation: Observations;
+  detector_verdict: Record<string, unknown>;
+  nearby: NearbyStation[];
+  expected_neighbors: number;
+  usable_neighbors: number;
+  comparison: {
+    temperature: SpatialVariableEvidence;
+    humidity: SpatialVariableEvidence;
+    pressure: SpatialVariableEvidence;
+    target_temperature: number | null;
+    neighbor_median_temperature: number | null;
+    temperature_deviation: number | null;
+  };
+  interpretation: {
+    base_decision: string;
+    contextual_decision: string;
+    spatial_influence: string;
+    spatial_status: string;
+    humidity_status: string;
+    humidity_corroboration: string | null;
+    description: string;
+  };
+  notes: string[];
+}
+
+export interface FaultDemoRow {
+  index: number;
+  timestamp: string;
+  phase: "NORMAL" | "SPIKE" | "FROZEN" | "DRIFT" | "CROSS_VARIABLE";
+  injected: boolean;
+  temperature_c: number | null;
+  pressure_hpa: number | null;
+  relative_humidity_pct: number | null;
+  detection: {
+    anomaly: boolean;
+    severity: string | null;
+    confidence: number | null;
+    confidence_basis: string | null;
+    trigger: string | null;
+    method: string | null;
+    score: number | null;
+    threshold: number | null;
+    availability: string | null;
+    components_available: number | null;
+    root_cause: string | null;
+    root_cause_confidence: number | null;
+    root_cause_basis: string | null;
+    pattern: string | null;
+    reason: string;
+    multivariate_max_abs_robust_deviation_2h: number | null;
+    data_quality: string;
+    spatial_context: string | null;
+  };
+}
+
+export interface FaultDemoResponse {
+  label: string;
+  disclaimer: string;
+  station_id: string;
+  city: string;
+  source_dataset: string;
+  cadence_min: number;
+  anchor: string;
+  context_rows: number;
+  detector: string;
+  injection_parameters: Record<string, unknown>;
+  summary: {
+    rows: number;
+    normal_false_positives: number;
+    faults_detected: number;
+    faults_total: number;
+    by_phase: Record<
+      string,
+      {
+        rows: number;
+        detected: number;
+        first_detection: {
+          index: number;
+          timestamp: string;
+          severity: string | null;
+          root_cause: string | null;
+          confidence: number | null;
+        } | null;
+      }
+    >;
+  };
+  rows: FaultDemoRow[];
+  stored_data_modified: boolean;
+}
+
+export function getStationTimeline(
+  stationId: string,
+  maxPoints = 900,
+  maxEvents = 400,
+): Promise<TimelineResponse> {
+  return request<TimelineResponse>(
+    `/api/v1/stations/${encodeURIComponent(stationId)}/timeline?max_points=${maxPoints}&max_events=${maxEvents}`,
+    { timeoutMs: 120_000 },
+  );
+}
+
+export function getStationInvestigation(
+  stationId: string,
+  at?: string | null,
+): Promise<InvestigationResponse> {
+  const suffix = at ? `?at=${encodeURIComponent(at)}` : "";
+  return request<InvestigationResponse>(
+    `/api/v1/stations/${encodeURIComponent(stationId)}/investigation${suffix}`,
+    { timeoutMs: 120_000 },
+  );
+}
+
+export function getFaultSequence(): Promise<FaultDemoResponse> {
+  return request<FaultDemoResponse>("/api/v1/demo/fault-sequence", { timeoutMs: 600_000 });
 }
