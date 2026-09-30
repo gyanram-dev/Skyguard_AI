@@ -32,7 +32,7 @@ def main() -> None:
     _load_env_file()
     port = int(os.environ.get("PORT") or os.environ.get("SKYGUARD_PORT", "8000"))
     uvicorn.run("src.api.app:app",
-                host=os.environ.get("SKYGUARD_HOST", "127.0.0.1"),
+                host=os.environ.get("SKYGUARD_HOST", "0.0.0.0"),
                 port=port,
                 reload=False, log_level="info")
 

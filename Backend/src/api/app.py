@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="SkyGuard API", version=API_VERSION, lifespan=lifespan)
 
 ALLOWED_ORIGINS = [o.strip() for o in
-                   os.environ.get("SKYGUARD_ALLOWED_ORIGINS",
+                   os.environ.get("FRONTEND_ORIGIN",
                                   "http://localhost:3000,http://localhost:5173").split(",")
                    if o.strip()]
 app.add_middleware(
