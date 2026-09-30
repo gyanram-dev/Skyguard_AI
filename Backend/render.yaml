@@ -33,7 +33,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.14"
       - key: SKYGUARD_DATA_ROOT
-        value: /opt/render/project/src
+        value: /opt/render/project/src/Backend
       - key: FRONTEND_ORIGIN
         sync: false   # e.g. https://skyguard-ai.vercel.app
       - key: LIVE_SOURCE_MODE
