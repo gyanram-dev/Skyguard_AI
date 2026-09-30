@@ -125,3 +125,30 @@ def test_3_new_station_gaps_missing(client):
     assert result.observations == 110
     assert result.station_label == "NEWHO-42"
     assert result.evidence_availability["ensemble"] is False
+
+
+# Fixture 4: space-separated UTC-offset timestamps (pandas/GHCNh default
+# output, e.g. "2022-01-01 00:00:00+00:00") must confirm and analyze;
+# per-station rows/anomalies must stay isolated.
+def test_4_utc_offset_multi_station(client):
+    base = pd.date_range("2024-08-01 00:00:00", periods=100, freq="30min",
+                         tz="UTC")
+    rows = []
+    for i, t in enumerate(base):
+        stamp = t.strftime("%Y-%m-%d %H:%M:%S%z")
+        rows.append([stamp, 29.0 + (i % 4) * 0.2, 60.0, 1008.0, "Bhopal"])
+        rows.append([stamp, 31.0 + (i % 5) * 0.2, 55.0, 1006.0, "Jaipur"])
+    header = ["timestamp", "temperature", "humidity", "pressure", "station"]
+    sid = _upload(client, _csv(header, rows)).json()["session_id"]
+    assert _confirm(client, sid,
+                    {"timestamp": "timestamp", "temperature": "temperature",
+                     "humidity": "humidity", "pressure": "pressure"},
+                    {"temperature": "C", "pressure": "hPa"},
+                    label="OFFSET-01").status_code == 200
+    result = _run(client, sid)
+    assert result.observations == 200
+    by_station = {p["station"]: p for p in result.stations}
+    assert by_station["Bhopal"]["rows"] == 100
+    assert by_station["Jaipur"]["rows"] == 100
+    for detail in result.anomalies_detail:
+        assert detail["station"] in ("Bhopal", "Jaipur")

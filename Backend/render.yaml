@@ -1,0 +1,38 @@
+# Render blueprint for the SkyGuard AI backend (FastAPI).
+#
+# Deploy via Render Dashboard "Blueprint" or:  render blueprint launch
+#
+# IMPORTANT — frozen artifacts: the API serves frozen observation datasets and
+# trained models (see Backend/src/api/dependencies.py REQUIRED_FILES). These
+# are build inputs, not source code, and are not committed to git. Provision
+# them into the directory referenced by SKYGUARD_DATA_ROOT before first boot —
+# see DEPLOYMENT.md ("Backend on Render") for the exact copy commands.
+#
+# Environment variables (all optional, safe defaults shown):
+#   SKYGUARD_DATA_ROOT       Directory holding data/, models/, reports/ (default: repo root)
+#   SKYGUARD_HOST            Bind host (Render overrides via its own runtime)
+#   SKYGUARD_PORT            Bind port (Render injects PORT, which takes precedence)
+#   SKYGUARD_ALLOWED_ORIGINS Comma-separated browser origins allowed by CORS
+#   LIVE_SOURCE_MODE         DISABLED (default) | CONTROLLED_LIVE | LIVE_IMD
+#   IMD_BASE_URL             Required only when LIVE_SOURCE_MODE=LIVE_IMD
+
+services:
+  - type: web
+    name: skyguard-api
+    runtime: python
+    rootDir: Backend
+    plan: starter
+    # PORT is injected by Render and honored by src.api.run (PORT wins over
+    # SKYGUARD_PORT; 127.0.0.1/8000 remain the local development defaults).
+    startCommand: python -m src.api.run
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.14"
+      - key: SKYGUARD_DATA_ROOT
+        value: /opt/render/project/src
+      - key: SKYGUARD_ALLOWED_ORIGINS
+        sync: false   # e.g. https://skyguard-ai.vercel.app
+      - key: LIVE_SOURCE_MODE
+        value: DISABLED
+      # Never put secrets in this file; add them in the Render dashboard.

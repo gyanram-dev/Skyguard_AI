@@ -22,11 +22,12 @@ import {
 } from "@/components/ui/table";
 import { DetailStat, ErrorState, FactRow, StatusBadge } from "@/components/common";
 import { EvidenceList } from "@/components/evidence";
+import { StationForensicsChart } from "@/components/charts";
 import { ApiError } from "@/lib/api";
 import type { ConfirmUploadPayload, UploadAnalysisResult, UploadAnomalyRecord } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { useUploadSession } from "@/components/upload/UploadSessionContext";
-import { confirmUpload, runUploadAnalysis, uploadCsv } from "@/lib/api";
+import { confirmUpload, runUploadAnalysis, uploadCsv, type DQPreview } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/analyze-data")({
   head: () => ({
@@ -62,6 +63,7 @@ function AnalyzeDataPage() {
   const [presUnit, setPresUnit] = useState("");
   const [stationLabel, setStationLabel] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedStation, setSelectedStation] = useState<string>("");
 
   const step = selectedAnomaly
     ? "detail"
@@ -145,7 +147,15 @@ function AnalyzeDataPage() {
     setPhase("working");
     setFailure(null);
     try {
-      setResult(await runUploadAnalysis(session.session_id));
+      const targetStation = selectedStation;
+      // Single-station uploads need no target: the backend then labels the
+      // result from the session ("New Uploaded Station"), never the internal
+      // group key. Multi-station uploads require an explicit selection above.
+      if (preview && preview.stations && preview.stations.length > 1 && !targetStation) {
+        fail(new Error("Please select a station to analyze."));
+        return;
+      }
+      setResult(await runUploadAnalysis(session.session_id, targetStation || undefined));
       setPhase("idle");
     } catch (error) {
       fail(error);
@@ -195,6 +205,8 @@ function AnalyzeDataPage() {
           failure={failure}
           onRun={doRun}
           onEditMapping={() => setPreview(null)}
+          selectedStation={selectedStation}
+          setSelectedStation={setSelectedStation}
         />
       )}
       {step === "results" && result && (
@@ -419,27 +431,16 @@ function PreviewStep({
   failure,
   onRun,
   onEditMapping,
+  selectedStation,
+  setSelectedStation,
 }: {
-  preview: {
-    station_label: string;
-    rows: number;
-    time_range: { start: string | null; end: string | null };
-    cadence_min: number;
-    duplicates: number;
-    missing: Record<string, number>;
-    large_gaps: number;
-    invalid_timestamps: number;
-    non_finite: number;
-    rh_invalid: number | null;
-    rh_available: boolean;
-    pressure_available: boolean;
-    ml_eligible: number;
-    quality_counts: Record<string, number>;
-  };
+  preview: DQPreview;
   phase: string;
   failure: string | null;
   onRun: () => void;
   onEditMapping: () => void;
+  selectedStation: string;
+  setSelectedStation: (val: string) => void;
 }) {
   const facts: Array<[string, string]> = [
     ["Rows", String(preview.rows)],
@@ -477,8 +478,37 @@ function PreviewStep({
           <DetailStat key={label} label={label} value={value} tone="bg-surface-blue-tint" />
         ))}
       </div>
+      {preview.stations && preview.stations.length > 1 && (
+        <div className="mt-4 max-w-sm rounded-xl border border-border p-4 bg-muted/30">
+          <Label htmlFor="station-selector" className="text-sm font-bold">
+            SELECT STATION TO ANALYZE
+          </Label>
+          <p className="mt-0.5 mb-3 text-[11px] text-muted-foreground">
+            Multiple stations detected. Please select one for station-level analysis.
+          </p>
+          <Select value={selectedStation} onValueChange={setSelectedStation}>
+            <SelectTrigger id="station-selector">
+              <SelectValue placeholder="Select station..." />
+            </SelectTrigger>
+            <SelectContent>
+              {preview.stations.map((s) => (
+                <SelectItem key={s.station} value={s.station}>
+                  {s.station}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" onClick={onRun} disabled={phase === "working"}>
+        <Button
+          size="sm"
+          onClick={onRun}
+          disabled={
+            phase === "working" ||
+            (preview.stations && preview.stations.length > 1 && !selectedStation)
+          }
+        >
           <FlaskConical />
           {phase === "working" ? "Analyzing…" : "Run analysis"}
         </Button>
@@ -551,6 +581,37 @@ function ResultsStep({
           </Button>
         </div>
       </section>
+
+      {result.series && (
+        <section className="panel p-4" aria-label="Historical Timeline">
+          <p className="section-kicker">Historical Timeline</p>
+          <div className="mt-3">
+            <StationForensicsChart
+              series={result.series}
+              events={result.anomalies_detail.map((anomaly) => ({
+                timestamp: anomaly.timestamp,
+                variable: "temperature",
+                severity: "HIGH",
+                pattern: anomaly.root_cause_estimate,
+                temperature:
+                  typeof anomaly.observation["temperature_c"] === "number"
+                    ? anomaly.observation["temperature_c"]
+                    : null,
+                humidity:
+                  typeof anomaly.observation["relative_humidity_pct"] === "number"
+                    ? anomaly.observation["relative_humidity_pct"]
+                    : null,
+                pressure:
+                  typeof anomaly.observation["pressure_hpa"] === "number"
+                    ? anomaly.observation["pressure_hpa"]
+                    : null,
+              }))}
+              primary="temperature"
+              ariaLabel={`Historical Timeline for ${result.station_label}`}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="panel p-4" aria-label="Detected anomalies">
         <p className="section-kicker">Anomalies · {result.anomalies}</p>

@@ -371,6 +371,9 @@ def test_23_no_future_phase(project_root):
     # alignment pass (seasonal: read-only same-hour reference descriptors,
     # no models, no detectors): these additions are mandated single-purpose
     # packages. Intent unchanged.
+    # Rapid multi-city MVP (detection: calibrated station-statistical
+    # detectors reusing frozen rules; showcase: offline timeline artifact
+    # builder): mandated single-purpose packages. Intent unchanged.
     # TensorFlow is allowed
     # ONLY inside src/lstm_autoencoder (Phase 9 mandate); the import scans
     # below are unchanged and still forbid it in benchmark/evaluation/
@@ -379,7 +382,8 @@ def test_23_no_future_phase(project_root):
                         "benchmark", "evaluation", "isolation_forest", "noaa",
                         "spatial", "lstm_autoencoder", "ensemble",
                         "root_cause", "api", "data_sources", "live",
-                        "temporal", "indian_network", "seasonal"}, existing
+                        "temporal", "indian_network", "seasonal",
+                        "detection", "showcase"}, existing
     forbidden = ("sklearn", "tensorflow", "torch", "fastapi", "shap", "xgboost")
     import re
 

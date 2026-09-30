@@ -800,7 +800,9 @@ export interface DQPreview {
   pressure_available: boolean;
   ml_eligible: number;
   quality_counts: Record<string, number>;
-  stations: Array<Record<string, unknown>>;
+  /** Per-station partition summaries (multi-station uploads); station is the
+   *  display identifier — the internal "__single__" group key never appears. */
+  stations: Array<{ station: string; rows: number } & Record<string, unknown>>;
 }
 
 export interface UploadAnomalyCorrection {
@@ -839,6 +841,12 @@ export interface UploadAnalysisResult {
   mapping: Record<string, string | null>;
   units: Record<string, string | null>;
   stations: Array<Record<string, unknown>>;
+  series?: {
+    timestamps: string[];
+    temperature: Array<number | null>;
+    humidity: Array<number | null>;
+    pressure: Array<number | null>;
+  } | null;
   notes: string[];
 }
 
@@ -863,8 +871,14 @@ export function confirmUpload(
   });
 }
 
-export function runUploadAnalysis(sessionId: string): Promise<UploadAnalysisResult> {
-  return request<UploadAnalysisResult>(`/api/v1/analyze/${encodeURIComponent(sessionId)}/run`, {
+export function runUploadAnalysis(
+  sessionId: string,
+  targetStation?: string,
+): Promise<UploadAnalysisResult> {
+  const url = targetStation
+    ? `/api/v1/analyze/${encodeURIComponent(sessionId)}/run?target_station=${encodeURIComponent(targetStation)}`
+    : `/api/v1/analyze/${encodeURIComponent(sessionId)}/run`;
+  return request<UploadAnalysisResult>(url, {
     method: "POST",
     timeoutMs: 300_000,
   });

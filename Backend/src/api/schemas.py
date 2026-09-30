@@ -652,4 +652,5 @@ class AnalysisResult(BaseModel):
     mapping: dict = Field(default_factory=dict)
     units: dict = Field(default_factory=dict)
     stations: list = Field(default_factory=list)
+    series: dict | None = None
     notes: list[str] = Field(default_factory=list)

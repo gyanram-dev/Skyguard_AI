@@ -264,12 +264,16 @@ def _analyze_station(frame: pd.DataFrame, cadence: float, station: str,
     return records, breakdown, dq_total
 
 
-def run_analysis(session_id: str) -> dict:
+def run_analysis(session_id: str, target_station: str | None = None) -> dict:
     """Full uploaded-dataset analysis (statistical + DQ + multivariate)."""
     session = get_session(session_id)
     entries = _station_entries(session)
-    multi = len(entries) > 1
-    label = session["station_label"]
+    if target_station:
+        entries = [(sid, entry) for sid, entry in entries if sid == target_station]
+        if not entries:
+            raise UploadError(404, "station_not_found", f"Station '{target_station}' not found in this dataset.")
+    multi = len(entries) > 1 and not target_station
+    label = target_station if target_station else session["station_label"]
     records: list = []
     breakdown: dict[str, int] = {}
     total = 0
@@ -288,6 +292,26 @@ def run_analysis(session_id: str) -> dict:
                             "cadence_min": float(entry["cadence_min"]),
                             "anomalies": int(len(part_records))})
     records.sort(key=lambda r: (r["timestamp"], r["station"]))
+    
+    series = None
+    if not multi and len(entries) == 1:
+        frame = entries[0][1]["frame"]
+        stamps = frame["timestamp"].tolist()
+        temp = frame["temperature_c"].tolist()
+        pres = frame["pressure_hpa"].tolist()
+        hum = frame["relative_humidity_pct"].tolist()
+        
+        n = len(stamps)
+        max_points = 1500
+        idx = list(range(n)) if n <= max_points else list(range(0, n, int(math.ceil(n / max_points))))
+        
+        series = {
+            "timestamps": [stamps[i] for i in idx],
+            "temperature": [_num(temp[i]) for i in idx],
+            "pressure": [_num(pres[i]) for i in idx],
+            "humidity": [_num(hum[i]) for i in idx],
+        }
+
     result = {
         "session_id": session_id,
         "filename": session["filename"],
@@ -309,6 +333,7 @@ def run_analysis(session_id: str) -> dict:
         "mapping": session.get("mapping"),
         "units": session.get("units"),
         "stations": per_station,
+        "series": series,
         "notes": [
             "Anomaly decisions reuse the frozen statistical baseline "
             f"(|z|>{Z_THRESHOLD} or IQR flag) on station-specific rolling context.",

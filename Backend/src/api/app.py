@@ -193,7 +193,7 @@ def station_detail(station_id: str) -> dict:
                 "observations": {"temperature_c": SS._num(obs["temperature_c"]),
                                  "relative_humidity_pct": SS._num(obs["relative_humidity_pct"]),
                                  "pressure_hpa": SS._num(obs["altimeter_setting_hpa"])},
-                "data_quality": {"status": "PASS", "ml_eligible": True, "flags": []},
+                "data_quality": {"status": "PASS", "ml_eligible": False, "flags": []},
                 "anomaly": {"detected": False, "score": score, "method": "spatial",
                             "confidence": None},
                 "root_cause": {"class": None, "confidence": None},
@@ -413,11 +413,11 @@ def analyze_confirm(session_id: str, payload: S.ConfirmRequest) -> dict:
 
 
 @app.post("/api/v1/analyze/{session_id}/run", response_model=S.AnalysisResult)
-def analyze_run(session_id: str) -> dict:
+def analyze_run(session_id: str, target_station: str | None = Query(None)) -> dict:
     """Run uploaded-dataset analysis (statistical + DQ + multivariate)."""
     get_store()
     try:
-        return UA.run_analysis(session_id)
+        return UA.run_analysis(session_id, target_station)
     except US.UploadError as exc:
         return _upload_error(exc)
 

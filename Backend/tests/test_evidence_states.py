@@ -32,8 +32,10 @@ def test_1_normal_sufficient_evidence(client):
               "pressure": 971.3, "humidity": 100.0}).json())
     assert body.result.is_anomalous is False
     assert body.result.availability in ("FULL_EVIDENCE", "PARTIAL_EVIDENCE")
-    # Evidence coverage grade is bounded (1.0/0.67/0.33), never a "% probability".
-    assert body.result.confidence in (1.0, 0.67, 0.33)
+    # No anomaly -> no confidence claim at all (never a "% probability",
+    # never an availability grade presented as confidence).
+    assert body.result.confidence is None
+    assert body.result.confidence_basis is None
     assert body.explanation.text
     assert "nan" not in body.explanation.text.lower()
 
@@ -48,6 +50,11 @@ def test_2_anomaly_state(client):
     assert body.result.threshold is not None
     assert body.result.is_anomalous == (
         body.result.anomaly_score >= body.result.threshold)
+    # Anomaly -> bounded availability-proxy grade with an explicit basis
+    # that states it is not a probability.
+    assert body.result.confidence in (1.0, 0.67, 0.33)
+    assert body.result.confidence_basis is not None
+    assert "not a probability" in body.result.confidence_basis
 
 
 # 3. Insufficient history != normal: probe without context is 422, not healthy.

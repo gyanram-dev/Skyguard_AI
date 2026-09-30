@@ -29,6 +29,7 @@ MAX_SESSIONS = 50
 
 TIMESTAMP_FORMATS = [
     "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d %H:%M:%S%z",
     "%Y-%m-%dT%H:%M:%S",
     "%Y-%m-%dT%H:%M:%SZ",
     "%Y-%m-%dT%H:%M:%S%z",
@@ -48,6 +49,7 @@ TIMESTAMP_FORMATS = [
 # keep the strict single-format rule below.
 ISO_FORMATS = [
     "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d %H:%M:%S%z",
     "%Y-%m-%dT%H:%M:%S",
     "%Y-%m-%dT%H:%M:%SZ",
     "%Y-%m-%dT%H:%M:%S%z",
@@ -60,7 +62,7 @@ FIELD_CANDIDATES = {
     "timestamp": ["timestamp", "datetime", "date_time", "date", "time"],
     "temperature": ["temperature", "temperature_c", "temp", "temp_c", "air_temp",
                     "airtemp", "air_temperature", "t", "t_c", "temp_f", "temperature_f"],
-    "humidity": ["humidity", "relative_humidity", "rel_hum", "rh", "rh_percent",
+    "humidity": ["humidity", "relative_humidity_pct", "relative_humidity", "rel_hum", "rh", "rh_percent",
                  "rh_pct", "humidity_pct", "humidity_rh"],
     "pressure": ["pressure", "pressure_hpa", "pres", "atm_pres", "atmospheric_pressure",
                  "station_pressure", "air_pressure", "p", "pressure_pa", "pres_pa"],
@@ -256,7 +258,12 @@ def _parse_timestamps(values: pd.Series) -> tuple[pd.Series, str]:
         if bool(hit.any()):
             iso_used.add(fmt)
             iso_parsed.loc[attempt[hit].index] = attempt[hit].values
-    if bool((~iso_parsed.isna()).all()):
+    # Accept ISO results even when some rows fail to parse: unparseable
+    # rows stay NaT and are excluded and counted per station by the confirm
+    # pipeline (which enforces >= 3 valid timestamps). A file that parses
+    # partially must not be rejected wholesale - the data-quality report
+    # exists to surface exactly these defects (invalid_timestamps metric).
+    if bool(iso_parsed.notna().any()):
         label = next(iter(iso_used)) if len(iso_used) == 1 else "ISO-8601 (mixed)"
         return iso_parsed, label
     full_hits: dict[str, pd.Series] = {}
