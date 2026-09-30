@@ -24,9 +24,12 @@ services:
     plan: starter
     # PORT is injected by Render and honored by src.api.run (PORT wins over
     # SKYGUARD_PORT; 127.0.0.1/8000 remain the local development defaults).
+    buildCommand: ./render-build.sh
     startCommand: python -m src.api.run
     healthCheckPath: /health
     envVars:
+      - key: ARTIFACT_URL
+        sync: false   # Provide the HTTPS URL to skyguard_artifacts.tar.gz in the dashboard
       - key: PYTHON_VERSION
         value: "3.14"
       - key: SKYGUARD_DATA_ROOT
