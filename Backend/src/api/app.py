@@ -66,6 +66,7 @@ app = FastAPI(title="SkyGuard API", version=API_VERSION, lifespan=lifespan)
 DEFAULT_ALLOWED_ORIGINS = (
     "http://localhost:3000",
     "http://localhost:5173",
+    "https://skyguard-ai-topaz.vercel.app",
     "https://skyguard-8dl6teuvp-gyan-rams-projects.vercel.app",
     "https://skyguard-gyan-rams-projects.vercel.app",
 )

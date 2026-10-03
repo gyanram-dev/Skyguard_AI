@@ -13,7 +13,7 @@
 #   SKYGUARD_HOST            Bind host (Render overrides via its own runtime)
 #   SKYGUARD_PORT            Bind port (Render injects PORT, which takes precedence)
 #   FRONTEND_ORIGIN         Extra comma-separated browser origins for CORS;
-#                            localhost and the Vercel deployment are always allowed
+#                            localhost and the production Vercel origin are always allowed
 #   LIVE_SOURCE_MODE         DISABLED (default) | CONTROLLED_LIVE | LIVE_IMD
 #   IMD_BASE_URL             Required only when LIVE_SOURCE_MODE=LIVE_IMD
 
@@ -36,7 +36,7 @@ services:
       - key: SKYGUARD_DATA_ROOT
         value: /opt/render/project/src/Backend
       - key: FRONTEND_ORIGIN
-        sync: false   # extra origins only, e.g. https://skyguard-ai.vercel.app
+        sync: false   # extra origins only; production and matching Vercel previews are built in
       - key: LIVE_SOURCE_MODE
         value: DISABLED
       # Never put secrets in this file; add them in the Render dashboard.

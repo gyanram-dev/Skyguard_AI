@@ -65,7 +65,7 @@ managing the bind.
 
 | Variable | Value | Notes |
 | --- | --- | --- |
-| `SKYGUARD_ALLOWED_ORIGINS` | `https://<your-app>.vercel.app` | Comma-separated exact origins. **Never `*`** (credentials are allowed). Defaults to localhost pair for development only. |
+| `FRONTEND_ORIGIN` | `https://<additional-app>.vercel.app` | Optional comma-separated extra origins. The production frontend `https://skyguard-ai-topaz.vercel.app`, matching Vercel previews, and localhost development origins are built in. **Never `*`** (credentials are allowed). |
 | `SKYGUARD_DATA_ROOT` | `/opt/render/project/src` | Directory that contains `data/`, `models/`, `reports/`. |
 | `LIVE_SOURCE_MODE` | `DISABLED` | Keep off unless demoing the controlled live stream. |
 | `IMD_BASE_URL` | *(empty)* | Only for `LIVE_SOURCE_MODE=LIVE_IMD`. |
@@ -112,7 +112,7 @@ curl https://<render-host>/api/v1/network/summary   # stations_monitored=14
 ## C. Cross-origin wiring checklist
 
 1. Frontend `NEXT_PUBLIC_API_URL=https://<render-host>` (alias: `VITE_API_BASE_URL`; HTTPS, so the WebSocket becomes `wss://<render-host>/api/v1/live` — supported on Render).
-2. Backend: localhost and the deployed Vercel origins are always allowed by CORS; `FRONTEND_ORIGIN` (comma-separated) adds extra origins, e.g. custom domains.
+2. Backend: localhost, `https://skyguard-ai-topaz.vercel.app`, and matching Vercel preview origins are allowed by CORS; `FRONTEND_ORIGIN` (comma-separated) adds extra origins, e.g. custom domains.
 3. Redeploy the **frontend** after changing `NEXT_PUBLIC_API_URL` (Vite bakes env vars at build time), and the **backend** after changing CORS origins.
 
 ## D. What was deliberately NOT changed

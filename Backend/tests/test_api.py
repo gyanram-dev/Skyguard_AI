@@ -207,6 +207,13 @@ def test_13_cors(client):
     assert response.status_code in (200, 204)
     assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
+    production_origin = "https://skyguard-ai-topaz.vercel.app"
+    production = client.options("/api/v1/stations",
+                                headers={"Origin": production_origin,
+                                         "Access-Control-Request-Method": "GET"})
+    assert production.status_code in (200, 204)
+    assert production.headers.get("access-control-allow-origin") == production_origin
+
     vercel_origin = "https://skyguard-8dl6teuvp-gyan-rams-projects.vercel.app"
     vercel = client.options("/api/v1/stations",
                             headers={"Origin": vercel_origin,
