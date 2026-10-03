@@ -32,6 +32,7 @@ INVALID_INPUT = "invalid_input"
 STATION_REQUIRED = "station_required"
 UNKNOWN_STATION = "unknown_station"
 INSUFFICIENT_CONTEXT = "insufficient_context"
+MODELS_UNAVAILABLE = "models_unavailable"
 
 
 class ProbeError(Exception):
@@ -108,15 +109,23 @@ def run_probe(store, station_id: str | None,
         "relative_humidity_pct": history["relative_humidity_pct"].tolist() + [hum_pct],
     })
 
-    frames = SC.build_frames(store, ds, frame)
+    try:
+        frames = SC.build_frames(store, ds, frame)
+    except SC.ModelUnavailableError as exc:
+        raise ProbeError(503, MODELS_UNAVAILABLE,
+                         f"Probe inference is unavailable: {exc}") from exc
     pos = len(frame) - 1
     segment = frames["features"]["segment_id"].to_numpy()
     if segment[pos] != segment[pos - 1]:
         raise ProbeError(422, INSUFFICIENT_CONTEXT,
                          "Insufficient historical context for probe inference: "
                          "the probe does not continue the station's latest segment.")
-    scored = SC.score_position(frames, ds, pos,
-                               spatial_ts=anchor, spatial_temp=temp_c)
+    try:
+        scored = SC.score_position(frames, ds, pos,
+                                   spatial_ts=anchor, spatial_temp=temp_c)
+    except SC.ModelUnavailableError as exc:
+        raise ProbeError(503, MODELS_UNAVAILABLE,
+                         f"Probe inference is unavailable: {exc}") from exc
     if scored["ensemble"]["availability"] == INSUFFICIENT_EVIDENCE:
         raise ProbeError(422, INSUFFICIENT_CONTEXT,
                          "Insufficient historical context for probe inference: "

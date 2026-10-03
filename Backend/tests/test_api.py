@@ -29,7 +29,15 @@ def test_1_2_health_and_models(client):
         assert set(payload.model_status.model_dump()) == {
             "statistical", "isolation_forest", "lstm_autoencoder",
             "ensemble", "root_cause"}
-        assert all(v == "loaded" for v in payload.model_status.model_dump().values())
+        # Intentional change (startup memory audit): inference artifacts are
+        # no longer loaded at startup — they are reported as 'deferred' and
+        # load lazily on first use through the scoring cache, so status is
+        # 'ready' (artifacts present, nothing broken). The in-process
+        # statistical rules need no artifact and stay 'loaded'.
+        status = payload.model_status.model_dump()
+        assert status["statistical"] == "loaded"
+        assert all(v == "deferred" for k, v in status.items() if k != "statistical")
+        assert payload.status == "ready"
 
 
 # 3+14+16. Station listing, replay labeling, determinism.

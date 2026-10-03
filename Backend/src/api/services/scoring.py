@@ -65,6 +65,27 @@ _CACHE_LOCK = threading.Lock()
 _NOAA_LOOKUP: dict | None = None
 
 
+class ModelUnavailableError(RuntimeError):
+    """A frozen inference artifact could not be lazily loaded."""
+
+
+# dataset -> error text of a failed lazy load (reported by health, never
+# used to skip a retry: an absent/corrupt artifact stays visible).
+_FAILURES: dict = {}
+
+
+def load_state() -> dict:
+    """Read-only lazy-load state for health reporting; never loads anything.
+
+    ``cached_datasets`` — datasets whose frozen bundle is already in memory
+    (this module owns the only model cache); ``failures`` — dataset -> error
+    text for lazy loads that failed, so health reports 'unavailable' as a
+    measured fact instead of a guess.
+    """
+    with _CACHE_LOCK:
+        return {"cached_datasets": sorted(_CACHE), "failures": dict(_FAILURES)}
+
+
 def num(value) -> float | None:
     """Finite float or None (missing stays missing, never zero-filled)."""
     try:
@@ -82,20 +103,33 @@ def sanitize_text(text: str | None, fallback: str) -> str:
 
 
 def get_models(store, ds: str) -> dict:
-    """Lazily load (once) and cache the frozen artifacts for a dataset."""
+    """Lazily load (once) and cache the frozen artifacts for a dataset.
+
+    Single owner of model loading: startup never loads these (see
+    DataStore._load_models). A failed lazy load is recorded for health and
+    raised as ModelUnavailableError so callers can degrade in a structured
+    way instead of surfacing an unhandled 500.
+    """
     with _CACHE_LOCK:
         if ds in _CACHE:
             return _CACHE[ds]
         root = store.root
-        if_bundle = joblib.load(root / "models" / "isolation_forest" / f"{ds}_isolation_forest.joblib")
-        cal_bundle = joblib.load(root / "models" / "ensemble" / f"{ds}_calibration.joblib")
-        scaler_bundle = joblib.load(root / "models" / "lstm_autoencoder" / f"{ds}_scaler.joblib")
-        import tensorflow as tf
+        try:
+            if_bundle = joblib.load(root / "models" / "isolation_forest" / f"{ds}_isolation_forest.joblib")
+            cal_bundle = joblib.load(root / "models" / "ensemble" / f"{ds}_calibration.joblib")
+            scaler_bundle = joblib.load(root / "models" / "lstm_autoencoder" / f"{ds}_scaler.joblib")
+            import tensorflow as tf
 
-        lstm_model = tf.keras.models.load_model(
-            root / "models" / "lstm_autoencoder" / f"{ds}_lstm_autoencoder.keras")
-        rc_model = joblib.load(root / "models" / "root_cause" / f"{ds}_root_cause.joblib")
-        explainer = joblib.load(root / "models" / "root_cause" / f"{ds}_root_cause_explainer.joblib")
+            lstm_model = tf.keras.models.load_model(
+                root / "models" / "lstm_autoencoder" / f"{ds}_lstm_autoencoder.keras")
+            rc_model = joblib.load(root / "models" / "root_cause" / f"{ds}_root_cause.joblib")
+            explainer = joblib.load(root / "models" / "root_cause" / f"{ds}_root_cause_explainer.joblib")
+        except Exception as exc:  # noqa: BLE001 - structured degradation
+            _FAILURES[ds] = f"{type(exc).__name__}: {exc}"[:300]
+            logger.error("Frozen inference artifacts for dataset '%s' unavailable: %s", ds, exc)
+            raise ModelUnavailableError(
+                f"frozen artifacts for dataset '{ds}' could not be loaded: "
+                f"{type(exc).__name__}: {exc}") from exc
         bundle = {"if": if_bundle, "cal": cal_bundle, "scaler": scaler_bundle,
                   "lstm": lstm_model, "rc": rc_model, "explainer": explainer}
         _CACHE[ds] = bundle
