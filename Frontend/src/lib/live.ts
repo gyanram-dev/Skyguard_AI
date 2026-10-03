@@ -3,7 +3,8 @@ import { API_BASE_URL } from "@/lib/api";
 /**
  * Dedicated WebSocket layer for accelerated historical replay (Phase 16).
  * Transport + parsing only; streaming state lives in useLiveReplay.
- * The socket URL derives from VITE_API_BASE_URL (ws/wss); no hard-coded hosts.
+ * The socket URL derives from the API base URL (NEXT_PUBLIC_API_URL /
+ * VITE_API_BASE_URL) as ws/wss; no hard-coded hosts.
  */
 
 export type ConnectionState = "disconnected" | "connecting" | "connected" | "error";

@@ -31,11 +31,14 @@ npm install
 Copy `.env.example` to `.env`:
 
 ```sh
-VITE_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-The app falls back to `http://localhost:8000` when unset. Production-style
-deployments must set `VITE_API_BASE_URL` to the real backend origin.
+Either `NEXT_PUBLIC_API_URL` (the deployment variable — set it in the Vercel
+project) or `VITE_API_BASE_URL` (kept for local `.env` files and existing
+deployments) configures the backend origin; `NEXT_PUBLIC_API_URL` wins when
+both are set. The app falls back to `http://localhost:8000` when neither is
+set. Vite inlines these at build time, so redeploy after changing them.
 
 ## Development
 

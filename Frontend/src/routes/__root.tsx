@@ -33,7 +33,9 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+// `error` is typed as unknown to match TanStack Router's ErrorComponentProps
+// (router-core >=1.171.x defaults the error boundary type to unknown).
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
     console.error(error);

@@ -199,13 +199,29 @@ def test_11_12_network_summary(client):
         1 for s in stations if s.get("probe_available"))
 
 
-# 13. CORS restricted to development origins (no wildcard).
+# 13. CORS: explicit allowlist plus rotating Vercel preview hostnames (no wildcard).
 def test_13_cors(client):
     response = client.options("/api/v1/stations",
                               headers={"Origin": "http://localhost:3000",
                                        "Access-Control-Request-Method": "GET"})
     assert response.status_code in (200, 204)
     assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+    vercel_origin = "https://skyguard-8dl6teuvp-gyan-rams-projects.vercel.app"
+    vercel = client.options("/api/v1/stations",
+                            headers={"Origin": vercel_origin,
+                                     "Access-Control-Request-Method": "GET"})
+    assert vercel.status_code in (200, 204)
+    assert vercel.headers.get("access-control-allow-origin") == vercel_origin
+
+    # A rotated Vercel deployment hostname must be covered by allow_origin_regex.
+    preview_origin = "https://skyguard-abc123-gyan-rams-projects.vercel.app"
+    preview = client.options("/api/v1/stations",
+                             headers={"Origin": preview_origin,
+                                      "Access-Control-Request-Method": "GET"})
+    assert preview.status_code in (200, 204)
+    assert preview.headers.get("access-control-allow-origin") == preview_origin
+
     evil = client.get("/api/v1/stations", headers={"Origin": "https://evil.example"})
     assert evil.headers.get("access-control-allow-origin") in (None, "")
 

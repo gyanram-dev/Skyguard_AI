@@ -26,11 +26,11 @@ works; no SPA rewrites required).
 | Variable | Example | Notes |
 | --- | --- | --- |
 | `NITRO_PRESET` | `vercel` | Selects Nitro's Vercel preset during build |
-| `VITE_API_BASE_URL` | `https://skyguard-api.onrender.com` | Public backend origin, **no trailing slash**. The browser uses it for all REST calls and converts it to `wss://…` for the replay WebSocket. |
+| `NEXT_PUBLIC_API_URL` | `https://skyguard-ai-1a7v.onrender.com` | Public backend origin, **no trailing slash**. The browser uses it for all REST calls and converts it to `wss://…` for the replay WebSocket. Preferred name; `VITE_API_BASE_URL` is still accepted as an alias (local `.env` files). |
 
 There are no secrets in the frontend; everything it sends is public API
-traffic. Never point `VITE_API_BASE_URL` at a service that is not meant to be
-public.
+traffic. Never point `NEXT_PUBLIC_API_URL` / `VITE_API_BASE_URL` at a service
+that is not meant to be public.
 
 ### Local pre-flight (exact commands)
 
@@ -111,9 +111,9 @@ curl https://<render-host>/api/v1/network/summary   # stations_monitored=14
 
 ## C. Cross-origin wiring checklist
 
-1. Frontend `VITE_API_BASE_URL=https://<render-host>` (HTTPS; WebSocket becomes `wss://<render-host>/api/v1/live` — supported on Render).
-2. Backend `SKYGUARD_ALLOWED_ORIGINS=https://<vercel-host>` (exact scheme+host, no trailing slash).
-3. Redeploy the **frontend** after changing `VITE_API_BASE_URL` (Vite bakes env vars at build time).
+1. Frontend `NEXT_PUBLIC_API_URL=https://<render-host>` (alias: `VITE_API_BASE_URL`; HTTPS, so the WebSocket becomes `wss://<render-host>/api/v1/live` — supported on Render).
+2. Backend: localhost and the deployed Vercel origins are always allowed by CORS; `FRONTEND_ORIGIN` (comma-separated) adds extra origins, e.g. custom domains.
+3. Redeploy the **frontend** after changing `NEXT_PUBLIC_API_URL` (Vite bakes env vars at build time), and the **backend** after changing CORS origins.
 
 ## D. What was deliberately NOT changed
 

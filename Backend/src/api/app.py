@@ -59,13 +59,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="SkyGuard API", version=API_VERSION, lifespan=lifespan)
 
-ALLOWED_ORIGINS = [o.strip() for o in
-                   os.environ.get("FRONTEND_ORIGIN",
-                                  "http://localhost:3000,http://localhost:5173").split(",")
-                   if o.strip()]
+# Browser origins allowed by CORS. Local development and the deployed Vercel
+# frontend are always allowed; FRONTEND_ORIGIN (comma-separated) adds any
+# further origins. Vercel rotates deployment hostnames, so preview URLs are
+# additionally matched by allow_origin_regex.
+DEFAULT_ALLOWED_ORIGINS = (
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://skyguard-8dl6teuvp-gyan-rams-projects.vercel.app",
+    "https://skyguard-gyan-rams-projects.vercel.app",
+)
+CONFIGURED_ORIGINS = [o.strip() for o in os.environ.get("FRONTEND_ORIGIN", "").split(",")
+                     if o.strip()]
+ALLOWED_ORIGINS = sorted(set(DEFAULT_ALLOWED_ORIGINS) | set(CONFIGURED_ORIGINS))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://skyguard-[a-z0-9-]+-gyan-rams-projects\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],

@@ -6,6 +6,10 @@ import tsConfigPaths from "vite-tsconfig-paths";
 import { nitro } from "nitro/vite";
 
 export default defineConfig({
+  // Expose NEXT_PUBLIC_* in addition to Vite's default VITE_* prefix so the
+  // deployed frontend can read NEXT_PUBLIC_API_URL (the Vercel project
+  // variable) through import.meta.env. Vite inlines both at build time.
+  envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   plugins: [
     tailwindcss(),
     tsConfigPaths({ projects: ["./tsconfig.json"] }),

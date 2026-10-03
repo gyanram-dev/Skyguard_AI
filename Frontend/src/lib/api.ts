@@ -1,7 +1,9 @@
 /**
  * SkyGuard AI API client — single integration point for the FastAPI backend.
  *
- * - Base URL comes from VITE_API_BASE_URL (development default http://localhost:8000).
+ * - Base URL comes from NEXT_PUBLIC_API_URL (set in the Vercel project) or
+ *   VITE_API_BASE_URL (local .env files); development default http://localhost:8000.
+ *   Vite inlines either value at build time — redeploy after changing them.
  * - Native fetch only; no axios.
  * - Centralized URL construction, JSON parsing, non-2xx errors, timeout/abort.
  * - Never returns fabricated values: failures throw ApiError for callers to render.
@@ -120,7 +122,14 @@ export function normalizeStatus(
   return "review";
 }
 
-const rawBaseUrl = (import.meta.env["VITE_API_BASE_URL"] as string | undefined) ?? "";
+// NEXT_PUBLIC_API_URL is the canonical deployment variable (named in the
+// Vercel project); VITE_API_BASE_URL stays supported for local .env files and
+// existing deployments. Both are inlined by Vite at build time.
+const configuredBaseUrls = [
+  import.meta.env["NEXT_PUBLIC_API_URL"] as string | undefined,
+  import.meta.env["VITE_API_BASE_URL"] as string | undefined,
+];
+const rawBaseUrl = configuredBaseUrls.find((value) => (value ?? "").trim() !== "") ?? "";
 export const API_BASE_URL = rawBaseUrl.trim() !== "" ? rawBaseUrl.trim() : "http://localhost:8000";
 
 export const DATA_MODE_HISTORICAL_REPLAY = "historical_replay";
